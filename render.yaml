@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: pitombo-lanches-app
+    env: node
+    region: oregon
+    branch: main
+    buildCommand: "npm ci"
+    startCommand: "node app.js"
+    healthCheckPath: "/"
+    autoDeploy: true
