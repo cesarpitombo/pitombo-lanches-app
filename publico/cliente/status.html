@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Status do Pedido • Pitombo Lanches</title>
+  <link rel="stylesheet" href="/static/cliente/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a href="/cliente/index.html" class="back">← Voltar</a>
+    <div class="brand">🍔 Pitombo Lanches</div>
+  </header>
+
+  <main class="wrapper">
+    <section>
+      <h2>Status do seu pedido</h2>
+      <div id="status-box" class="status-box">
+        <p>Carregando status...</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    async function loadStatus() {
+      const res = await fetch('/api/status');
+      if (!res.ok) {
+        document.getElementById('status-box').innerHTML = '<p>Erro ao carregar status.</p>';
+        return;
+      }
+      const data = await res.json();
+      let html = '';
+      data.forEach(s => {
+        html += `
+          <div class="status-item">
+            <b>Pedido #${s.id}</b><br>
+            <span>${s.status}</span><br>
+            <small>${new Date(s.time).toLocaleString('pt-PT')}</small>
+          </div>
+          <hr>
+        `;
+      });
+      document.getElementById('status-box').innerHTML = html || '<p>Nenhum pedido encontrado.</p>';
+    }
+
+    loadStatus();
+    setInterval(loadStatus, 10000);
+  </script>
+</body>
+</html>
