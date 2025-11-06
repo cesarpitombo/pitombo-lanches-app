@@ -1,7 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head><title>Página Inicial</title></head>
-<body>
+<body><h1 id="title">Bem-vindo!</h1>
+<script>
+  fetch('/api/config').then(r=>r.json()).then(cfg=>{
+    document.getElementById('title').textContent = `Bem-vindo ao ${cfg.appName}!`;
+  });
+</script>
+
 <h1>Bem-vindo ao Pitombo Lanches!</h1>
 <a href="/cardapio">Ver Cardápio</a>
 </body>
