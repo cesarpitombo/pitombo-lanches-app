@@ -1,46 +1,31 @@
 const express = require('express');
 const path = require('path');
-
 const app = express();
-const PORT = process.env.PORT || 3000;
 
+// Permitir JSON no backend
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// Static para cliente e admin
-app.use('/static', express.static(path.join(__dirname, 'public')));
-
-// HOME
+// Rota principal - página do cliente
 app.get('/', (req, res) => {
-  res.send('🚀 Pitombo Lanches online! Endpoints: /cliente, /admin (em breve).');
+  res.sendFile(path.join(__dirname, 'public/cliente/index.html'));
 });
 
-// ====== CLIENTE ======
-app.get('/cliente', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'index.html'));
+// Página do cardápio
+app.get('/cardapio', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/cliente/cardapio.html'));
 });
 
-app.get('/cliente/status', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'status.html'));
+// Página do carrinho
+app.get('/carrinho', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/cliente/carrinho.html'));
 });
 
-// API mock de produtos (trocaremos por DB depois)
-app.get('/api/products', (req, res) => {
-  res.json([
-    { id: 'p1', name: 'X-Burger', desc: 'Hambúrguer com queijo', price_cents: 750, img: '/static/cliente/img/burger.png' },
-    { id: 'p2', name: 'Refrigerante 350ml', desc: 'Lata 350ml', price_cents: 250, img: '/static/cliente/img/soda.png' }
-  ]);
+// Página final de pedido feito
+app.get('/pedido-confirmado', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/cliente/pedido-confirmado.html'));
 });
 
-// API mock de pedido
-app.post('/api/order', (req, res) => {
-  const { items, payment, note, address } = req.body;
-  // TODO: validar e salvar no DB futuramente
-  const orderId = 'PD' + Math.floor(100000 + Math.random() * 900000);
-  console.log('🧾 Novo pedido:', { orderId, items, payment, note, address });
-  res.json({ ok: true, orderId, status: 'pending' });
-});
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Pitombo Lanches rodando na porta ${PORT}`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
