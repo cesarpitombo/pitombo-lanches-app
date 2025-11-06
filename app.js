@@ -73,6 +73,6 @@ app.get('/pedido-confirmado', (req, res) => {
 
 // ====== Sobe o servidor ======
 app.listen(PORT, () => {
-  console.log(🚀 Servidor Pitombo Lanches rodando na porta ${PORT});
+  console.log(`🚀 Servidor Pitombo Lanches rodando na porta ${PORT}`);
   
 });
