@@ -1,35 +1,46 @@
-<body>
-  <h1>Cardápio</h1>
-  <div id="menu"></div>
-  <p><a href="/carrinho">Ver Carrinho 🛒</a></p>
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Cardápio</title>
+    <style>
+      body { font-family: Arial, sans-serif; }
+      .item { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #ddd; }
+      .item img { width: 80px; height: 80px; object-fit: cover; background: #eee; }
+      .nome { font-weight: bold; }
+      .preco { color: #444; }
+    </style>
+  </head>
+  <body>
+    <h2>Cardápio</h2>
+    <div id="lista"></div>
+    <p><a href="/">Voltar</a></p>
 
-  <script>
-    async function carregarMenu() {
-      try {
-        const res = await fetch('/api/menu');
-        const itens = await res.json();
-        const menuDiv = document.getElementById('menu');
-        menuDiv.innerHTML = itens.map(item => `
-          <div style="margin-bottom: 20px;">
-            <img src="${item.imagem}" alt="${item.nome}" width="120"><br>
-            <strong>${item.nome}</strong><br>
-            R$ ${item.preco},00 <br>
-            <button onclick="adicionarCarrinho(${item.id}, '${item.nome}', ${item.preco})">Adicionar ao carrinho</button>
-            <hr>
-          </div>
-        `).join('');
-      } catch (e) {
-        document.getElementById('menu').textContent = 'Erro ao carregar o cardápio.';
+    <script>
+      async function carregar() {
+        const el = document.getElementById('lista');
+        el.innerHTML = 'Carregando...';
+        try {
+          const res = await fetch('/api/menu', { cache: 'no-store' });
+          const itens = await res.json();
+          el.innerHTML = '';
+          itens.forEach(i => {
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.innerHTML = `
+              <img src="${i.img || ''}" alt="${i.nome}">
+              <div>
+                <div class="nome">${i.nome}</div>
+                <div class="preco">R$ ${Number(i.preco).toFixed(2).replace('.', ',')}</div>
+              </div>
+            `;
+            el.appendChild(div);
+          });
+        } catch {
+          el.textContent = 'Erro ao carregar cardápio.';
+        }
       }
-    }
-
-    function adicionarCarrinho(id, nome, preco) {
-      let carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
-      carrinho.push({ id, nome, preco });
-      localStorage.setItem('carrinho', JSON.stringify(carrinho));
-      alert(${nome} adicionado ao carrinho!);
-    }
-
-    carregarMenu();
-  </script>
-</body>
+      carregar();
+    </script>
+  </body>
+</html>
