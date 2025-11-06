@@ -71,3 +71,7 @@ app.get('/api/cardapio', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
+// Rota de API para o cardápio
+app.get('/api/menu', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'menu.json'));
+});
