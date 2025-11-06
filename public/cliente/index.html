@@ -1,19 +1,25 @@
-<body>
-  <h1 id="title">Carregando…</h1>
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Página Inicial</title>
+  </head>
+  <body>
+    <h1 id="title">Carregando...</h1>
+    <p><a href="/cardapio">Ver Cardápio</a></p>
 
-  <p><a href="/cardapio">Ver Cardápio</a></p>
-
-  <script>
-    async function setTitle() {
-      try {
-        const res = await fetch('/api/config', { cache: 'no-store' });
-        const cfg = await res.json();
-        const nome = (cfg && cfg.appName) ? cfg.appName : 'Pitombo Lanches';
-        document.getElementById('title').textContent = `Bem-vindo ao ${nome}!`;
-      } catch (e) {
-        document.getElementById('title').textContent = 'Bem-vindo ao Pitombo Lanches!';
+    <script>
+      async function setTitle() {
+        try {
+          const res = await fetch('/api/config', { cache: 'no-store' });
+          const cfg = await res.json();
+          const nome = (cfg && cfg.appName) ? cfg.appName : 'Pitombo Lanches';
+          document.getElementById('title').textContent = Bem-vindo ao ${nome}!;
+        } catch {
+          document.getElementById('title').textContent = 'Bem-vindo ao Pitombo Lanches!';
+        }
       }
-    }
-    setTitle();
-  </script>
-</body>
+      setTitle();
+    </script>
+  </body>
+</html>
