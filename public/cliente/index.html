@@ -1,17 +1,8 @@
-const express = require('express');
-const path = require('path');
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Servir arquivos estáticos da pasta "public"
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Rota principal abre o cliente/index.html
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'index.html'));
-});
-
-app.listen(PORT, () => {
-  console.log(`Servidor Pitombo Lanches rodando na porta ${PORT}`);
-});
+<!DOCTYPE html>
+<html>
+<head><title>Página Inicial</title></head>
+<body>
+<h1>Bem-vindo ao Pitombo Lanches!</h1>
+<a href="/cardapio">Ver Cardápio</a>
+</body>
+</html>
