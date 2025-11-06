@@ -1,0 +1,5 @@
+[
+  { "id": 1, "nome": "X-Burger", "preco": 15, "imagem": "/cliente/img/xburger.jpg" },
+  { "id": 2, "nome": "X-Salada", "preco": 17, "imagem": "/cliente/img/xsalada.jpg" },
+  { "id": 3, "nome": "X-Bacon", "preco": 19, "imagem": "/cliente/img/xbacon.jpg" }
+]
