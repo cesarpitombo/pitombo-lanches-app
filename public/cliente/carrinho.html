@@ -1,0 +1,30 @@
+<script>
+  const carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
+  const carrinhoDiv = document.getElementById('carrinho');
+  const totalP = document.getElementById('total');
+
+  function brl(v) {
+    return v.toFixed(2).replace('.', ',');
+  }
+
+  if (carrinho.length === 0) {
+    carrinhoDiv.innerHTML = '<p>Seu carrinho está vazio 😢</p>';
+    document.getElementById('whatsapp').style.display = 'none';
+  } else {
+    let total = 0;
+    carrinhoDiv.innerHTML = carrinho.map(item => {
+      total += item.preco;
+      return `<p>${item.item} - R$ ${brl(item.preco)}</p>`;
+    }).join('');
+    totalP.textContent = `Total: R$ ${brl(total)}`;
+  }
+
+  document.getElementById('whatsapp').addEventListener('click', () => {
+    const mensagem = carrinho.map(item => `- ${item.item} (R$ ${item.preco})`).join('\n');
+    const total = carrinho.reduce((sum, item) => sum + item.preco, 0);
+    const texto = `🛍️ *Pedido Pitombo Lanches*\n${mensagem}\n\n*Total: R$ ${brl(total)}*`;
+
+    const numero = '351934869755'; // exemplo: 5571999999999
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank');
+  });
+</script>
