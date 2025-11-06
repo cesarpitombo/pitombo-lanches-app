@@ -67,7 +67,9 @@ app.get('/api/cardapio', async (req, res) => {
     res.status(500).json({ error: 'products_error' });
   }
 });
-
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/cliente/../admin/painel.html'));
+});
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
