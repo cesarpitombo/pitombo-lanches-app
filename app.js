@@ -4,12 +4,12 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// >>> usa a pasta "público" (com acento), que é a que está no repositório
-app.use(express.static(path.join(__dirname, 'público')));
+// usar pasta public
+app.use(express.static(path.join(__dirname, 'public')));
 
-// rota principal abre o index da subpasta cliente
+// rota principal abre o cliente/index.html
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'público', 'cliente', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'cliente', 'index.html'));
 });
 
 app.listen(PORT, () => {
