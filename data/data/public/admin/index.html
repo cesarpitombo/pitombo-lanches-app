@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin • Pitombo</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;max-width:900px;margin:32px auto;padding:0 16px}
+    h1{font-size:24px;margin:0 0 8px}
+    .card{border:1px solid #ddd;border-radius:10px;padding:16px;margin:16px 0}
+    label{display:block;font-weight:600;margin:8px 0 4px}
+    input,button,textarea{font:inherit}
+    input,textarea{width:100%;padding:10px;border:1px solid #bbb;border-radius:8px}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{border:1px solid #eee;padding:8px;text-align:left}
+    .row{display:flex;gap:12px;align-items:center}
+    .row > *{flex:1}
+    button{cursor:pointer;border:1px solid #222;border-radius:8px;padding:10px 14px;background:#111;color:#fff}
+    .ghost{background:#fff;color:#111;border-color:#ddd}
+    .right{display:flex;justify-content:flex-end;gap:8px}
+    small{color:#666}
+  </style>
+</head>
+<body>
+  <h1>Admin • Configurações & Cardápio</h1>
+
+  <div class="card">
+    <h2>Identidade</h2>
+    <label>Nome do App</label>
+    <input id="appName" placeholder="Ex.: Pitombo Lanches">
+    <div class="right" style="margin-top:10px">
+      <button id="saveCfg">Salvar nome</button>
+    </div>
+    <small>Dica: o nome aparece na página inicial do site.</small>
+  </div>
+
+  <div class="card">
+    <h2>Cardápio</h2>
+    <div class="row">
+      <input id="newName" placeholder="Nome do item (ex.: X-Burger)">
+      <input id="newPrice" placeholder="Preço (ex.: 15)" type="number" step="0.01">
+      <input id="newImage" placeholder="URL da imagem (ex.: https://...)">
+      <button class="ghost" id="addItem">Adicionar</button>
+    </div>
+
+    <table id="tbl">
+      <thead>
+        <tr><th>#</th><th>Nome</th><th>Preço (R$)</th><th>Imagem (URL)</th><th>Ações</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="right" style="margin-top:10px">
+      <button id="saveMenu">Salvar cardápio</button>
+    </div>
+    <small>As imagens devem ser URLs públicas (ex.: Cloudinary, Imgur, link direto).</small>
+  </div>
+
+  <script>
+    const $ = s => document.querySelector(s);
+    const tbody = $('#tbl tbody');
+
+    const fmt = v => Number(v||0).toFixed(2);
+
+    async function load() {
+      // Config
+      const cfg = await fetch('/api/config').then(r=>r.json());
+      $('#appName').value = cfg.appName || 'Pitombo Lanches';
+
+      // Menu
+      const items = await fetch('/api/menu').then(r=>r.json());
+      render(items);
+    }
+
+    function render(items){
+      tbody.innerHTML = '';
+      items.forEach((it, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i+1}</td>
+          <td><input value="${it.name||''}"></td>
+          <td><input type="number" step="0.01" value="${fmt(it.price)}"></td>
+          <td><input value="${it.image||''}"></td>
+          <td><button data-del="${i}" class="ghost">Remover</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    $('#addItem').onclick = () => {
+      const name = $('#newName').value.trim();
+      const price = Number($('#newPrice').value||0);
+      const image = $('#newImage').value.trim();
+      if(!name){ alert('Informe o nome'); return;}
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>*</td>
+        <td><input value="${name}"></td>
+        <td><input type="number" step="0.01" value="${fmt(price)}"></td>
+        <td><input value="${image}"></td>
+        <td><button data-del="new" class="ghost">Remover</button></td>
+      `;
+      tbody.appendChild(tr);
+      $('#newName').value = ''; $('#newPrice').value=''; $('#newImage').value='';
+    };
+
+    tbody.onclick = (e)=>{
+      const btn = e.target.closest('button[data-del]');
+      if(!btn) return;
+      btn.closest('tr').remove();
+    };
+
+    $('#saveMenu').onclick = async () => {
+      const rows = [...tbody.querySelectorAll('tr')];
+      const items = rows.map((tr,i)=>{
+        const [nameEl, priceEl, imageEl] = tr.querySelectorAll('input');
+        return {
+          id: i+1,
+          name: nameEl.value.trim(),
+          price: Number(priceEl.value||0),
+          image: imageEl.value.trim()
+        };
+      });
+      const r = await fetch('/api/menu', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ items })
+      });
+      if(!r.ok){ alert('Erro ao salvar cardápio'); return;}
+      alert('Cardápio salvo!');
+    };
+
+    $('#saveCfg').onclick = async () => {
+      const appName = $('#appName').value.trim();
+      const r = await fetch('/api/config', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ appName })
+      });
+      if(!r.ok){ alert('Erro ao salvar nome'); return;}
+      alert('Nome salvo!');
+    };
+
+    load();
+  </script>
+</body>
+</html>
