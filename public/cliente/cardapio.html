@@ -1,6 +1,7 @@
 <body>
   <h1>Cardápio</h1>
   <div id="menu"></div>
+  <p><a href="/carrinho">Ver Carrinho 🛒</a></p>
 
   <script>
     async function carregarMenu() {
@@ -9,10 +10,11 @@
         const itens = await res.json();
         const menuDiv = document.getElementById('menu');
         menuDiv.innerHTML = itens.map(item => `
-          <div>
+          <div style="margin-bottom: 20px;">
             <img src="${item.imagem}" alt="${item.nome}" width="120"><br>
             <strong>${item.nome}</strong><br>
-            R$ ${item.preco},00
+            R$ ${item.preco},00 <br>
+            <button onclick="adicionarCarrinho(${item.id}, '${item.nome}', ${item.preco})">Adicionar ao carrinho</button>
             <hr>
           </div>
         `).join('');
@@ -20,6 +22,14 @@
         document.getElementById('menu').textContent = 'Erro ao carregar o cardápio.';
       }
     }
+
+    function adicionarCarrinho(id, nome, preco) {
+      let carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
+      carrinho.push({ id, nome, preco });
+      localStorage.setItem('carrinho', JSON.stringify(carrinho));
+      alert(${nome} adicionado ao carrinho!);
+    }
+
     carregarMenu();
   </script>
 </body>
