@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Admin | Cardápio</title>
+  <style>
+    body{font-family:system-ui,Arial;margin:24px;max-width:980px}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+    input,button{padding:10px;border:1px solid #222;border-radius:8px;font:inherit}
+    button{background:#111;color:#fff;cursor:pointer}
+    button.ghost{background:#fff;color:#111}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{border:1px solid #eee;padding:8px}
+    th{background:#f7f7f7;text-align:left}
+    .toolbar{display:flex;gap:8px;align-items:center}
+    .hint{color:#666;font-size:12px}
+    .actions{display:flex;gap:6px}
+    img{width:64px;height:64px;object-fit:cover;border:1px solid #ddd;border-radius:8px}
+  </style>
+</head>
+<body>
+  <header>
+    <h2>Admin do Cardápio</h2>
+    <div class="toolbar">
+      <input id="token" placeholder="Cole aqui o ADMIN_TOKEN" style="width:280px"/>
+      <button id="saveToken" class="ghost">Usar token</button>
+      <button id="reload" class="ghost">Atualizar lista</button>
+    </div>
+  </header>
+
+  <div class="hint">Imagens: use uma URL pública (Cloudinary/Imgur/Drive com link direto).</div>
+
+  <table id="grid">
+    <thead>
+      <tr>
+        <th>ID</th><th>Nome</th><th>Preço (R$)</th><th>Imagem (URL)</th><th>Preview</th><th>Ações</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h3>Novo item</h3>
+  <div class="toolbar">
+    <input id="nNome" placeholder="Nome (ex.: X-Burger)" style="flex:2"/>
+    <input id="nPreco" type="number" step="0.01" placeholder="Preço (ex.: 15.90)"/>
+    <input id="nImg" placeholder="URL da imagem (https://...) " style="flex:2"/>
+    <button id="add">Adicionar</button>
+  </div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const money = v => Number(v||0).toFixed(2);
+
+function getToken(){ return localStorage.getItem('ADMIN_TOKEN') || ''; }
+function setToken(t){ localStorage.setItem('ADMIN_TOKEN', t||''); }
+
+$('#saveToken').onclick = () => { setToken($('#token').value.trim()); alert('Token salvo.'); };
+$('#token').value = getToken();
+
+$('#reload').onclick = load;
+$('#add').onclick = () => {
+  const nome = $('#nNome').value.trim();
+  const preco = Number(($('#nPreco').value||'').replace(',','.'));
+  const img = $('#nImg').value.trim();
+  if(!nome){ alert('Informe o nome'); return; }
+  const tr = document.createElement('tr');
+  tr.innerHTML = rowHtml({ id: Date.now(), nome, preco, img });
+  $('#grid tbody').appendChild(tr);
+  wireRow(tr);
+  $('#nNome').value=''; $('#nPreco').value=''; $('#nImg').value='';
+};
+
+function rowHtml(it){
+  return `
+    <td contenteditable="true">${it.id}</td>
+    <td contenteditable="true">${it.nome||''}</td>
+    <td contenteditable="true">${money(it.preco||0)}</td>
+    <td contenteditable="true">${it.img||''}</td>
+    <td><img src="${it.img||''}" onerror="this.src='';"></td>
+    <td class="actions">
+      <button class="ghost del">Remover</button>
+    </td>
+  `;
+}
+
+function wireRow(tr){
+  tr.querySelector('.del').onclick = () => tr.remove();
+  // preview ao editar URL
+  const urlCell = tr.children[3];
+  urlCell.addEventListener('input', () => {
+    tr.querySelector('img').src = urlCell.textContent.trim();
+  });
+}
+
+async function load(){
+  const tb = $('#grid tbody');
+  tb.innerHTML = '<tr><td colspan="6">Carregando…</td></tr>';
+  const r = await fetch('/api/menu', { cache:'no-store' });
+  const data = await r.json();
+  tb.innerHTML = '';
+  data.forEach(it => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = rowHtml(it);
+    tb.appendChild(tr);
+    wireRow(tr);
+  });
+}
+load();
+
+async function save(){
+  const token = getToken();
+  if(!token){ alert('Cole o ADMIN_TOKEN e clique em "Usar token"'); return; }
+
+  const rows = [...$('#grid tbody').rows];
+  const payload = rows.map(tr => {
+    const [idC, nomeC, precoC, imgC] = tr.cells;
+    return {
+      id: Number(idC.textContent.trim()),
+      nome: nomeC.textContent.trim(),
+      preco: Number((precoC.textContent||'0').replace(',','.')),
+      img: imgC.textContent.trim()
+    };
+  });
+
+  const r = await fetch('/api/menu', {
+    method:'PUT',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':'Bearer ' + token
+    },
+    body: JSON.stringify(payload)
+  });
+  if(!r.ok){
+    const t = await r.text();
+    alert('Erro ao salvar: '+t);
+    return;
+  }
+  alert('Cardápio salvo!');
+  load();
+}
+
+document.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){
+    e.preventDefault();
+    save();
+  }
+});
+</script>
+</body>
+</html>
