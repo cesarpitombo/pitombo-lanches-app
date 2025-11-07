@@ -1,15 +1,15 @@
 const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
+function requireAdmin(req, res, next) {
+  const auth = req.headers.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (token && process.env.ADMIN_TOKEN && token === process.env.ADMIN_TOKEN) return next();
+  return res.status(401).json({ error: 'unauthorized' });
+}
 
 // --- Auth simples por token (Bearer) ---
-function requireAdmin(req, res, next) {
-  const auth = req.headers.authorization || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  if (token && process.env.ADMIN_TOKEN && token === process.env.ADMIN_TOKEN) {
-    return next();
-  }
-  return res.status(401).json({ error: "unauthorized" });
+
 }
 
 const app = express();
