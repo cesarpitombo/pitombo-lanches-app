@@ -1,25 +1,12 @@
 const express = require('express');
 const path = require('path');
+const { Pool } = require('pg');
 
-// DB (opcional: já deixa pronto para o Neon)
-let pool = null;
-try {
-  const { Pool } = require('pg');
-  if (process.env.DATABASE_URL) {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }
-    });
-  }
-} catch (_) {
-  // se pg não carregar por algum motivo, seguimos sem DB
-}
-
-// --- Auth simples por token (Bearer) para rotas de admin ---
+// --- Auth simples por token (Bearer) para futuros endpoints de admin ---
 function requireAdmin(req, res, next) {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (process.env.ADMIN_TOKEN && token === process.env.ADMIN_TOKEN) {
+  if (token && process.env.ADMIN_TOKEN && token === process.env.ADMIN_TOKEN) {
     return next();
   }
   return res.status(401).json({ error: 'unauthorized' });
@@ -28,49 +15,39 @@ function requireAdmin(req, res, next) {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Conexão Postgres (Neon precisa de SSL)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
 // JSON no backend
 app.use(express.json());
 
-// Servir estáticos da pasta /public
+// Arquivos estáticos de /public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// -------- Dados em memória (pode vir do DB depois) --------
-let MENU = [
-  { id: 1, nome: 'X-Burger', preco: 15.00, img: '/cliente/img/xburger.png' },
-  { id: 2, nome: 'X-Salada', preco: 17.00, img: '/cliente/img/xsalada.png' },
-  { id: 3, nome: 'X-Bacon',  preco: 19.00, img: '/cliente/img/xbacon.png' }
-];
-
-// ---------- APIs ----------
-app.get('/api/config', (req, res) => {
-  res.json({ appName: 'Pitombo Lanches' });
-});
-
-app.get('/api/menu', (req, res) => {
-  res.json(MENU);
-});
-
-app.put('/api/menu', requireAdmin, (req, res) => {
-  const novo = req.body;
-  if (!Array.isArray(novo)) {
-    return res.status(400).json({ error: 'formato inválido' });
-  }
-  MENU = novo;
-  res.json({ ok: true, total: MENU.length });
-});
-
-// (opcional) ping no DB
-app.get('/api/db-ping', async (req, res) => {
-  if (!pool) return res.status(200).json({ db: 'off' });
+// ===== API pública: lista o cardápio a partir do banco =====
+app.get('/api/menu', async (req, res) => {
   try {
-    await pool.query('select 1');
-    res.json({ db: 'ok' });
-  } catch (e) {
-    res.status(500).json({ db: 'erro', detalhe: String(e) });
+    const { rows } = await pool.query(
+      'SELECT id, name, price_cents, image_url, active FROM products WHERE active = TRUE ORDER BY id'
+    );
+    // normaliza para o front
+    const menu = rows.map(r => ({
+      id: r.id,
+      nome: r.name,
+      preco: (r.price_cents / 100).toFixed(2),
+      imagem: r.image_url
+    }));
+    res.json(menu);
+  } catch (err) {
+    console.error('Erro ao buscar menu:', err);
+    res.status(500).json({ error: 'Falha ao carregar cardápio' });
   }
 });
 
-// ---------- Rotas de páginas ----------
+// ===== Rotas de páginas (HTML) =====
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'cliente', 'index.html'));
 });
@@ -87,7 +64,13 @@ app.get('/pedido-confirmado', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'cliente', 'pedido-confirmado.html'));
 });
 
-// ---------- Sobe o servidor ----------
+// (Opcional) endpoint admin para atualizar produtos depois — protegido
+app.put('/api/admin/products', requireAdmin, async (req, res) => {
+  // Exemplo vazio para futuro CRUD. Mantemos aqui para expandir depois.
+  res.json({ ok: true, msg: 'Endpoint admin pronto para futuro CRUD.' });
+});
+
+// Sobe o servidor
 app.listen(PORT, () => {
-  console.log(🚀 Servidor Pitombo Lanches rodando na porta ${PORT});
+  console.log(`🚀 Servidor Pitombo Lanches rodando na porta ${PORT}`);
 });
