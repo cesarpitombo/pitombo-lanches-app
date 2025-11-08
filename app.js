@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 10000;
 
 // Caminho absoluto para pastas públicas
 const __filename = fileURLToPath(import.meta.url);
-const _dirname = path.dirname(_filename);
+const __dirname = path.dirname(__filename);
 
 // Middlewares
 app.use(cors());
@@ -86,5 +86,5 @@ app.get("/cliente/admin.html", (req, res) => {
 
 // Inicialização do servidor
 app.listen(PORT, () => {
-  console.log(Servidor Pitombo Lanches rodando na porta ${PORT});
+  console.log(`Servidor Pitombo Lanches rodando na porta ${PORT}`);
 });
