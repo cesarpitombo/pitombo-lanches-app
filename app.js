@@ -23,6 +23,11 @@ const pool = new Pool({
 
 // === Permitir JSON no backend ===
 app.use(express.json());
+// ===== Config em memória (pode trocar depois para DB) =====
+const CONFIG = {
+  appName: 'Pitombo Lanches',
+  logoUrl: ''
+};
 
 // === Servir arquivos estáticos de /public ===
 app.use(express.static(path.join(__dirname, 'public')));
@@ -47,12 +52,29 @@ app.put('/api/menu', requireAdmin, (req, res) => {
   }
   MENU = novo;
   res.json({ ok: true, total: MENU.length });
+});// ===== API de Config =====
+
+// Lê a config (usada pelo index.html para mostrar o nome do app)
+app.get('/api/config', (req, res) => {
+  res.json(CONFIG);
 });
+
+// Atualiza a config (protegidA por token ADMIN_TOKEN)
+app.put('/api/config', requireAdmin, (req, res) => {
+  const { appName, logoUrl } = req.body || {};
+  if (typeof appName === 'string') CONFIG.appName = appName;
+  if (typeof logoUrl === 'string') CONFIG.logoUrl = logoUrl;
+  res.json({ ok: true, config: CONFIG });
+});
+
 
 // === Rotas de páginas ===
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'cliente', 'index.html'));
+});app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
 });
+
 
 app.get('/cardapio', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'cliente', 'cardapio.html'));
