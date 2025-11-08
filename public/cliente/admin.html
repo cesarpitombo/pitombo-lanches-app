@@ -1,90 +1,110 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8"/>
-  <title>Admin • Pitombo</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: 30px auto; }
-    input[type="text"], textarea { width: 100%; padding: 10px; margin: 8px 0; }
-    button { padding: 10px 16px; cursor: pointer; }
-    .row { margin: 16px 0; }
-    .hint { color: #666; font-size: 12px; }
-    pre { background:#f7f7f7; padding:10px; overflow:auto; }
-  </style>
+  <meta charset="utf-8" />
+  <title>Painel Admin – Pitombo Lanches</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 </head>
-<body>
-  <h1>Painel Admin</h1>
+<body style="font-family: Arial; max-width: 800px; margin: 24px auto;">
+  <h1>Painel do Administrador</h1>
+  <p>Use o token para autenticar: <strong>ADMIN_TOKEN</strong> que você colocou no Render.</p>
 
-  <div class="row">
-    <label>Token (Bearer):</label>
-    <input id="tok" type="text" placeholder="Cole aqui seu ADMIN_TOKEN"/>
-    <div class="hint">No Render: Settings → Environment → Key <b>ADMIN_TOKEN</b>, Value (ex.: pitombo123) → Save → Redeploy.</div>
-  </div>
+  <section style="border:1px solid #ddd; padding:16px; margin-bottom:24px;">
+    <h2>1) Definir Token</h2>
+    <input id="token" placeholder="Cole aqui o token (ex: pitombo1)" style="width:300px;">
+    <button onclick="salvarToken()">Salvar</button>
+    <small id="tokMsg"></small>
+  </section>
 
-  <hr/>
+  <section style="border:1px solid #ddd; padding:16px; margin-bottom:24px;">
+    <h2>2) Criar item do cardápio</h2>
+    <label>Nome</label><br>
+    <input id="name" style="width:300px;"><br><br>
 
-  <h2>Configuração</h2>
-  <div class="row">
-    <label>Nome do app:</label>
-    <input id="appName" type="text" placeholder="Ex.: Pitombo Lanches">
-    <button onclick="salvarConfig()">Salvar Config</button>
-  </div>
+    <label>Preço (em centavos) – ex: 1500 = R$15,00</label><br>
+    <input id="price" type="number" min="0" step="1" style="width:300px;"><br><br>
 
-  <hr/>
+    <label>URL da imagem (https://...)</label><br>
+    <input id="image" style="width:500px;"><br><br>
 
-  <h2>Menu (JSON)</h2>
-  <div class="hint">Edite o array. Campos por item: id, nome, preco, img.</div>
-  <textarea id="menuJson" rows="12"></textarea>
-  <div class="row">
-    <button onclick="salvarMenu()">Salvar Menu</button>
-  </div>
+    <label>Categoria (id) – opcional</label><br>
+    <input id="cat" type="number" min="1" step="1" value="1" style="width:100px;"><br><br>
 
-  <h3>Menu atual</h3>
-  <pre id="menuAtual">Carregando...</pre>
+    <button onclick="criar()">Criar</button>
+    <div id="msg" style="margin-top:10px;color:green;"></div>
+  </section>
 
-  <script>
-    async function carregar() {
-      const cfg = await fetch('/api/config').then(r=>r.json());
-      document.getElementById('appName').value = cfg.appName || 'Pitombo Lanches';
+  <section style="border:1px solid #ddd; padding:16px;">
+    <h2>3) Itens ativos</h2>
+    <button onclick="carregar()">Recarregar</button>
+    <ul id="lista"></ul>
+  </section>
 
-      const menu = await fetch('/api/menu').then(r=>r.json());
-      document.getElementById('menuJson').value = JSON.stringify(menu, null, 2);
-      document.getElementById('menuAtual').textContent = JSON.stringify(menu, null, 2);
-    }
+<script>
+function salvarToken() {
+  const t = document.getElementById('token').value.trim();
+  if (!t) return alert('Informe o token.');
+  localStorage.setItem('admToken', t);
+  document.getElementById('tokMsg').textContent = 'Token salvo no navegador.';
+}
 
-    function authHeader() {
-      const t = document.getElementById('tok').value.trim();
-      return t ? { 'Authorization': 'Bearer ' + t } : {};
-    }
+async function criar() {
+  const token = localStorage.getItem('admToken') || '';
+  if (!token) return alert('Defina o token primeiro.');
 
-    async function salvarConfig() {
-      const appName = document.getElementById('appName').value.trim();
-      const r = await fetch('/api/config', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...authHeader() },
-        body: JSON.stringify({ appName })
-      });
-      alert(r.ok ? 'Config salva!' : 'Falhou salvar config (token?)');
-    }
+  const body = {
+    name: document.getElementById('name').value.trim(),
+    price_cents: Number(document.getElementById('price').value),
+    image_url: document.getElementById('image').value.trim(),
+    categoria_id: Number(document.getElementById('cat').value || 1),
+  };
 
-    async function salvarMenu() {
-      try {
-        const arr = JSON.parse(document.getElementById('menuJson').value);
-        const r = await fetch('/api/menu', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', ...authHeader() },
-          body: JSON.stringify(arr)
-        });
-        if (!r.ok) throw 0;
-        const novo = await fetch('/api/menu').then(x=>x.json());
-        document.getElementById('menuAtual').textContent = JSON.stringify(novo, null, 2);
-        alert('Menu salvo!');
-      } catch {
-        alert('JSON inválido ou token errado.');
-      }
-    }
-
+  const r = await fetch('/api/menu', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify(body)
+  });
+  const data = await r.json();
+  if (!r.ok) {
+    document.getElementById('msg').style.color = 'red';
+    document.getElementById('msg').textContent = 'Erro: ' + (data.error || 'falhou');
+  } else {
+    document.getElementById('msg').style.color = 'green';
+    document.getElementById('msg').textContent = 'Criado: #' + data.id + ' ' + data.name;
     carregar();
-  </script>
+  }
+}
+
+async function carregar() {
+  const ul = document.getElementById('lista');
+  ul.innerHTML = 'Carregando...';
+  const r = await fetch('/api/menu');
+  const itens = await r.json();
+  ul.innerHTML = '';
+  itens.forEach(it => {
+    const li = document.createElement('li');
+    const reais = (Number(it.price_cents) / 100).toFixed(2).replace('.', ',');
+    li.innerHTML = `#${it.id} — <strong>${it.name}</strong> — R$ ${reais} 
+      — <img src="${it.image_url}" alt="" style="height:40px;vertical-align:middle">
+      <button data-id="${it.id}" style="margin-left:8px">Ativar/Desativar</button>`;
+    li.querySelector('button').onclick = () => toggle(it.id);
+    ul.appendChild(li);
+  });
+}
+
+async function toggle(id) {
+  const token = localStorage.getItem('admToken') || '';
+  if (!token) return alert('Defina o token primeiro.');
+
+  const r = await fetch('/api/menu/' + id + '/toggle', {
+    method: 'PATCH',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  if (r.ok) carregar();
+  else alert('Falhou');
+}
+
+carregar();
+</script>
 </body>
 </html>
