@@ -1,45 +1,110 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Painel do Administrador</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #fafafa;
-      text-align: center;
-      padding: 40px;
-    }
-    input, button {
-      padding: 10px;
-      font-size: 16px;
-      margin: 10px;
-    }
-    h1 { color: #d6336c; }
-  </style>
+  <meta charset="utf-8" />
+  <title>Painel Admin – Pitombo Lanches</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 </head>
-<body>
+<body style="font-family: Arial; max-width: 800px; margin: 24px auto;">
   <h1>Painel do Administrador</h1>
-  <p>Altere o nome do aplicativo:</p>
-  <input type="text" id="appName" placeholder="Novo nome do app">
-  <button onclick="salvar()">Salvar</button>
+  <p>Use o token para autenticar: <strong>ADMIN_TOKEN</strong> que você colocou no Render.</p>
 
-  <p id="msg"></p>
+  <section style="border:1px solid #ddd; padding:16px; margin-bottom:24px;">
+    <h2>1) Definir Token</h2>
+    <input id="token" placeholder="Cole aqui o token (ex: pitombo1)" style="width:300px;">
+    <button onclick="salvarToken()">Salvar</button>
+    <small id="tokMsg"></small>
+  </section>
 
-  <script>
-    async function salvar() {
-      const appName = document.getElementById('appName').value;
-      const res = await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appName })
-      });
-      const data = await res.json();
-      document.getElementById('msg').innerText = data.ok
-        ? `✅ Nome alterado para: ${data.appName}`
-        : `❌ Erro: ${data.error}`;
-    }
-  </script>
+  <section style="border:1px solid #ddd; padding:16px; margin-bottom:24px;">
+    <h2>2) Criar item do cardápio</h2>
+    <label>Nome</label><br>
+    <input id="name" style="width:300px;"><br><br>
+
+    <label>Preço (em centavos) – ex: 1500 = R$15,00</label><br>
+    <input id="price" type="number" min="0" step="1" style="width:300px;"><br><br>
+
+    <label>URL da imagem (https://...)</label><br>
+    <input id="image" style="width:500px;"><br><br>
+
+    <label>Categoria (id) – opcional</label><br>
+    <input id="cat" type="number" min="1" step="1" value="1" style="width:100px;"><br><br>
+
+    <button onclick="criar()">Criar</button>
+    <div id="msg" style="margin-top:10px;color:green;"></div>
+  </section>
+
+  <section style="border:1px solid #ddd; padding:16px;">
+    <h2>3) Itens ativos</h2>
+    <button onclick="carregar()">Recarregar</button>
+    <ul id="lista"></ul>
+  </section>
+
+<script>
+function salvarToken() {
+  const t = document.getElementById('token').value.trim();
+  if (!t) return alert('Informe o token.');
+  localStorage.setItem('admToken', t);
+  document.getElementById('tokMsg').textContent = 'Token salvo no navegador.';
+}
+
+async function criar() {
+  const token = localStorage.getItem('admToken') || '';
+  if (!token) return alert('Defina o token primeiro.');
+
+  const body = {
+    name: document.getElementById('name').value.trim(),
+    price_cents: Number(document.getElementById('price').value),
+    image_url: document.getElementById('image').value.trim(),
+    categoria_id: Number(document.getElementById('cat').value || 1),
+  };
+
+  const r = await fetch('/api/menu', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify(body)
+  });
+  const data = await r.json();
+  if (!r.ok) {
+    document.getElementById('msg').style.color = 'red';
+    document.getElementById('msg').textContent = 'Erro: ' + (data.error || 'falhou');
+  } else {
+    document.getElementById('msg').style.color = 'green';
+    document.getElementById('msg').textContent = 'Criado: #' + data.id + ' ' + data.name;
+    carregar();
+  }
+}
+
+async function carregar() {
+  const ul = document.getElementById('lista');
+  ul.innerHTML = 'Carregando...';
+  const r = await fetch('/api/menu');
+  const itens = await r.json();
+  ul.innerHTML = '';
+  itens.forEach(it => {
+    const li = document.createElement('li');
+    const reais = (Number(it.price_cents) / 100).toFixed(2).replace('.', ',');
+    li.innerHTML = `#${it.id} — <strong>${it.name}</strong> — R$ ${reais} 
+      — <img src="${it.image_url}" alt="" style="height:40px;vertical-align:middle">
+      <button data-id="${it.id}" style="margin-left:8px">Ativar/Desativar</button>`;
+    li.querySelector('button').onclick = () => toggle(it.id);
+    ul.appendChild(li);
+  });
+}
+
+async function toggle(id) {
+  const token = localStorage.getItem('admToken') || '';
+  if (!token) return alert('Defina o token primeiro.');
+
+  const r = await fetch('/api/menu/' + id + '/toggle', {
+    method: 'PATCH',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  if (r.ok) carregar();
+  else alert('Falhou');
+}
+
+carregar();
+</script>
 </body>
 </html>
