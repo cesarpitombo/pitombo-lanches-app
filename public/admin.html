@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel do Administrador</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #fafafa;
+      text-align: center;
+      padding: 40px;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin: 10px;
+    }
+    h1 { color: #d6336c; }
+  </style>
+</head>
+<body>
+  <h1>Painel do Administrador</h1>
+  <p>Altere o nome do aplicativo:</p>
+  <input type="text" id="appName" placeholder="Novo nome do app">
+  <button onclick="salvar()">Salvar</button>
+
+  <p id="msg"></p>
+
+  <script>
+    async function salvar() {
+      const appName = document.getElementById('appName').value;
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appName })
+      });
+      const data = await res.json();
+      document.getElementById('msg').innerText = data.ok
+        ? `✅ Nome alterado para: ${data.appName}`
+        : `❌ Erro: ${data.error}`;
+    }
+  </script>
+</body>
+</html>
