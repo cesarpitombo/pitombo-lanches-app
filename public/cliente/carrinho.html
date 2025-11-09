@@ -1,13 +1,38 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="utf-8" />
   <title>Carrinho</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{font-family:system-ui, Arial; margin:24px;}
+    .row{display:grid; grid-template-columns:1fr auto auto auto; gap:12px; align-items:center; border-bottom:1px solid #eee; padding:10px 0;}
+    .qbtn,.rbtn{padding:6px 10px;border:1px solid #ccc;background:#fff;border-radius:6px;cursor:pointer}
+    .qty{display:flex; gap:8px; align-items:center}
+    .total{font-size:18px;font-weight:700;margin-top:16px}
+    .pane{border:1px solid #eee;border-radius:10px;padding:14px;margin-top:18px}
+    .btn{border:0;background:#111;color:#fff;padding:12px;border-radius:10px;cursor:pointer;width:100%}
+    a{color:#111}
+    #cart-badge{display:none}
+  </style>
 </head>
 <body>
-  <h1>Seu Carrinho 🛒</h1>
-  <p>1x X-Burger - R$ 15,00</p>
-  <p><a href="/pedido-confirmado">Finalizar Pedido</a></p>
-  <p><a href="/cardapio">Voltar ao Cardápio</a></p>
+  <a href="/cardapio">← Continuar comprando</a>
+  <h2>Seu Carrinho 🛒</h2>
+
+  <div id="cart-list"></div>
+  <div class="total">Total: <span id="cart-total">R$ 0,00</span></div>
+
+  <div class="pane">
+    <h3>Dados para entrega</h3>
+    <div style="display:grid; gap:10px">
+      <input id="cli-nome" placeholder="Nome" />
+      <input id="cli-tel" placeholder="Telefone (WhatsApp)" />
+      <input id="cli-end" placeholder="Endereço" />
+      <button id="btn-checkout" class="btn">Finalizar Pedido</button>
+    </div>
+  </div>
+
+  <script src="/cliente/cliente.js"></script>
 </body>
 </html>
