@@ -1,180 +1,159 @@
-// app.js — backend completo
-
+// app.js
 const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
 
-// --------- auth por token (Bearer) ----------
-function requireAdmin(req, res, next) {
-  const auth = req.headers.authorization || '';
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (token && process.env.ADMIN_TOKEN && token === process.env.ADMIN_TOKEN) {
-    return next();
-  }
-  return res.status(401).json({ error: 'unauthorized' });
-}
-
-// --------- app/infra ----------
-const app = express();
+// --- ENV ---
 const PORT = process.env.PORT || 3000;
+const DATABASE_URL = process.env.DATABASE_URL;
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'pitombo1';
 
+// --- DB (Neon) ---
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  connectionString: DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
 });
 
+// --- App ---
+const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// util: nome do app (lê da tabela app_config, fallback)
-async function getAppName() {
-  try {
-    const r = await pool.query(
-      "select value from app_config where key = 'app_name' limit 1"
-    );
-    return r.rows[0]?.value || 'Pitombo Lanches';
-  } catch {
-    return 'Pitombo Lanches';
-  }
+// --- helpers ---
+function requireAdmin(req, res, next) {
+  const auth = req.headers.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (token && token === ADMIN_TOKEN) return next();
+  return res.status(401).json({ error: 'unauthorized' });
 }
 
-// --------- API PÚBLICA ----------
+// ---------- API ----------
 
-// nome do app (para o <h1>)
-app.get('/api/config', async (_req, res) => {
-  res.json({ appName: await getAppName() });
-});
-
-// cardápio (vem do banco)
-app.get('/api/menu', async (_req, res) => {
+// Lista de produtos (cardápio)
+app.get('/api/menu', async (req, res) => {
   try {
-    const r = await pool.query(
-      `select id, nome, preco, imagem, categoria_id
-       from produtos
-       where is_active is null or is_active = true
-       order by id asc`
+    const { rows } = await pool.query(
+      `SELECT p.id, p.nome, p.preco, p.imagem, p.categoria_id, c.nome AS categoria
+       FROM produtos p
+       LEFT JOIN categorias c ON c.id = p.categoria_id
+       WHERE p.ativo IS TRUE OR p.ativo IS NULL
+       ORDER BY c.nome, p.nome`
     );
-    res.json(r.rows);
+    res.json(rows);
   } catch (e) {
-    res.status(500).json({ error: 'menu_failed' });
+    console.error('Erro /api/menu', e);
+    res.status(500).json({ error: 'Falha ao carregar menu' });
   }
 });
 
-// criar pedido
-// body: { items:[{produto_id, quantidade}], cliente? }
-app.post('/api/pedidos', async (req, res) => {
-  const { items = [], cliente = null } = req.body || {};
-  if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: 'itens_vazios' });
-  }
+// Atualiza menu (admin) – envia array de itens {nome, preco, imagem, categoria_id}
+app.put('/api/menu', requireAdmin, async (req, res) => {
+  const itens = req.body;
+  if (!Array.isArray(itens)) return res.status(400).json({ error: 'Formato inválido' });
   const client = await pool.connect();
   try {
-    await client.query('begin');
-    const ped = await client.query(
-      'insert into pedidos(cliente) values($1) returning id',
-      [cliente]
-    );
-    const pedidoId = ped.rows[0].id;
-
-    for (const it of items) {
-      const pid = Number(it.produto_id);
-      const q = Number(it.quantidade);
-      if (!pid || !q) continue;
-      const p = await client.query(
-        'select preco from produtos where id = $1',
-        [pid]
-      );
-      const preco = p.rows[0]?.preco || 0;
+    await client.query('BEGIN');
+    await client.query('DELETE FROM produtos');
+    for (const it of itens) {
       await client.query(
-        'insert into itens_pedido(pedido_id, produto_id, quantidade, subtotal) values ($1,$2,$3,$4)',
-        [pedidoId, pid, q, preco * q]
+        'INSERT INTO produtos (nome, preco, imagem, categoria_id, ativo) VALUES ($1,$2,$3,$4, true)',
+        [it.nome, it.preco, it.imagem, it.categoria_id || 1]
       );
     }
-
-    await client.query('commit');
-    res.json({ ok: true, pedidoId });
+    await client.query('COMMIT');
+    res.json({ ok: true, total: itens.length });
   } catch (e) {
-    await client.query('rollback');
-    res.status(500).json({ error: 'pedido_failed' });
+    await client.query('ROLLBACK');
+    console.error('Erro PUT /api/menu', e);
+    res.status(500).json({ error: 'Falha ao atualizar menu' });
   } finally {
     client.release();
   }
 });
 
-// --------- API ADMIN (protegida) ----------
-
-// trocar nome do app (salva em app_config)
-app.put('/api/config', requireAdmin, async (req, res) => {
-  const { appName } = req.body || {};
-  if (!appName || typeof appName !== 'string') {
-    return res.status(400).json({ error: 'nome_invalido' });
-  }
+// Checkout do carrinho
+// Body: { cliente: {nome, telefone, endereco}, itens: [{produto_id, quantidade, preco}] }
+app.post('/api/checkout', async (req, res) => {
   try {
-    await pool.query(
-      `insert into app_config(key, value)
-       values('app_name', $1)
-       on conflict (key) do update set value = excluded.value`,
-      [appName]
-    );
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: 'config_failed' });
-  }
-});
-
-// substituir cardápio inteiro
-// body: [{nome, preco, imagem, categoria_id}]
-app.put('/api/admin/menu', requireAdmin, async (req, res) => {
-  const novo = req.body;
-  if (!Array.isArray(novo)) {
-    return res.status(400).json({ error: 'formato_invalido' });
-  }
-
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    // limpa e recria
-    await client.query('delete from produtos');
-
-    for (const item of novo) {
-      const nome = String(item.nome || '').trim();
-      const preco = Number(item.preco || 0);
-      const imagem = String(item.imagem || '').trim();
-      const categoria_id = Number(item.categoria_id || 1);
-      if (!nome || !preco) continue;
-
-      await client.query(
-        `insert into produtos(nome, preco, imagem, categoria_id, is_active)
-         values ($1,$2,$3,$4,true)`,
-        [nome, preco, imagem, categoria_id]
-      );
+    const { cliente, itens } = req.body || {};
+    if (!cliente || !Array.isArray(itens) || itens.length === 0) {
+      return res.status(400).json({ error: 'Dados incompletos' });
     }
 
-    await client.query('commit');
-    res.json({ ok: true, total: novo.length });
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // cria/obtém cliente simples pelo telefone
+      let clienteId;
+      const c = await client.query('SELECT id FROM clientes WHERE telefone = $1 LIMIT 1', [cliente.telefone]);
+      if (c.rowCount) {
+        clienteId = c.rows[0].id;
+        await client.query('UPDATE clientes SET nome=$1, endereco=$2 WHERE id=$3',
+          [cliente.nome || '', cliente.endereco || '', clienteId]);
+      } else {
+        const ins = await client.query(
+          'INSERT INTO clientes (nome, telefone, endereco) VALUES ($1,$2,$3) RETURNING id',
+          [cliente.nome || '', cliente.telefone || '', cliente.endereco || '']
+        );
+        clienteId = ins.rows[0].id;
+      }
+
+      // cria pedido
+      const ped = await client.query(
+        'INSERT INTO pedidos (cliente_id, status, subtotal) VALUES ($1,$2,$3) RETURNING id',
+        [clienteId, 'novo', 0]
+      );
+      const pedidoId = ped.rows[0].id;
+
+      // itens + subtotal
+      let subtotal = 0;
+      for (const it of itens) {
+        const q = Number(it.quantidade || 1);
+        const preco = Number(it.preco || 0);
+        subtotal += q * preco;
+
+        await client.query(
+          `INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, preco_unit)
+           VALUES ($1,$2,$3,$4)`,
+          [pedidoId, it.produto_id, q, preco]
+        );
+      }
+      await client.query('UPDATE pedidos SET subtotal=$1 WHERE id=$2', [subtotal, pedidoId]);
+
+      await client.query('COMMIT');
+      return res.json({ ok: true, pedido_id: pedidoId });
+    } catch (e) {
+      await client.query('ROLLBACK');
+      console.error('Erro /api/checkout', e);
+      return res.status(500).json({ error: 'Falha no checkout' });
+    } finally {
+      client.release();
+    }
   } catch (e) {
-    await client.query('rollback');
-    res.status(500).json({ error: 'menu_update_failed' });
-  } finally {
-    client.release();
+    console.error('Erro /api/checkout outer', e);
+    res.status(500).json({ error: 'Erro inesperado' });
   }
 });
 
-// --------- ROTAS DE PÁGINA ----------
-app.get('/', (_req, res) => {
+// --------- Páginas (HTML) ---------
+app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'cliente', 'index.html'));
 });
-app.get('/cardapio', (_req, res) => {
+app.get('/cardapio', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'cliente', 'cardapio.html'));
 });
-app.get('/carrinho', (_req, res) => {
+app.get('/carrinho', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'cliente', 'carrinho.html'));
 });
-app.get('/pedido-confirmado', (_req, res) => {
+app.get('/pedido-confirmado', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'cliente', 'pedido-confirmado.html'));
 });
+app.get('/cliente/admin.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'cliente', 'admin.html'));
+});
 
-// --------- sobe ----------
+// --- Start ---
 app.listen(PORT, () => {
-  console.log(🚀 Servidor Pitombo Lanches rodando na porta ${PORT});
+  console.log(`🚀 Servidor Pitombo Lanches rodando na porta ${PORT}`);
 });
