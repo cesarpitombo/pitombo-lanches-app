@@ -1,81 +1,38 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
   <title>Cardápio - Pitombo Lanches</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #fafafa;
-      margin: 0;
-      padding: 20px;
-      text-align: center;
-    }
-    h1 {
-      color: #b22222;
-    }
-    .menu {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 20px;
-      margin-top: 20px;
-    }
-    .item {
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-      padding: 15px;
-      width: 220px;
-      transition: transform 0.2s;
-    }
-    .item:hover {
-      transform: scale(1.05);
-    }
-    .item img {
-      width: 100%;
-      border-radius: 8px;
-    }
-    .item h3 {
-      margin: 10px 0 5px;
-      color: #333;
-    }
-    .item p {
-      margin: 0;
-      color: #777;
-    }
+    body{font-family:system-ui, Arial; margin:24px;}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+    .card{border:1px solid #ddd; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:8px}
+    .card img{width:100%; height:120px; object-fit:cover; border-radius:8px; background:#f3f3f3}
+    .info{display:flex; justify-content:space-between; align-items:center}
+    .nome{font-weight:600}
+    .preco{color:#0b7; font-weight:700}
+    .btn-add{border:0; background:#111; color:#fff; padding:10px; border-radius:8px; cursor:pointer}
+    a{color:#111}
+    #cart-link{font-weight:600}
+    #cart-badge{background:#0b7;color:#fff;border-radius:999px;padding:2px 8px;margin-left:8px}
   </style>
 </head>
 <body>
-  <h1>🍔 Cardápio Pitombo Lanches</h1>
-  <div class="menu" id="menu"></div>
+  <header>
+    <a href="/">← Voltar</a>
+    <div id="cart-link">Carrinho <span id="cart-badge">0</span></div>
+  </header>
 
+  <h2>Cardápio</h2>
+  <p style="color:#777">Itens carregados do banco Neon.</p>
+
+  <div id="menu-grid" class="grid"></div>
+
+  <script src="/cliente/cliente.js"></script>
   <script>
-    async function carregarCardapio() {
-      try {
-        const resposta = await fetch("/cardapio");
-        const produtos = await resposta.json();
-        const container = document.getElementById("menu");
-        container.innerHTML = "";
-
-        produtos.forEach(p => {
-          const div = document.createElement("div");
-          div.className = "item";
-          div.innerHTML = `
-            <img src="${p.imagem}" alt="${p.nome}">
-            <h3>${p.nome}</h3>
-            <p>R$ ${parseFloat(p.preco).toFixed(2).replace('.', ',')}</p>
-          `;
-          container.appendChild(div);
-        });
-      } catch (erro) {
-        document.getElementById("menu").innerHTML = "<p>Erro ao carregar o cardápio.</p>";
-        console.error("Erro ao carregar cardápio:", erro);
-      }
-    }
-
-    carregarCardapio();
+    document.getElementById('cart-link').onclick = () => location.href = '/carrinho';
   </script>
 </body>
 </html>
