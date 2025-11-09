@@ -1,44 +1,63 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8"/>
-  <title>Cardápio – Pitombo Lanches</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="utf-8" />
+  <title>Cardápio • Pitombo Lanches</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body { font-family: Arial; max-width: 900px; margin: 16px auto; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap: 16px; }
-    .card { border:1px solid #ddd; border-radius:8px; padding:12px; }
-    .card img { width:100%; height:140px; object-fit:cover; border-radius:6px; }
-    .price { font-weight: bold; margin-top:6px; }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px;}
+    h1{margin:0 0 12px;}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;}
+    .item{border:1px solid #ddd;border-radius:12px;padding:12px;}
+    .item img{width:100%;height:160px;object-fit:cover;border-radius:8px;border:1px solid #eee;}
+    .top{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+    .name{font-weight:600}
+    .price{font-variant-numeric:tabular-nums}
+    .muted{color:#666;font-size:14px}
+    a{color:#222}
   </style>
 </head>
 <body>
+  <a href="/">< Voltar</a>
   <h1>Cardápio</h1>
-  <div id="lista" class="grid">Carregando...</div>
+  <p class="muted">Itens carregados do banco Neon.</p>
 
-<script>
-(async () => {
-  try {
-    const r = await fetch('/api/menu', { cache: 'no-store' });
-    const itens = await r.json();
-    const div = document.getElementById('lista');
-    div.innerHTML = '';
-    itens.forEach(it => {
-      const reais = (Number(it.price_cents)/100).toFixed(2).replace('.', ',');
-      const el = document.createElement('div');
-      el.className = 'card';
-      el.innerHTML = `
-        <img src="${it.image_url}" alt="${it.name}">
-        <div class="name">${it.name}</div>
-        <div class="price">R$ ${reais}</div>
-      `;
-      div.appendChild(el);
-    });
-    if (!itens.length) div.textContent = 'Sem itens ativos por enquanto.';
-  } catch (e) {
-    document.getElementById('lista').textContent = 'Erro ao carregar cardápio.';
-  }
-})();
-</script>
+  <div id="list" class="grid"></div>
+
+  <script>
+    async function loadMenu(){
+      const box = document.getElementById('list');
+      box.innerHTML = 'Carregando...';
+      try{
+        const res = await fetch('/cardapio', { cache: 'no-store' });
+        if(!res.ok) throw new Error('Falha ao buscar cardápio');
+        const data = await res.json(); // [{id, nome, preco, imagem, categoria_id}]
+
+        if(!Array.isArray(data) || data.length === 0){
+          box.innerHTML = 'Sem itens cadastrados.';
+          return;
+        }
+
+        box.innerHTML = data.map(item=>{
+          // preco no banco está em DECIMAL(10,2) — garante formatação BRL:
+          const preco = Number(item.preco).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+          // caminho de imagem salvo no banco (ex.: /cliente/img/xburger.png)
+          const img = item.imagem || '/cliente/img/placeholder.png';
+          return `
+            <div class="item">
+              <img alt="${item.nome}" src="${img}">
+              <div class="top">
+                <div class="name">${item.nome}</div>
+                <div class="price">${preco}</div>
+              </div>
+            </div>`;
+        }).join('');
+      }catch(e){
+        box.innerHTML = 'Erro ao carregar cardápio.';
+        console.error(e);
+      }
+    }
+    loadMenu();
+  </script>
 </body>
 </html>
