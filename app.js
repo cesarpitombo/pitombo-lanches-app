@@ -1,162 +1,105 @@
-// app.js — completo
+// ====== IMPORTS (CommonJS) ======
 const express = require('express');
-const path = require('path');
+const cors = require('cors');
 const { Pool } = require('pg');
+const path = require('path');
 
-// ====== ENV ======
-const PORT = process.env.PORT || 3000;
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
-const DATABASE_URL = process.env.DATABASE_URL;
+// ====== APP/PORT ======
+const app = express();
+const PORT = process.env.PORT || 10000;
 
-// ====== DB ======
+// ====== MIDDLEWARES ======
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ====== DB (NEON) ======
 const pool = new Pool({
-  connectionString: DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
 });
 
-// ====== Auth simples (Bearer) ======
+pool.connect()
+  .then(() => console.log('Conectado ao banco de dados Neon'))
+  .catch(err => console.error('Erro ao conectar ao banco:', err.message));
+
+// ====== AUTH ADMIN (Bearer) ======
 function requireAdmin(req, res, next) {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (token && ADMIN_TOKEN && token === ADMIN_TOKEN) return next();
+  if (token && process.env.ADMIN_TOKEN && token === process.env.ADMIN_TOKEN) return next();
   return res.status(401).json({ error: 'unauthorized' });
 }
 
-// ====== Helpers de Config ======
-const DEFAULT_SETTINGS = {
-  app_name: 'Pitombo Lanches',
-  phone: '5599999999999', // DDI+DDD+número (apenas dígitos)
-  whatsapp_link: 'https://wa.me/5599999999999',
-};
+// ====== HELPERS CONFIG ======
+async function getConfigMap() {
+  const rows = (await pool.query('SELECT key, value FROM config')).rows;
+  const map = {};
+  rows.forEach(r => map[r.key] = r.value);
+  // defaults
+  if (!map.appName) map.appName = 'Pitombo Lanches';
+  if (!map.phone)   map.phone   = '5581999999999';
+  return map;
+}
 
-async function initSettings() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS app_settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
-  `);
-
-  // upsert defaults
-  for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
+async function setConfig(updates) {
+  const entries = Object.entries(updates)
+    .filter(([k,v]) => ['appName','phone'].includes(k) && typeof v === 'string' && v.trim() !== '');
+  for (const [key, value] of entries) {
     await pool.query(
-      `INSERT INTO app_settings(key, value)
-       VALUES ($1, $2)
-       ON CONFLICT (key) DO NOTHING`,
+      `INSERT INTO config(key,value) VALUES ($1,$2)
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
       [key, value]
     );
   }
 }
 
-async function getSettings() {
-  const rows = (await pool.query('SELECT key, value FROM app_settings')).rows;
-  const map = { ...DEFAULT_SETTINGS };
-  rows.forEach(r => (map[r.key] = r.value));
-  return map;
-}
-
-async function setSettings(patch) {
-  const entries = Object.entries(patch);
-  for (const [key, value] of entries) {
-    await pool.query(
-      `INSERT INTO app_settings(key, value)
-       VALUES ($1, $2)
-       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-      [key, String(value)]
-    );
-  }
-}
-
-// Normaliza telefone pra só dígitos e garante link do wa
-function normalizePhone(raw) {
-  const digits = (raw || '').replace(/\D+/g, '');
-  // Se começar sem DDI, assume Brasil 55
-  const withDDI = digits.startsWith('55') ? digits : `55${digits}`;
-  return withDDI;
-}
-
-// ====== App ======
-const app = express();
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-
-// ====== Rotas de páginas ======
-app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'index.html'));
-});
-app.get('/cardapio', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'cardapio.html'));
-});
-app.get('/carrinho', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'carrinho.html'));
-});
-app.get('/pedido-confirmado', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'pedido-confirmado.html'));
-});
-app.get('/cliente/admin.html', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'admin.html'));
-});
-
-// ====== API: Config (nome do app + telefone) ======
-app.get('/api/config', async (_req, res) => {
+// ====== ROTAS CONFIG ======
+app.get('/api/config', async (req, res) => {
   try {
-    const cfg = await getSettings();
-    res.json({
-      appName: cfg.app_name,
-      phone: cfg.phone,
-      whatsapp: cfg.whatsapp_link,
-    });
+    const cfg = await getConfigMap();
+    res.json(cfg);
   } catch (e) {
-    res.status(500).json({ error: 'config_read_failed' });
+    console.error('Erro /api/config:', e.message);
+    res.status(500).json({ error: 'erro ao obter config' });
   }
 });
 
 app.put('/api/config', requireAdmin, async (req, res) => {
   try {
     const { appName, phone } = req.body || {};
-    const patch = {};
-    if (appName) patch.app_name = String(appName).trim();
-
-    if (phone) {
-      const digits = normalizePhone(phone);
-      patch.phone = digits;
-      patch.whatsapp_link = `https://wa.me/${digits}`;
-    }
-    if (Object.keys(patch).length === 0) {
-      return res.status(400).json({ error: 'nada_para_atualizar' });
-    }
-    await setSettings(patch);
-    const cfg = await getSettings();
-    res.json({
-      ok: true,
-      appName: cfg.app_name,
-      phone: cfg.phone,
-      whatsapp: cfg.whatsapp_link,
-    });
+    await setConfig({ appName, phone });
+    const cfg = await getConfigMap();
+    res.json({ ok: true, config: cfg });
   } catch (e) {
-    res.status(500).json({ error: 'config_write_failed' });
+    console.error('Erro PUT /api/config:', e.message);
+    res.status(500).json({ error: 'erro ao salvar config' });
   }
 });
 
-// ====== API: Cardápio (lendo do banco) ======
-app.get('/api/menu', async (_req, res) => {
+// ====== CARDÁPIO (Banco) ======
+app.get('/cardapio', async (_req, res) => {
   try {
-    // Ajusta os nomes da sua base se necessário
-    const { rows } = await pool.query(`
-      SELECT id, nome, preco, imagem, categoria_id
-      FROM produtos
-      ORDER BY id ASC
-    `);
-    res.json(rows);
-  } catch (e) {
-    res.status(500).json({ error: 'menu_read_failed' });
+    const result = await pool.query('SELECT id, nome, preco, imagem FROM produtos ORDER BY id ASC');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Erro /cardapio:', err.message);
+    res.status(500).send('Erro ao obter cardápio');
   }
 });
 
-// Start
-(async () => {
-  await initSettings();
-  app.listen(PORT, () => {
-    console.log(`🚀 Servidor Pitombo Lanches rodando na porta ${PORT}`);
-  });
-})();
+// ====== PÁGINAS ======
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'cliente', 'index.html'));
+});
+app.get('/cliente/cardapio.html', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'cliente', 'cardapio.html'));
+});
+app.get('/cliente/admin.html', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'cliente', 'admin.html'));
+});
+
+// ====== START ======
+app.listen(PORT, () => {
+  console.log(`Servidor Pitombo Lanches rodando na porta ${PORT}`);
+});
