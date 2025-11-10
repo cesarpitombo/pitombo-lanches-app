@@ -1,12 +1,33 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Carrinho - Pitombo Lanches</title>
+  <style>
+    body{font-family:system-ui;margin:24px;background:#fafafa}
+    .row{display:grid;grid-template-columns:1fr 320px;gap:16px}
+    .item{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #eee;border-radius:12px;padding:10px;margin-bottom:10px}
+    .qtd{display:flex;gap:6px;align-items:center}
+    .qtd button{width:28px;height:28px}
+    .sum{background:#fff;border:1px solid #eee;border-radius:12px;padding:14px;position:sticky;top:16px}
+    .btn{width:100%;padding:12px;border-radius:10px;border:0;background:#25D366;color:#fff;font-weight:700;cursor:pointer}
+    .link{padding:10px 14px;border:1px solid #ddd;border-radius:10px;text-decoration:none}
+  </style>
 </head>
 <body>
-  <h2>Seu Carrinho 🛒</h2>
-  <p>Função em breve...</p>
-  <a href="/cardapio">Voltar ao Cardápio</a>
+  <header style="display:flex;justify-content:space-between;align-items:center">
+    <h2>Seu Carrinho 🛒</h2>
+    <a class="link" href="/cardapio">Voltar ao Cardápio</a>
+  </header>
+
+  <div class="row">
+    <div id="lista"></div>
+    <aside class="sum">
+      <div style="margin-bottom:8px">Subtotal: <b id="subtotal">R$ 0,00</b></div>
+      <button id="finalizar" class="btn">Finalizar pelo WhatsApp</button>
+    </aside>
+  </div>
+
+  <script src="/cliente/cliente.js" defer></script>
 </body>
 </html>
