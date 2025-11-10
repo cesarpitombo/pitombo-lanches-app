@@ -1,33 +1,133 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>Carrinho - Pitombo Lanches</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carrinho • Pitombo Lanches</title>
   <style>
-    body{font-family:system-ui;margin:24px;background:#fafafa}
-    .row{display:grid;grid-template-columns:1fr 320px;gap:16px}
-    .item{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #eee;border-radius:12px;padding:10px;margin-bottom:10px}
-    .qtd{display:flex;gap:6px;align-items:center}
-    .qtd button{width:28px;height:28px}
-    .sum{background:#fff;border:1px solid #eee;border-radius:12px;padding:14px;position:sticky;top:16px}
-    .btn{width:100%;padding:12px;border-radius:10px;border:0;background:#25D366;color:#fff;font-weight:700;cursor:pointer}
-    .link{padding:10px 14px;border:1px solid #ddd;border-radius:10px;text-decoration:none}
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 0; background:#fafafa; color:#222; }
+    header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; background:#fff; border-bottom:1px solid #eee; position:sticky; top:0; }
+    .title { font-size:20px; font-weight:700; }
+    .actions a { margin-left:8px; text-decoration:none; padding:10px 14px; background:#111; color:#fff; border-radius:10px; font-weight:600; }
+    .wrap { max-width: 920px; margin: 18px auto; padding: 0 16px; }
+    table { width:100%; border-collapse: collapse; background:#fff; border:1px solid #eee; border-radius:12px; overflow:hidden; }
+    th, td { padding:12px; border-bottom:1px solid #f0f0f0; text-align:left; }
+    tfoot td { font-weight:700; }
+    .qty { display:inline-flex; gap:8px; align-items:center; }
+    .btn { cursor:pointer; border:0; padding:8px 10px; border-radius:10px; background:#0a7; color:#fff; font-weight:700; }
+    .btn.gray { background:#ddd; color:#111; }
+    .mt { margin-top:14px; }
   </style>
 </head>
 <body>
-  <header style="display:flex;justify-content:space-between;align-items:center">
-    <h2>Seu Carrinho 🛒</h2>
-    <a class="link" href="/cardapio">Voltar ao Cardápio</a>
+  <header>
+    <div class="title">🛒 Carrinho</div>
+    <div class="actions">
+      <a href="/cardapio">Cardápio</a>
+      <a href="/">Início</a>
+    </div>
   </header>
 
-  <div class="row">
-    <div id="lista"></div>
-    <aside class="sum">
-      <div style="margin-bottom:8px">Subtotal: <b id="subtotal">R$ 0,00</b></div>
-      <button id="finalizar" class="btn">Finalizar pelo WhatsApp</button>
-    </aside>
+  <div class="wrap">
+    <table id="tb">
+      <thead>
+        <tr><th>Item</th><th>Preço</th><th>Qtd</th><th>Subtotal</th><th></th></tr>
+      </thead>
+      <tbody></tbody>
+      <tfoot>
+        <tr><td colspan="3">Total</td><td id="total">R$ 0,00</td><td></td></tr>
+      </tfoot>
+    </table>
+
+    <div class="mt" style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="btn gray" onclick="limpar()">Limpar carrinho</button>
+      <button class="btn" onclick="finalizar()">Finalizar pelo WhatsApp</button>
+    </div>
   </div>
 
-  <script src="/cliente/cliente.js" defer></script>
+  <script>
+    const CART_KEY = 'pitombo_cart';
+    const getCart = () => JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+    const setCart = (c) => localStorage.setItem(CART_KEY, JSON.stringify(c));
+    const money = (v) => Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+    function render(){
+      const tb = document.querySelector('#tb tbody');
+      const totalEl = document.querySelector('#total');
+      const cart = getCart();
+      tb.innerHTML = '';
+
+      let total = 0;
+      if(cart.length === 0){
+        tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#777">Seu carrinho está vazio.</td></tr>';
+      } else {
+        cart.forEach((i,idx)=>{
+          const sub = Number(i.preco)*Number(i.qtd);
+          total += sub;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${i.nome}</td>
+            <td>${money(i.preco)}</td>
+            <td>
+              <div class="qty">
+                <button class="btn gray" onclick="add(${idx},-1)">-</button>
+                <strong>${i.qtd}</strong>
+                <button class="btn gray" onclick="add(${idx},1)">+</button>
+              </div>
+            </td>
+            <td>${money(sub)}</td>
+            <td><button class="btn gray" onclick="rem(${idx})">Remover</button></td>
+          `;
+          tb.appendChild(tr);
+        });
+      }
+      totalEl.textContent = money(total);
+    }
+
+    function add(idx, delta){
+      const cart = getCart();
+      cart[idx].qtd += delta;
+      if (cart[idx].qtd <= 0) cart.splice(idx,1);
+      setCart(cart);
+      render();
+    }
+
+    function rem(idx){
+      const cart = getCart();
+      cart.splice(idx,1);
+      setCart(cart);
+      render();
+    }
+
+    function limpar(){
+      if(confirm('Limpar carrinho?')){
+        localStorage.removeItem(CART_KEY);
+        render();
+      }
+    }
+
+    function finalizar(){
+      const cart = getCart();
+      if(cart.length === 0){
+        alert('Adicione itens antes de finalizar.');
+        return;
+      }
+
+      // monta mensagem
+      const linhas = cart.map(i => `• ${i.qtd}x ${i.nome} — ${money(i.preco)} = ${money(i.preco*i.qtd)}`);
+      const total = cart.reduce((s,i)=>s + (Number(i.preco)*Number(i.qtd)),0);
+      linhas.push(`\nTotal: ${money(total)}`);
+
+      const msg = encodeURIComponent(`Olá! Quero fazer um pedido:\n\n${linhas.join('\n')}\n\nNome: `);
+      // coloque seu número com DDI+DDD (ex.: 55 71 9xxxx-xxxx) SEM espaços/sinais
+      const phone = '5571999999999'; // <- troque aqui
+      const url = `https://wa.me/${phone}?text=${msg}`;
+
+      window.open(url, '_blank'); // abre WhatsApp
+      window.location.href = '/pedido-confirmado';
+    }
+
+    render();
+  </script>
 </body>
 </html>
