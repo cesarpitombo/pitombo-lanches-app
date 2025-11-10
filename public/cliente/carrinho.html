@@ -1,122 +1,12 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>Carrinho - Pitombo Lanches</title>
-  <style>
-    body { font-family: Arial; background:#fafafa; margin:0; padding:20px; text-align:center; }
-    h1 { color:#b22222; }
-    .box { background:#fff; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,.1); max-width:600px; margin:20px auto; padding:20px; text-align:left; }
-    .item { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee; }
-    .qty { display:flex; align-items:center; gap:6px; }
-    button { background:#b22222; color:#fff; border:none; border-radius:6px; padding:6px 10px; cursor:pointer; }
-    button:hover { background:#9e1e1e; }
-    .ghost { background:#666; }
-    .ghost:hover { background:#444; }
-    .top a { display:inline-block; margin:0 6px; padding:8px 12px; background:#444; color:#fff; text-decoration:none; border-radius:6px; }
-    .top a:hover { background:#222; }
-  </style>
 </head>
 <body>
-  <div class="top">
-    <a href="/cliente/index.html">Início</a>
-    <a href="/cliente/cardapio.html">Cardápio</a>
-  </div>
-  <h1>🛒 Seu Carrinho</h1>
-  <div class="box" id="lista"></div>
-  <div class="box">
-    <p id="total"><strong>Total: R$ 0,00</strong></p>
-    <button id="finalizar">Finalizar Pedido</button>
-    <button class="ghost" id="limpar">Limpar Carrinho</button>
-  </div>
-
-  <script>
-    const storageKey = 'carrinho';
-
-    function getCarrinho(){ try{ return JSON.parse(localStorage.getItem(storageKey))||[] }catch{ return [] } }
-    function setCarrinho(c){ localStorage.setItem(storageKey, JSON.stringify(c)) }
-
-    function render(){
-      const lista = document.getElementById('lista');
-      const totalEl = document.getElementById('total');
-      const carrinho = getCarrinho();
-
-      if(carrinho.length === 0){
-        lista.innerHTML = '<p>Seu carrinho está vazio.</p>';
-        totalEl.innerHTML = '<strong>Total: R$ 0,00</strong>';
-        return;
-      }
-
-      lista.innerHTML = carrinho.map(item => `
-        <div class="item">
-          <div>
-            <strong>${item.nome}</strong><br>
-            R$ ${Number(item.preco).toFixed(2).replace('.', ',')}
-          </div>
-          <div class="qty">
-            <button onclick="alterar(${item.id}, -1)">-</button>
-            <span>${item.quantidade}</span>
-            <button onclick="alterar(${item.id}, 1)">+</button>
-            <button onclick="remover(${item.id})">Remover</button>
-          </div>
-        </div>
-      `).join('');
-
-      const total = carrinho.reduce((acc,i)=> acc + Number(i.preco)*Number(i.quantidade), 0);
-      totalEl.innerHTML = `<strong>Total: R$ ${total.toFixed(2).replace('.', ',')}</strong>`;
-    }
-
-    function alterar(id, delta){
-      const carrinho = getCarrinho();
-      const item = carrinho.find(i => i.id === id);
-      if(!item) return;
-      item.quantidade += delta;
-      if(item.quantidade <= 0){
-        const idx = carrinho.findIndex(i=>i.id === id);
-        carrinho.splice(idx,1);
-      }
-      setCarrinho(carrinho);
-      render();
-    }
-
-    function remover(id){
-      let carrinho = getCarrinho();
-      carrinho = carrinho.filter(i => i.id !== id);
-      setCarrinho(carrinho);
-      render();
-    }
-
-    async function finalizar(){
-      const carrinho = getCarrinho();
-      if(carrinho.length === 0){ alert('Carrinho vazio.'); return; }
-
-      const itens = carrinho.map(i => ({ produto_id: i.id, quantidade: i.quantidade }));
-      const payload = { cliente: 'Cliente Pitombo', itens };
-
-      try{
-        const resp = await fetch('/pedido', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const json = await resp.json();
-        if(json.ok){
-          localStorage.removeItem(storageKey);
-          window.location.href = '/pedido-confirmado';
-        }else{
-          alert('Erro ao finalizar pedido.');
-        }
-      }catch(e){
-        console.error(e);
-        alert('Falha na conexão ao finalizar pedido.');
-      }
-    }
-
-    document.getElementById('finalizar').onclick = finalizar;
-    document.getElementById('limpar').onclick = () => { localStorage.removeItem(storageKey); render(); };
-
-    render();
-  </script>
+  <h2>Seu Carrinho 🛒</h2>
+  <p>Função em breve...</p>
+  <a href="/cardapio">Voltar ao Cardápio</a>
 </body>
 </html>
