@@ -1,10 +1,10 @@
-// app.js — Pitombo Lanches (com pedidos no Neon)
+// app.js — Pitombo Lanches (com pedidos)
 
 const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
 
-// --------- Auth simples por Bearer (ADMIN_TOKEN no Render) ----------
+// --- Auth simples por token (Bearer) para rotas de admin ---
 function requireAdmin(req, res, next) {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -14,144 +14,120 @@ function requireAdmin(req, res, next) {
   return res.status(401).json({ error: 'unauthorized' });
 }
 
-// --------- App & DB ----------
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Conexão Postgres (Neon)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // Neon precisa de SSL
+  ssl: { rejectUnauthorized: false }
 });
 
+// JSON no backend
 app.use(express.json());
 
-// --------- Arquivos estáticos (/public) ----------
+// Arquivos estáticos da pasta /public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --------- Rotas de páginas do cliente ----------
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'index.html'));
+// --------- APIs ---------
+
+// Config simples (nome do app)
+app.get('/api/config', (_req, res) => {
+  res.json({
+    appName: 'Pitombo Lanches'
+  });
 });
 
-app.get('/cardapio', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'cardapio.html'));
-});
-
-app.get('/carrinho', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'carrinho.html'));
-});
-
-app.get('/pedido-confirmado', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'pedido-confirmado.html'));
-});
-
-// --------- API: Cardápio (lê do Neon) ----------
-app.get('/api/menu', async (req, res) => {
+// Lista o cardápio a partir do BD (tabela: produtos)
+app.get('/api/menu', async (_req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, nome, preco, imagem, categoria_id
        FROM produtos
-       WHERE (ativo IS NULL OR ativo = true)
-       ORDER BY id`
+       WHERE is_active IS DISTINCT FROM false
+       ORDER BY id ASC`
     );
-    // Preço vem como string do DECIMAL — normalizamos pra número
-    const data = rows.map(r => ({
-      id: r.id,
-      nome: r.nome,
-      preco: Number(r.preco),
-      imagem: r.imagem,
-      categoria_id: r.categoria_id
-    }));
-    res.json(data);
-  } catch (err) {
-    console.error('Erro em /api/menu:', err);
-    res.status(500).json({ error: 'erro_ao_carregar_menu' });
+    res.json(rows);
+  } catch (e) {
+    console.error('Erro /api/menu:', e);
+    res.status(500).json({ error: 'menu_error' });
   }
 });
 
-// --------- API: Salvar pedido ----------
-/*
-  Body esperado:
-  {
-    "cliente": "Nome do cliente",
-    "itens": [
-      { "produto_id": 1, "quantidade": 2 },
-      { "produto_id": 3, "quantidade": 1 }
-    ]
-  }
-*/
-app.post('/api/pedido', async (req, res) => {
-  const { cliente, itens } = req.body || {};
+// Cria pedido: body = { customer: {nome, telefone}, items: [{id, qty}], total }
+app.post('/api/orders', async (req, res) => {
+  const { customer = {}, items = [], total } = req.body || {};
 
-  // validação básica
-  if (!cliente || !Array.isArray(itens) || itens.length === 0) {
-    return res.status(400).json({ error: 'dados_invalidos' });
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'carrinho_vazio' });
   }
 
-  const client = await pool.connect();
+  if (!customer.nome || !customer.telefone) {
+    return res.status(400).json({ error: 'dados_cliente_invalidos' });
+  }
+
   try {
-    await client.query('BEGIN');
+    // cria pedido
+    const insertOrder = `
+      INSERT INTO pedidos (cliente_nome, cliente_telefone, subtotal)
+      VALUES ($1, $2, $3)
+      RETURNING id
+    `;
+    const orderRes = await pool.query(insertOrder, [
+      customer.nome,
+      customer.telefone,
+      total || 0
+    ]);
+    const pedidoId = orderRes.rows[0].id;
 
-    // cria o pedido com total 0 temporariamente
-    const insertPedido = await client.query(
-      `INSERT INTO pedidos (cliente, total, status)
-       VALUES ($1, 0, 'pendente')
-       RETURNING id`,
-      [cliente]
+    // carrega preços atuais dos produtos pra gravar no item
+    const ids = items.map(i => i.id);
+    const { rows: prodRows } = await pool.query(
+      `SELECT id, nome, preco FROM produtos WHERE id = ANY($1)`,
+      [ids]
     );
-    const pedidoId = insertPedido.rows[0].id;
+    const mapProd = Object.fromEntries(
+      prodRows.map(p => [String(p.id), p])
+    );
 
-    let total = 0;
-
-    // para cada item, carrega o preço atual do produto e grava na itens_pedido
-    for (const item of itens) {
-      const { produto_id, quantidade } = item;
-      if (!produto_id || !quantidade || quantidade <= 0) {
-        throw new Error('item_invalido');
-      }
-
-      const prod = await client.query(
-        'SELECT preco FROM produtos WHERE id = $1',
-        [produto_id]
-      );
-      if (prod.rowCount === 0) throw new Error('produto_nao_encontrado');
-
-      const preco = Number(prod.rows[0].preco);
-      const subtotal = preco * Number(quantidade);
-      total += subtotal;
-
-      await client.query(
-        `INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, subtotal)
-         VALUES ($1, $2, $3, $4)`,
-        [pedidoId, produto_id, quantidade, subtotal]
-      );
+    // insere itens
+    const insertItem = `
+      INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, preco_unit)
+      VALUES ($1, $2, $3, $4)
+    `;
+    for (const i of items) {
+      const p = mapProd[String(i.id)];
+      if (!p) continue;
+      await pool.query(insertItem, [pedidoId, p.id, i.qty || 1, p.preco]);
     }
 
-    // atualiza total do pedido
-    await client.query(
-      'UPDATE pedidos SET total = $1 WHERE id = $2',
-      [total, pedidoId]
-    );
-
-    await client.query('COMMIT');
-
-    res.json({ ok: true, pedidoId, total });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('Erro em /api/pedido:', err);
-    res.status(500).json({ error: 'erro_ao_confirmar_pedido' });
-  } finally {
-    client.release();
+    res.json({ ok: true, pedidoId });
+  } catch (e) {
+    console.error('Erro /api/orders:', e);
+    res.status(500).json({ error: 'order_error' });
   }
 });
 
-// --------- (Opcional) API admin pra trocar menu via token (futuro) ----------
+// (opcional) rota admin pra atualizar o menu no futuro
 app.put('/api/menu', requireAdmin, async (req, res) => {
-  // Placeholder para futura edição de cardápio via painel
-  res.json({ ok: true, message: 'endpoint reservado para painel admin' });
+  // placeholder — vamos implementar depois (CRUD completo)
+  res.json({ ok: true, msg: 'endpoint reservado' });
 });
 
-// --------- Sobe servidor ----------
+// --------- Páginas ---------
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'cliente', 'index.html'));
+});
+app.get('/cardapio', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'cliente', 'cardapio.html'));
+});
+app.get('/carrinho', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'cliente', 'carrinho.html'));
+});
+app.get('/pedido-confirmado', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'cliente', 'pedido-confirmado.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Servidor Pitombo Lanches rodando na porta ${PORT}`);
 });
