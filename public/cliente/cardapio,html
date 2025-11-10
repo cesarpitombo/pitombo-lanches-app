@@ -1,79 +1,52 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Cardápio • Pitombo Lanches</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cardápio - Pitombo Lanches</title>
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;margin:0;padding:24px;background:#fff}
-    header{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:16px}
-    a.btn{padding:10px 14px;border:1px solid #111;border-radius:10px;text-decoration:none;font-weight:600}
-    h1{font-size:22px;margin:0}
-    #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
-    .card{border:1px solid #ddd;border-radius:14px;padding:14px}
-    .name{font-weight:700;margin:0 0 6px}
-    .price{color:#0a0a0a;margin:0 0 10px}
-    button{padding:8px 10px;border:1px solid #111;border-radius:10px;background:#fff;font-weight:600;cursor:pointer}
-    .thumb{width:100%;height:120px;background:#f4f4f4;border-radius:10px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#888;overflow:hidden}
-    .thumb img{width:100%;height:100%;object-fit:cover}
+    body { font-family: Arial; margin: 20px; }
+    h1 { text-align: center; }
+    .produtos { display: flex; flex-wrap: wrap; justify-content: center; }
+    .card {
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      padding: 10px;
+      margin: 10px;
+      text-align: center;
+      width: 150px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    button { padding: 6px 12px; margin-top: 8px; cursor: pointer; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>🍟 Cardápio — Pitombo Lanches</h1>
-    <nav>
-      <a class="btn" href="/">Início</a>
-      <a class="btn" href="/carrinho">Carrinho 🛒</a>
-    </nav>
-  </header>
-
-  <div id="grid"></div>
+  <h1>🍟 Cardápio Pitombo Lanches</h1>
+  <div class="produtos" id="produtos"></div>
 
   <script>
-    const CART_KEY = 'pitombo_cart';
+    const produtosEl = document.getElementById("produtos");
 
-    function getCart(){
-      try{ return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); }catch(_){ return []; }
-    }
-    function setCart(list){
-      localStorage.setItem(CART_KEY, JSON.stringify(list));
-    }
-    function addToCart(item){
-      const cart = getCart();
-      const idx = cart.findIndex(x => x.id === item.id);
-      if (idx >= 0){ cart[idx].qtd += 1; } else { cart.push({...item, qtd: 1}); }
-      setCart(cart);
-      alert(`${item.nome} adicionado!`);
-    }
-    function money(v){ return `R$ ${Number(v).toFixed(2).replace('.',',')}`; }
-
-    async function loadMenu(){
-      const res = await fetch('/api/menu');
-      if(!res.ok) throw new Error('Falha ao carregar menu');
-      return res.json();
-    }
-
-    function card(item){
-      return `
+    async function carregarProdutos() {
+      const resposta = await fetch("/data/menu.json");
+      const produtos = await resposta.json();
+      produtosEl.innerHTML = produtos.map(p => `
         <div class="card">
-          <div class="thumb">${item.imagem ? `<img src="${item.imagem}" alt="${item.nome}">` : 'sem imagem'}</div>
-          <p class="name">${item.nome}</p>
-          <p class="price">${money(item.preco)}</p>
-          <button onclick='addToCart(${JSON.stringify(item)})'>Adicionar</button>
+          <h3>${p.nome}</h3>
+          <p>R$ ${p.preco.toFixed(2)}</p>
+          <button onclick="addCarrinho('${p.nome}', ${p.preco})">Adicionar</button>
         </div>
-      `;
+      `).join("");
     }
 
-    (async () => {
-      try{
-        const data = await loadMenu();
-        const html = data.map(card).join('');
-        document.getElementById('grid').innerHTML = html;
-      }catch(e){
-        document.getElementById('grid').innerHTML = 'Não foi possível carregar o cardápio.';
-        console.error(e);
-      }
-    })();
+    function addCarrinho(nome, preco) {
+      let cart = JSON.parse(localStorage.getItem("carrinho")) || [];
+      cart.push({ nome, preco });
+      localStorage.setItem("carrinho", JSON.stringify(cart));
+      alert(`${nome} adicionado ao carrinho!`);
+    }
+
+    carregarProdutos();
   </script>
 </body>
 </html>
