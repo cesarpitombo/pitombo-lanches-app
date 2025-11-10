@@ -4,36 +4,70 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Carrinho - Pitombo Lanches</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin: 20px; }
+    .linha { display:flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #e5e5e5; }
+    .total { font-weight: bold; margin-top: 12px; }
+    button { padding: 10px 14px; border-radius: 10px; border: 1px solid #ddd; cursor: pointer; margin-right: 8px; }
+  </style>
 </head>
 <body>
-  <h1>🛍️ Seu Carrinho</h1>
+  <h2>🛍️ Seu Carrinho</h2>
   <div id="lista"></div>
-  <button onclick="finalizar()">Finalizar Pedido</button>
+  <p class="total" id="total"></p>
+
+  <div style="margin-top:12px;">
+    <button onclick="location.href='/cardapio'">Adicionar mais</button>
+    <button onclick="limpar()">Limpar</button>
+    <button onclick="finalizar()">Finalizar Pedido</button>
+  </div>
 
   <script>
-    const phone = '+351934869755'; // número atualizado 🇵🇹
+    const KEY = "carrinho";
+    const phone = "+351934869755";
 
-    function render() {
-      const cart = JSON.parse(localStorage.getItem("carrinho")) || [];
+    function getCart(){ return JSON.parse(localStorage.getItem(KEY)) || []; }
+    function setCart(c){ localStorage.setItem(KEY, JSON.stringify(c)); }
+
+    function render(){
+      const cart = getCart();
       const lista = document.getElementById("lista");
-      if (cart.length === 0) {
+      const totalEl = document.getElementById("total");
+
+      if(cart.length === 0){
         lista.innerHTML = "<p>Carrinho vazio.</p>";
+        totalEl.textContent = "";
         return;
       }
-      lista.innerHTML = cart.map(i => `<p>${i.nome} - R$ ${i.preco.toFixed(2)}</p>`).join("");
+
+      lista.innerHTML = cart.map((i,idx)=>`
+        <div class="linha">
+          <span>${i.nome}</span>
+          <span>R$ ${Number(i.preco).toFixed(2)}</span>
+        </div>
+      `).join("");
+
+      const total = cart.reduce((s,i)=> s + Number(i.preco), 0);
+      totalEl.textContent = "Total: R$ " + total.toFixed(2);
     }
 
-    function finalizar() {
-      const cart = JSON.parse(localStorage.getItem("carrinho")) || [];
-      if (cart.length === 0) {
-        alert("Adicione itens antes de finalizar.");
-        return;
+    function limpar(){
+      if(confirm("Limpar carrinho?")){
+        localStorage.removeItem(KEY);
+        render();
       }
-      const msg = encodeURIComponent("Olá! Quero fazer um pedido:\n" +
-        cart.map(i => `${i.nome} - R$ ${i.preco.toFixed(2)}`).join("\n"));
+    }
+
+    function finalizar(){
+      const cart = getCart();
+      if(cart.length === 0){ alert("Adicione itens antes de finalizar."); return; }
+
+      const linhas = cart.map(i => `${i.nome} - R$ ${Number(i.preco).toFixed(2)}`);
+      const msg = encodeURIComponent("Olá! Quero fazer um pedido:\n\n" + linhas.join("\n"));
       const url = `https://wa.me/${phone}?text=${msg}`;
-      window.open(url, "_blank");
-      localStorage.removeItem("carrinho");
+
+      window.open(url, "_blank");             // abre WhatsApp
+      localStorage.removeItem(KEY);            // limpa carrinho
       window.location.href = "/pedido-confirmado";
     }
 
