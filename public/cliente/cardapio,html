@@ -1,43 +1,74 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cardápio - Pitombo Lanches</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cardápio</title>
   <style>
-    :root { --radius:12px; }
-    body { font-family: system-ui, Arial, sans-serif; margin:0; background:#f7f7f8; color:#222; }
-    header { display:flex; justify-content:center; align-items:center; gap:10px; padding:18px; background:#fff; border-bottom:1px solid #eee; position:sticky; top:0; }
-    header h1 { font-size:20px; margin:0; }
-    main { max-width:1100px; margin:24px auto; padding:0 16px; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:16px; }
-    .card { background:#fff; border:1px solid #eee; border-radius:var(--radius); padding:14px; box-shadow:0 1px 2px rgba(0,0,0,.04);}
-    .name { font-weight:600; margin:8px 0 4px; }
-    .price { color:#0a7; font-weight:600; }
-    .img { width:100%; height:120px; background:#f1f1f1; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#aaa; font-size:12px; }
-    .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
-    .search { width:100%; max-width:360px; padding:10px 12px; border:1px solid #ddd; border-radius:10px; }
-    .chip { padding:8px 12px; border:1px solid #ddd; border-radius:999px; background:#fff; cursor:pointer; font-size:13px; }
-    .chip.active { background:#222; color:#fff; border-color:#222; }
-    nav { display:flex; gap:8px; flex-wrap:wrap; }
-    a.back { text-decoration:none; color:#555; }
+    body { font-family: system-ui, Arial; margin: 24px; }
+    h1 { margin-bottom: 8px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+    .item { border: 1px solid #e5e5e5; border-radius: 12px; padding: 12px; }
+    .img { width: 100%; height: 140px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
+    .name { font-weight: 700; margin: 8px 0 4px; }
+    .price { color: #444; margin-bottom: 8px; }
+    button { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #111; background: #111; color: #fff; cursor: pointer; }
+    .toolbar { display:flex; justify-content: space-between; align-items:center; margin-bottom: 12px; }
+    a { color:#0a58ca; text-decoration:none; }
   </style>
 </head>
 <body>
-  <header>
-    <a class="back" href="/">← Voltar</a>
-    <h1>Cardápio Pitombo Lanches</h1>
-  </header>
+  <div class="toolbar">
+    <h1>Cardápio</h1>
+    <a href="/carrinho">Ver carrinho</a>
+  </div>
+  <div id="grid" class="grid"></div>
 
-  <main>
-    <div class="topbar">
-      <nav id="cats"></nav>
-      <input id="q" class="search" placeholder="Pesquisar item..." />
-    </div>
+  <script>
+    const centsToMoney = c => 'R$ ' + (c/100).toFixed(2).replace('.', ',');
 
-    <div id="list" class="grid"></div>
-  </main>
+    function addToCart(item){
+      const cart = JSON.parse(localStorage.getItem('pitombo_cart') || '[]');
+      const exists = cart.find(i => i.id === item.id);
+      if (exists) { exists.qtd += 1; }
+      else { cart.push({ id:item.id, name:item.name, price_cents:item.price_cents, image_url:item.image_url, qtd:1 }); }
+      localStorage.setItem('pitombo_cart', JSON.stringify(cart));
+      alert('Adicionado ao carrinho!');
+    }
 
-  <script src="/public/cliente/cliente.js"></script>
+    function render(items){
+      const grid = document.getElementById('grid');
+      grid.innerHTML = '';
+      if(!items.length){
+        grid.innerHTML = '<p>Sem itens no cardápio ainda.</p>';
+        return;
+      }
+      items.forEach(it => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `
+          <img class="img" src="${it.image_url || ''}" alt="">
+          <div class="name">${it.name}</div>
+          <div class="price">${centsToMoney(it.price_cents || 0)}</div>
+          <button>Adicionar</button>
+        `;
+        div.querySelector('button').onclick = () => addToCart(it);
+        grid.appendChild(div);
+      });
+    }
+
+    async function load(){
+      try {
+        const r = await fetch('/api/menu');
+        const data = await r.json();
+        render(data);
+      } catch(e){
+        console.error(e);
+        render([]);
+      }
+    }
+
+    load();
+  </script>
 </body>
 </html>
