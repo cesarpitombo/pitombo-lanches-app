@@ -1,14 +1,20 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <title>Pedido Confirmado</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>body{font-family:system-ui, Arial; margin:24px}</style>
+  <style>
+    body { font-family: system-ui, Arial; background:#f7f7f5; display:grid; place-items:center; height:100dvh; margin:0; }
+    .card { background:#fff; border:1px solid #eee; border-radius:14px; padding:24px; text-align:center; }
+    .btn { display:inline-block; margin-top:16px; padding:10px 12px; background:#111; color:#fff; text-decoration:none; border-radius:8px; font-weight:700; }
+  </style>
 </head>
 <body>
-  <h1>Seu pedido foi confirmado com sucesso!</h1>
-  <p>Obrigado por escolher Pitombo Lanches 🍔</p>
-  <p><a href="/cardapio">Voltar ao cardápio</a></p>
+  <div class="card">
+    <h1>✅ Pedido confirmado com sucesso!</h1>
+    <p>Obrigado por escolher Pitombo Lanches 🍔</p>
+    <a class="btn" href="/cardapio">Voltar ao Cardápio</a>
+  </div>
 </body>
 </html>
