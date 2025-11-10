@@ -1,75 +1,64 @@
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
+import express from "express";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// middlewares
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Middleware para JSON e arquivos estáticos
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, "public")));
 
-// rota home -> página inicial do cliente
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'index.html'));
+// Caminho do menu.json
+const menuPath = path.join(__dirname, "data", "menu.json");
+
+// Página inicial
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "cliente", "index.html"));
 });
 
-// API do cardápio -> lê data/menu.json
-app.get('/cardapio', (req, res) => {
+// Rota para o cardápio
+app.get("/cardapio", (req, res) => {
   try {
-    const menuPath = path.join(__dirname, 'data', 'menu.json');
-    const raw = fs.readFileSync(menuPath, 'utf8');
-    const json = JSON.parse(raw);
-    res.json(json);
+    const data = fs.readFileSync(menuPath);
+    const menu = JSON.parse(data);
+    res.json(menu);
   } catch (err) {
-    console.error('Erro ao ler menu.json:', err);
-    res.status(500).json({ error: 'Erro ao carregar o cardápio' });
+    res.status(500).send("Erro ao carregar cardápio");
   }
 });
 
-// Receber pedido do carrinho
-app.post('/pedido', (req, res) => {
+// Adicionar item (admin)
+app.post("/admin/adicionar", (req, res) => {
   try {
-    const { cliente = 'Cliente', itens = [] } = req.body;
+    const novoItem = req.body;
+    const data = fs.readFileSync(menuPath);
+    const menu = JSON.parse(data);
 
-    // carrega preços do menu para calcular total
-    const menuPath = path.join(__dirname, 'data', 'menu.json');
-    const catalogo = JSON.parse(fs.readFileSync(menuPath, 'utf8'));
+    menu.push(novoItem);
+    fs.writeFileSync(menuPath, JSON.stringify(menu, null, 2));
 
-    const mapaPreco = new Map(catalogo.map(p => [p.id, Number(p.preco)]));
-    const total = (itens || []).reduce((acc, i) => {
-      const preco = mapaPreco.get(i.produto_id) || 0;
-      const qty = Number(i.quantidade || 1);
-      return acc + preco * qty;
-    }, 0);
-
-    const pedidoId = Date.now();
-
-    // log simples (pode trocar por DB depois)
-    console.log('Novo pedido recebido:', {
-      pedidoId, cliente, itens, total
-    });
-
-    // resposta
-    return res.json({ ok: true, pedidoId, total });
+    res.send("Item adicionado com sucesso!");
   } catch (err) {
-    console.error('Erro ao processar pedido:', err);
-    res.status(500).json({ error: 'Erro ao processar pedido' });
+    res.status(500).send("Erro ao adicionar item");
   }
 });
 
-// páginas explícitas (opcional, ajuda em links diretos)
-app.get('/cliente/cardapio.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'cardapio.html'));
-});
-app.get('/cliente/carrinho.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'carrinho.html'));
-});
-app.get('/pedido-confirmado', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'pedido-confirmado.html'));
+// Página de carrinho
+app.get("/carrinho", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "cliente", "carrinho.html"));
 });
 
+// Página de confirmação
+app.get("/pedido-confirmado", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "cliente", "pedido-confirmado.html"));
+});
+
+// Inicializar servidor
 app.listen(PORT, () => {
   console.log(`Servidor Pitombo Lanches rodando na porta ${PORT}`);
 });
