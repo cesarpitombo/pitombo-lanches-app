@@ -1,114 +1,40 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Carrinho • Pitombo Lanches</title>
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;margin:0;padding:24px;background:#fff}
-    header{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:16px}
-    a.btn, button.btn{padding:10px 14px;border:1px solid #111;border-radius:10px;text-decoration:none;background:#fff;font-weight:600;cursor:pointer}
-    h1{font-size:22px;margin:0}
-    table{width:100%;border-collapse:collapse;margin:10px 0 16px}
-    th,td{border:1px solid #eee;padding:10px;text-align:left}
-    tfoot td{font-weight:700}
-    .qty{display:flex;gap:8px;align-items:center}
-    .qty button{padding:6px 10px}
-    .actions{display:flex;gap:10px;flex-wrap:wrap}
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carrinho - Pitombo Lanches</title>
 </head>
 <body>
-  <header>
-    <h1>🛒 Carrinho</h1>
-    <nav>
-      <a class="btn" href="/cardapio">Voltar ao Cardápio</a>
-      <a class="btn" href="/">Início</a>
-    </nav>
-  </header>
-
-  <table id="cartTable">
-    <thead>
-      <tr><th>Item</th><th>Preço</th><th>Qtd</th><th>Subtotal</th><th>Ações</th></tr>
-    </thead>
-    <tbody id="rows"></tbody>
-    <tfoot>
-      <tr><td colspan="3">Total</td><td id="total"></td><td></td></tr>
-    </tfoot>
-  </table>
-
-  <div class="actions">
-    <button class="btn" onclick="limpar()">Limpar carrinho</button>
-    <button class="btn" onclick="finalizar()">Finalizar pedido no WhatsApp</button>
-  </div>
+  <h1>🛍️ Seu Carrinho</h1>
+  <div id="lista"></div>
+  <button onclick="finalizar()">Finalizar Pedido</button>
 
   <script>
-    const CART_KEY = 'pitombo_cart';
-    const WHATSAPP_PHONE = '351934869755'; // DDI+DDD+numero (SEM +)
-    function money(v){ return `R$ ${Number(v).toFixed(2).replace('.',',')}`; }
+    const phone = '+351934869755'; // número atualizado 🇵🇹
 
-    function getCart(){ try{ return JSON.parse(localStorage.getItem(CART_KEY)||'[]'); }catch(_){ return []; } }
-    function setCart(list){ localStorage.setItem(CART_KEY, JSON.stringify(list)); }
-
-    function render(){
-      const cart = getCart();
-      const tbody = document.getElementById('rows');
-      if(cart.length === 0){
-        tbody.innerHTML = `<tr><td colspan="5">Seu carrinho está vazio.</td></tr>`;
-        document.getElementById('total').textContent = money(0);
+    function render() {
+      const cart = JSON.parse(localStorage.getItem("carrinho")) || [];
+      const lista = document.getElementById("lista");
+      if (cart.length === 0) {
+        lista.innerHTML = "<p>Carrinho vazio.</p>";
         return;
       }
-      let total = 0;
-      const html = cart.map((i, idx) => {
-        const sub = Number(i.preco) * Number(i.qtd);
-        total += sub;
-        return `
-          <tr>
-            <td>${i.nome}</td>
-            <td>${money(i.preco)}</td>
-            <td class="qty">
-              <button onclick="dec(${idx})">-</button>
-              ${i.qtd}
-              <button onclick="inc(${idx})">+</button>
-            </td>
-            <td>${money(sub)}</td>
-            <td><button onclick="rem(${idx})">Remover</button></td>
-          </tr>
-        `;
-      }).join('');
-      tbody.innerHTML = html;
-      document.getElementById('total').textContent = money(total);
+      lista.innerHTML = cart.map(i => `<p>${i.nome} - R$ ${i.preco.toFixed(2)}</p>`).join("");
     }
 
-    function inc(idx){ const c=getCart(); c[idx].qtd++; setCart(c); render(); }
-    function dec(idx){
-      const c = getCart();
-      c[idx].qtd--;
-      if(c[idx].qtd <= 0) c.splice(idx,1);
-      setCart(c); render();
-    }
-    function rem(idx){ const c=getCart(); c.splice(idx,1); setCart(c); render(); }
-
-    function limpar(){
-      if(confirm('Limpar carrinho?')){
-        localStorage.removeItem(CART_KEY);
-        render();
+    function finalizar() {
+      const cart = JSON.parse(localStorage.getItem("carrinho")) || [];
+      if (cart.length === 0) {
+        alert("Adicione itens antes de finalizar.");
+        return;
       }
-    }
-
-    function finalizar(){
-      const cart = getCart();
-      if(cart.length === 0){ alert('Adicione itens antes de finalizar.'); return; }
-
-      const linhas = cart.map(i => `• ${i.qtd}x ${i.nome} – ${money(i.preco)} = ${money(i.preco*i.qtd)}`);
-      const total = cart.reduce((s,i)=>s+(Number(i.preco)*Number(i.qtd)),0);
-
-      const msg = encodeURIComponent(
-        `Olá! Quero fazer um pedido:\n\n${linhas.join('\n')}\n\nTotal: ${money(total)}\n\nNome: `
-      );
-
-      const url = `https://wa.me/${WHATSAPP_PHONE}?text=${msg}`;
-      window.open(url, '_blank');          // abre WhatsApp
-      window.location.href = '/pedido-confirmado'; // redireciona confirmação
+      const msg = encodeURIComponent("Olá! Quero fazer um pedido:\n" +
+        cart.map(i => `${i.nome} - R$ ${i.preco.toFixed(2)}`).join("\n"));
+      const url = `https://wa.me/${phone}?text=${msg}`;
+      window.open(url, "_blank");
+      localStorage.removeItem("carrinho");
+      window.location.href = "/pedido-confirmado";
     }
 
     render();
