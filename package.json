@@ -1,13 +1,12 @@
 {
   "name": "pitombo-lanches-app",
   "version": "1.0.0",
-  "description": "Aplicativo de cardápio e pedidos - Pitombo Lanches",
+  "description": "Aplicativo de delivery Pitombo Lanches",
   "main": "app.js",
+  "type": "module",
   "scripts": {
     "start": "node app.js"
   },
-  "author": "Pitombo",
-  "license": "MIT",
   "dependencies": {
     "express": "^4.18.2"
   }
