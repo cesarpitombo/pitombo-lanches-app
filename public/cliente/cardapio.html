@@ -1,59 +1,42 @@
-<script>
-  let phone = ''; // virá do /api/config
-  let carrinho = [];
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cardápio - Pitombo Lanches</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; background:#fafafa; }
+    h1 { text-align:center; }
+    .grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px; 
+      margin-top: 24px;
+    }
+    .card {
+      background:#fff; border:1px solid #eee; border-radius:12px; overflow:hidden;
+      display:flex; flex-direction:column;
+      box-shadow: 0 2px 6px rgba(0,0,0,.04);
+    }
+    .card-img { height: 140px; background:#f3f3f3; display:flex; align-items:center; justify-content:center; }
+    .card-img img { max-height: 100%; max-width: 100%; }
+    .card-body { padding: 12px; display:flex; flex-direction:column; gap:8px; }
+    .card-title { font-weight:600; }
+    .card-price { color:#0a0a0a; }
+    .card button { padding: 8px 12px; border-radius:8px; border:1px solid #111; background:#111; color:#fff; cursor:pointer; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; }
+    .topbar a { text-decoration:none; }
+  </style>
+</head>
+<body onload="Pitombo.loadMenuAndRender()">
+  <div class="topbar">
+    <a href="/">← Voltar</a>
+    <h1>🍔 Cardápio Pitombo Lanches</h1>
+    <a href="/carrinho">🛒 Carrinho</a>
+  </div>
 
-  async function carregarConfig() {
-    const cfg = await fetch('/api/config').then(r => r.json());
-    phone = (cfg.phone || '').replace(/\D/g,''); // só dígitos
-  }
+  <div id="menu-grid" class="grid">Carregando…</div>
 
-  async function carregarCardapio() {
-    const resposta = await fetch("/cardapio");
-    const produtos = await resposta.json();
-    const container = document.getElementById("menu");
-    container.innerHTML = "";
-
-    produtos.forEach(p => {
-      const div = document.createElement("div");
-      div.className = "item";
-      div.innerHTML = `
-        <img src="${p.imagem}" alt="${p.nome}">
-        <h3>${p.nome}</h3>
-        <p>R$ ${parseFloat(p.preco).toFixed(2).replace('.', ',')}</p>
-        <button onclick='adicionarCarrinho(${JSON.stringify(p)})'>Adicionar</button>
-      `;
-      container.appendChild(div);
-    });
-  }
-
-  function adicionarCarrinho(produto) {
-    carrinho.push(produto);
-    atualizarCarrinho();
-  }
-
-  function atualizarCarrinho() {
-    const itensDiv = document.getElementById("itens");
-    const total = carrinho.reduce((acc, item) => acc + parseFloat(item.preco), 0);
-    itensDiv.innerHTML = carrinho.map(p => `<p>${p.nome} - R$ ${parseFloat(p.preco).toFixed(2).replace('.', ',')}</p>`).join("");
-    document.getElementById("total").innerHTML = `<strong>Total: R$ ${total.toFixed(2).replace('.', ',')}</strong>`;
-  }
-
-  function enviarWhatsApp() {
-    if (!phone) { alert('Telefone do WhatsApp não configurado.'); return; }
-    if (carrinho.length === 0) { alert('Carrinho vazio.'); return; }
-
-    const linhas = carrinho.map(p => `- ${p.nome} (R$ ${parseFloat(p.preco).toFixed(2).replace('.', ',')})`);
-    const total = carrinho.reduce((acc, p) => acc + parseFloat(p.preco), 0);
-    const msg = `Olá! Quero fazer um pedido:%0A${linhas.join('%0A')}%0A%0ATotal: R$ ${total.toFixed(2).replace('.', ',')}`;
-
-    const url = `https://wa.me/${phone}?text=${msg}`;
-    window.open(url, '_blank');
-  }
-
-  async function start() {
-    await carregarConfig();
-    await carregarCardapio();
-  }
-
-  start();
-</script>
+  <script src="/cliente/cliente.js"></script>
+</body>
+</html>
