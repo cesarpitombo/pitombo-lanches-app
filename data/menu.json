@@ -1,6 +1,30 @@
 [
-  { "id": 1, "nome": "X-Burger", "preco": 15.00, "imagem": "/cliente/img/xburger.png", "categoria": "Lanches" },
-  { "id": 2, "nome": "X-Bacon",  "preco": 18.00, "imagem": "/cliente/img/xbacon.png",  "categoria": "Lanches" },
-  { "id": 3, "nome": "Refrigerante", "preco": 6.00, "imagem": "/cliente/img/refri.png", "categoria": "Bebidas" },
-  { "id": 4, "nome": "Suco Natural", "preco": 7.00, "imagem": "/cliente/img/suco.png", "categoria": "Bebidas" }
+  {
+    "id": 1,
+    "nome": "X-Burger",
+    "preco": 15.00,
+    "imagem": "/cliente/img/hamburger.png",
+    "categoria": "Lanche"
+  },
+  {
+    "id": 2,
+    "nome": "X-Bacon",
+    "preco": 18.00,
+    "imagem": "/cliente/img/bacon.png",
+    "categoria": "Lanche"
+  },
+  {
+    "id": 3,
+    "nome": "Refrigerante",
+    "preco": 6.00,
+    "imagem": "/cliente/img/refri.png",
+    "categoria": "Bebida"
+  },
+  {
+    "id": 4,
+    "nome": "Suco Natural",
+    "preco": 7.00,
+    "imagem": "/cliente/img/suco.png",
+    "categoria": "Bebida"
+  }
 ]
