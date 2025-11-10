@@ -5,44 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cardápio - Pitombo Lanches</title>
   <style>
-    body { font-family: Arial; margin: 20px; }
-    h1 { text-align: center; }
-    .produtos { display: flex; flex-wrap: wrap; justify-content: center; }
+    body { font-family: Arial, Helvetica, sans-serif; margin: 20px; }
+    header { display:flex; justify-content: space-between; align-items:center; margin-bottom: 16px; }
+    .produtos { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap: 12px; }
     .card {
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      padding: 10px;
-      margin: 10px;
-      text-align: center;
-      width: 150px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      border: 1px solid #e5e5e5; border-radius: 12px; padding: 12px; text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,.06);
     }
-    button { padding: 6px 12px; margin-top: 8px; cursor: pointer; }
+    .card h3 { margin: 6px 0 2px; font-size: 16px; }
+    .preco { color:#444; margin-bottom: 8px; }
+    button { padding: 8px 10px; border-radius: 10px; border: 1px solid #ddd; cursor: pointer; }
+    .top-btn { padding: 10px 14px; }
   </style>
 </head>
 <body>
-  <h1>🍟 Cardápio Pitombo Lanches</h1>
+  <header>
+    <h2>🍟 Cardápio Pitombo Lanches</h2>
+    <div>
+      <button class="top-btn" onclick="location.href='/'">Início</button>
+      <button class="top-btn" onclick="location.href='/carrinho'">Ver Carrinho</button>
+    </div>
+  </header>
+
   <div class="produtos" id="produtos"></div>
 
   <script>
     const produtosEl = document.getElementById("produtos");
 
     async function carregarProdutos() {
-      const resposta = await fetch("/data/menu.json");
-      const produtos = await resposta.json();
+      const resp = await fetch("/data/menu.json");
+      const produtos = await resp.json();
       produtosEl.innerHTML = produtos.map(p => `
         <div class="card">
           <h3>${p.nome}</h3>
-          <p>R$ ${p.preco.toFixed(2)}</p>
-          <button onclick="addCarrinho('${p.nome}', ${p.preco})">Adicionar</button>
+          <div class="preco">R$ ${Number(p.preco).toFixed(2)}</div>
+          <button onclick="addCarrinho('${p.nome}', ${Number(p.preco)})">Adicionar</button>
         </div>
       `).join("");
     }
 
     function addCarrinho(nome, preco) {
-      let cart = JSON.parse(localStorage.getItem("carrinho")) || [];
+      const key = "carrinho";
+      let cart = JSON.parse(localStorage.getItem(key)) || [];
       cart.push({ nome, preco });
-      localStorage.setItem("carrinho", JSON.stringify(cart));
+      localStorage.setItem(key, JSON.stringify(cart));
       alert(`${nome} adicionado ao carrinho!`);
     }
 
