@@ -1,181 +1,69 @@
-// app.js (CommonJS)
-const express = require('express');
-const path = require('path');
-const { Pool } = require('pg');
+import express from "express";
+import pkg from "pg";
+import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
+import dotenv from "dotenv";
 
-// ---------- Auth simples por token ----------
-function requireAdmin(req, res, next) {
-  const auth = req.headers.authorization || '';
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (token && process.env.ADMIN_TOKEN && token === process.env.ADMIN_TOKEN) {
-    return next();
-  }
-  return res.status(401).json({ error: 'unauthorized' });
-}
+dotenv.config();
+const { Pool } = pkg;
 
-// ---------- App e porta ----------
 const app = express();
-const PORT = process.env.PORT || 3000;
+app.use(express.json());
+app.use(cors());
 
-// ---------- Conexão Postgres (Neon) ----------
+// __dirname em ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Conexão Neon
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
 });
 
-// ---------- Middlewares ----------
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+// Estáticos
+app.use(express.static(path.join(__dirname, "public")));
 
-// ---------- Páginas ----------
-app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'index.html'));
-});
-
-app.get('/cardapio', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'cardapio.html'));
-});
-
-app.get('/carrinho', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'carrinho.html'));
-});
-
-app.get('/pedido-confirmado', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'pedido-confirmado.html'));
-});
-
-app.get('/cliente/admin.html', (_req, res) => {
-  // painel já existe; servido como estático
-  res.sendFile(path.join(__dirname, 'public', 'cliente', 'admin.html'));
-});
-
-// ---------- API: Cardápio ----------
-app.get('/api/menu', async (_req, res) => {
+// ===== API =====
+app.get("/api/produtos", async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT id, nome, preco, imagem, categoria_id
-       FROM produtos
-       WHERE is_active IS NULL OR is_active = TRUE
-       ORDER BY id`
-    );
+    const sql = "SELECT id, nome, preco, imagem, categoria_id FROM produtos ORDER BY id ASC";
+    const { rows } = await pool.query(sql);
     res.json(rows);
   } catch (err) {
-    console.error('Erro /api/menu:', err);
-    res.status(500).json({ error: 'erro_listar_menu' });
+    console.error("Erro ao buscar produtos:", err);
+    res.status(500).json({ error: "Erro ao buscar produtos" });
   }
 });
 
-// ---------- API: Criar Pedido ----------
-/*
-Body esperado:
-{
-  "cliente": { "nome": "...", "telefone": "...", "endereco": "..." },
-  "itens": [ { "produto_id": 1, "quantidade": 2 }, ... ],
-  "observacao": "sem cebola"
-}
-*/
-app.post('/api/pedido', async (req, res) => {
-  const { cliente, itens, observacao } = req.body || {};
-  if (!cliente || !cliente.nome || !cliente.telefone || !Array.isArray(itens) || itens.length === 0) {
-    return res.status(400).json({ error: 'dados_invalidos' });
-  }
-
-  // valida itens minimamente
-  for (const it of itens) {
-    if (!it.produto_id || !it.quantidade || it.quantidade < 1) {
-      return res.status(400).json({ error: 'itens_invalidos' });
-    }
-  }
-
-  const client = await pool.connect();
+app.post("/api/pedidos", async (req, res) => {
   try {
-    await client.query('BEGIN');
-
-    // cria (ou pega) cliente simples só para o pedido
-    const { rows: cRows } = await client.query(
-      `INSERT INTO clientes (nome, telefone, endereco)
-       VALUES ($1,$2,$3)
-       ON CONFLICT (telefone) DO UPDATE SET nome = EXCLUDED.nome, endereco = EXCLUDED.endereco
-       RETURNING id`,
-      [cliente.nome, cliente.telefone, cliente.endereco || null]
-    );
-    const clienteId = cRows[0].id;
-
-    // total usando preços atuais
-    const ids = itens.map(i => i.produto_id);
-    const { rows: produtos } = await client.query(
-      `SELECT id, preco FROM produtos WHERE id = ANY($1::int[])`,
-      [ids]
-    );
-    const mapaPreco = new Map(produtos.map(p => [p.id, Number(p.preco)]));
-
-    let subtotal = 0;
-    itens.forEach(i => {
-      const p = mapaPreco.get(i.produto_id) || 0;
-      subtotal += p * i.quantidade;
-    });
-
-    const { rows: pRows } = await client.query(
-      `INSERT INTO pedidos (cliente_id, observacao, subtotal)
-       VALUES ($1,$2,$3) RETURNING id`,
-      [clienteId, observacao || null, subtotal]
-    );
-    const pedidoId = pRows[0].id;
-
-    const values = [];
-    const params = [];
-    let idx = 1;
-    for (const i of itens) {
-      values.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++})`);
-      params.push(pedidoId, i.produto_id, i.quantidade, mapaPreco.get(i.produto_id) || 0);
-    }
-    await client.query(
-      `INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, preco_unitario)
-       VALUES ${values.join(',')}`,
-      params
-    );
-
-    await client.query('COMMIT');
-    res.json({ ok: true, pedido_id: pedidoId, total: subtotal });
+    const { cliente_nome, total } = req.body;
+    const sql = "INSERT INTO pedidos (cliente_nome, total) VALUES ($1, $2) RETURNING *";
+    const { rows } = await pool.query(sql, [cliente_nome, total]);
+    res.status(201).json(rows[0]);
   } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('Erro criar pedido:', err);
-    res.status(500).json({ error: 'erro_criar_pedido' });
-  } finally {
-    client.release();
+    console.error("Erro ao registrar pedido:", err);
+    res.status(500).json({ error: "Erro ao registrar pedido" });
   }
 });
 
-// ---------- API: Listar pedidos (admin) ----------
-app.get('/api/pedidos', requireAdmin, async (_req, res) => {
-  try {
-    const { rows } = await pool.query(
-      `SELECT p.id, p.created_at, p.subtotal, p.observacao,
-              c.nome AS cliente_nome, c.telefone, c.endereco,
-              COALESCE(
-                (
-                  SELECT json_agg(row_to_json(x))
-                  FROM (
-                    SELECT ip.produto_id, pr.nome, ip.quantidade, ip.preco_unitario
-                    FROM itens_pedido ip
-                    JOIN produtos pr ON pr.id = ip.produto_id
-                    WHERE ip.pedido_id = p.id
-                  ) x
-                ), '[]'::json
-              ) AS itens
-       FROM pedidos p
-       JOIN clientes c ON c.id = p.cliente_id
-       ORDER BY p.id DESC
-       LIMIT 50`
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error('Erro /api/pedidos:', err);
-    res.status(500).json({ error: 'erro_listar_pedidos' });
-  }
+// ===== Páginas (sempre apontando pra /public/cliente) =====
+const c = (...p) => path.join(__dirname, "public", "cliente", ...p);
+
+app.get("/",            (req, res) => res.sendFile(c("index.html")));
+app.get("/cardapio",    (req, res) => res.sendFile(c("cardapio.html")));
+app.get("/carrinho",    (req, res) => res.sendFile(c("carrinho.html")));
+app.get("/pedido-confirmado", (req, res) => res.sendFile(c("pedido-confirmado.html")));
+
+// Painel admin opcional em /public/admin/painel.html
+app.get("/admin", (req, res) => {
+  const adminPath = path.join(__dirname, "public", "admin", "painel.html");
+  res.sendFile(adminPath);
 });
 
-// ---------- Sobe servidor ----------
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor Pitombo Lanches rodando na porta ${PORT}`);
+  console.log(`🔥 Servidor Pitombo Lanches rodando na porta ${PORT}`);
 });
