@@ -1,58 +1,43 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cardápio - Pitombo Lanches</title>
-  <style>
-    body { font-family: Arial, Helvetica, sans-serif; margin: 20px; }
-    header { display:flex; justify-content: space-between; align-items:center; margin-bottom: 16px; }
-    .produtos { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap: 12px; }
-    .card {
-      border: 1px solid #e5e5e5; border-radius: 12px; padding: 12px; text-align: center;
-      box-shadow: 0 2px 6px rgba(0,0,0,.06);
-    }
-    .card h3 { margin: 6px 0 2px; font-size: 16px; }
-    .preco { color:#444; margin-bottom: 8px; }
-    button { padding: 8px 10px; border-radius: 10px; border: 1px solid #ddd; cursor: pointer; }
-    .top-btn { padding: 10px 14px; }
-  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cardápio • Pitombo Lanches</title>
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <header>
-    <h2>🍟 Cardápio Pitombo Lanches</h2>
-    <div>
-      <button class="top-btn" onclick="location.href='/'">Início</button>
-      <button class="top-btn" onclick="location.href='/carrinho'">Ver Carrinho</button>
-    </div>
-  </header>
+  <div class="container">
+    <h2>🍔 Cardápio Pitombo Lanches</h2>
 
-  <div class="produtos" id="produtos"></div>
+    <div id="menu" class="grid">
+      <div class="item">
+        <h3>X-Burger</h3>
+        <p>R$ 15,00</p>
+        <button onclick="addToCart('X-Burger', 15)" class="btn">Adicionar</button>
+      </div>
+      <div class="item">
+        <h3>X-Bacon</h3>
+        <p>R$ 18,00</p>
+        <button onclick="addToCart('X-Bacon', 18)" class="btn">Adicionar</button>
+      </div>
+      <div class="item">
+        <h3>Refrigerante</h3>
+        <p>R$ 6,00</p>
+        <button onclick="addToCart('Refrigerante', 6)" class="btn">Adicionar</button>
+      </div>
+    </div>
+
+    <button onclick="window.location.href='/carrinho'" class="btn secondary">Ver Carrinho 🛒</button>
+  </div>
 
   <script>
-    const produtosEl = document.getElementById("produtos");
-
-    async function carregarProdutos() {
-      const resp = await fetch("/data/menu.json");
-      const produtos = await resp.json();
-      produtosEl.innerHTML = produtos.map(p => `
-        <div class="card">
-          <h3>${p.nome}</h3>
-          <div class="preco">R$ ${Number(p.preco).toFixed(2)}</div>
-          <button onclick="addCarrinho('${p.nome}', ${Number(p.preco)})">Adicionar</button>
-        </div>
-      `).join("");
-    }
-
-    function addCarrinho(nome, preco) {
-      const key = "carrinho";
-      let cart = JSON.parse(localStorage.getItem(key)) || [];
-      cart.push({ nome, preco });
-      localStorage.setItem(key, JSON.stringify(cart));
+    function addToCart(nome, preco) {
+      let carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
+      carrinho.push({ nome, preco });
+      localStorage.setItem('carrinho', JSON.stringify(carrinho));
       alert(`${nome} adicionado ao carrinho!`);
     }
-
-    carregarProdutos();
   </script>
 </body>
 </html>
