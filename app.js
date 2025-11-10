@@ -1,120 +1,86 @@
-// app.js — Pitombo Lanches (com pedidos)
-
+// app.js — completo
 const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
 
-// --- Auth simples por token (Bearer) para rotas de admin ---
+// ====== ENV ======
+const PORT = process.env.PORT || 3000;
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
+const DATABASE_URL = process.env.DATABASE_URL;
+
+// ====== DB ======
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
+
+// ====== Auth simples (Bearer) ======
 function requireAdmin(req, res, next) {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (token && process.env.ADMIN_TOKEN && token === process.env.ADMIN_TOKEN) {
-    return next();
-  }
+  if (token && ADMIN_TOKEN && token === ADMIN_TOKEN) return next();
   return res.status(401).json({ error: 'unauthorized' });
 }
 
+// ====== Helpers de Config ======
+const DEFAULT_SETTINGS = {
+  app_name: 'Pitombo Lanches',
+  phone: '5599999999999', // DDI+DDD+número (apenas dígitos)
+  whatsapp_link: 'https://wa.me/5599999999999',
+};
+
+async function initSettings() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+  `);
+
+  // upsert defaults
+  for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
+    await pool.query(
+      `INSERT INTO app_settings(key, value)
+       VALUES ($1, $2)
+       ON CONFLICT (key) DO NOTHING`,
+      [key, value]
+    );
+  }
+}
+
+async function getSettings() {
+  const rows = (await pool.query('SELECT key, value FROM app_settings')).rows;
+  const map = { ...DEFAULT_SETTINGS };
+  rows.forEach(r => (map[r.key] = r.value));
+  return map;
+}
+
+async function setSettings(patch) {
+  const entries = Object.entries(patch);
+  for (const [key, value] of entries) {
+    await pool.query(
+      `INSERT INTO app_settings(key, value)
+       VALUES ($1, $2)
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      [key, String(value)]
+    );
+  }
+}
+
+// Normaliza telefone pra só dígitos e garante link do wa
+function normalizePhone(raw) {
+  const digits = (raw || '').replace(/\D+/g, '');
+  // Se começar sem DDI, assume Brasil 55
+  const withDDI = digits.startsWith('55') ? digits : `55${digits}`;
+  return withDDI;
+}
+
+// ====== App ======
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Conexão Postgres (Neon)
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
-// JSON no backend
 app.use(express.json());
-
-// Arquivos estáticos da pasta /public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --------- APIs ---------
-
-// Config simples (nome do app)
-app.get('/api/config', (_req, res) => {
-  res.json({
-    appName: 'Pitombo Lanches'
-  });
-});
-
-// Lista o cardápio a partir do BD (tabela: produtos)
-app.get('/api/menu', async (_req, res) => {
-  try {
-    const { rows } = await pool.query(
-      `SELECT id, nome, preco, imagem, categoria_id
-       FROM produtos
-       WHERE is_active IS DISTINCT FROM false
-       ORDER BY id ASC`
-    );
-    res.json(rows);
-  } catch (e) {
-    console.error('Erro /api/menu:', e);
-    res.status(500).json({ error: 'menu_error' });
-  }
-});
-
-// Cria pedido: body = { customer: {nome, telefone}, items: [{id, qty}], total }
-app.post('/api/orders', async (req, res) => {
-  const { customer = {}, items = [], total } = req.body || {};
-
-  if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: 'carrinho_vazio' });
-  }
-
-  if (!customer.nome || !customer.telefone) {
-    return res.status(400).json({ error: 'dados_cliente_invalidos' });
-  }
-
-  try {
-    // cria pedido
-    const insertOrder = `
-      INSERT INTO pedidos (cliente_nome, cliente_telefone, subtotal)
-      VALUES ($1, $2, $3)
-      RETURNING id
-    `;
-    const orderRes = await pool.query(insertOrder, [
-      customer.nome,
-      customer.telefone,
-      total || 0
-    ]);
-    const pedidoId = orderRes.rows[0].id;
-
-    // carrega preços atuais dos produtos pra gravar no item
-    const ids = items.map(i => i.id);
-    const { rows: prodRows } = await pool.query(
-      `SELECT id, nome, preco FROM produtos WHERE id = ANY($1)`,
-      [ids]
-    );
-    const mapProd = Object.fromEntries(
-      prodRows.map(p => [String(p.id), p])
-    );
-
-    // insere itens
-    const insertItem = `
-      INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, preco_unit)
-      VALUES ($1, $2, $3, $4)
-    `;
-    for (const i of items) {
-      const p = mapProd[String(i.id)];
-      if (!p) continue;
-      await pool.query(insertItem, [pedidoId, p.id, i.qty || 1, p.preco]);
-    }
-
-    res.json({ ok: true, pedidoId });
-  } catch (e) {
-    console.error('Erro /api/orders:', e);
-    res.status(500).json({ error: 'order_error' });
-  }
-});
-
-// (opcional) rota admin pra atualizar o menu no futuro
-app.put('/api/menu', requireAdmin, async (req, res) => {
-  // placeholder — vamos implementar depois (CRUD completo)
-  res.json({ ok: true, msg: 'endpoint reservado' });
-});
-
-// --------- Páginas ---------
+// ====== Rotas de páginas ======
 app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'cliente', 'index.html'));
 });
@@ -127,7 +93,70 @@ app.get('/carrinho', (_req, res) => {
 app.get('/pedido-confirmado', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'cliente', 'pedido-confirmado.html'));
 });
-
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor Pitombo Lanches rodando na porta ${PORT}`);
+app.get('/cliente/admin.html', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'cliente', 'admin.html'));
 });
+
+// ====== API: Config (nome do app + telefone) ======
+app.get('/api/config', async (_req, res) => {
+  try {
+    const cfg = await getSettings();
+    res.json({
+      appName: cfg.app_name,
+      phone: cfg.phone,
+      whatsapp: cfg.whatsapp_link,
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'config_read_failed' });
+  }
+});
+
+app.put('/api/config', requireAdmin, async (req, res) => {
+  try {
+    const { appName, phone } = req.body || {};
+    const patch = {};
+    if (appName) patch.app_name = String(appName).trim();
+
+    if (phone) {
+      const digits = normalizePhone(phone);
+      patch.phone = digits;
+      patch.whatsapp_link = `https://wa.me/${digits}`;
+    }
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({ error: 'nada_para_atualizar' });
+    }
+    await setSettings(patch);
+    const cfg = await getSettings();
+    res.json({
+      ok: true,
+      appName: cfg.app_name,
+      phone: cfg.phone,
+      whatsapp: cfg.whatsapp_link,
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'config_write_failed' });
+  }
+});
+
+// ====== API: Cardápio (lendo do banco) ======
+app.get('/api/menu', async (_req, res) => {
+  try {
+    // Ajusta os nomes da sua base se necessário
+    const { rows } = await pool.query(`
+      SELECT id, nome, preco, imagem, categoria_id
+      FROM produtos
+      ORDER BY id ASC
+    `);
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: 'menu_read_failed' });
+  }
+});
+
+// Start
+(async () => {
+  await initSettings();
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor Pitombo Lanches rodando na porta ${PORT}`);
+  });
+})();
