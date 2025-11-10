@@ -1,157 +1,41 @@
-<!DOCTYPE html>
+<!-- public/cliente/carrinho.html -->
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>Carrinho - Pitombo Lanches</title>
+  <meta charset="utf-8" />
+  <title>Carrinho • Pitombo Lanches</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, Arial; background:#f7f7f5; margin:0; }
-    header { background:#fff; border-bottom:1px solid #eee; padding:12px 16px; display:flex; gap:12px; align-items:center; justify-content:space-between; position:sticky; top:0; }
-    .brand { font-weight:700; }
-    .wrap { max-width:900px; margin:20px auto; padding:0 16px; }
-    table { width:100%; border-collapse: collapse; background:#fff; border:1px solid #eee; border-radius:12px; overflow:hidden; }
-    th, td { padding:12px; border-bottom:1px solid #f0f0f0; text-align:left; }
-    tfoot td { font-weight:700; }
-    .qty { width:56px; }
-    .btn { border:0; background:#111; color:#fff; padding:10px 12px; border-radius:8px; cursor:pointer; font-weight:700; }
-    .btn-outline { background:#fff; color:#111; border:1px solid #111; }
-    .row { display:flex; align-items:center; gap:10px; }
-    .muted { color:#666; }
-    .grid { display:grid; grid-template-columns: 1fr 340px; gap:16px; }
-    @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
-    .card { background:#fff; border:1px solid #eee; border-radius:12px; padding:12px; }
-    input, textarea { width:100%; padding:10px; border-radius:8px; border:1px solid #ddd; }
-    label { font-size:14px; font-weight:600; margin-bottom:6px; display:block; }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#f6f7f8;color:#222}
+    header{position:sticky;top:0;background:#fff;border-bottom:1px solid #eee;padding:12px 16px;display:flex;gap:12px;align-items:center}
+    header a{color:#222;text-decoration:none}
+    .wrap{max-width:900px;margin:18px auto;padding:0 16px}
+    h1{font-size:22px;margin:0 0 12px}
+    .btn{cursor:pointer;border:0;background:#111;color:#fff;padding:10px 14px;border-radius:10px}
+    .btn--ghost{background:#fff;color:#111;border:1px solid #ddd}
+    .cart-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:12px}
+    .tbl{width:100%;border-collapse:collapse;background:#fff;border:1px solid #eee;border-radius:12px;overflow:hidden}
+    .tbl th,.tbl td{padding:10px;border-bottom:1px solid #f0f0f0}
+    .tbl thead{background:#fafafa}
+    .tbl tfoot td{background:#fafafa}
+    .num{text-align:right}
+    .qty{display:flex;gap:8px;align-items:center;justify-content:center}
+    .icon{width:28px;height:28px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer}
+    .link{background:none;border:0;color:#d00;cursor:pointer}
   </style>
 </head>
 <body>
   <header>
-    <div class="brand" id="brand">Pitombo Lanches</div>
-    <a href="/cardapio" class="muted">← Voltar ao cardápio</a>
+    <a href="/cardapio">← Cardápio</a>
+    <div class="grow"></div>
+    <a href="/carrinho" data-mini-cart>Carrinho</a>
   </header>
 
   <div class="wrap">
     <h1>Seu Carrinho</h1>
-
-    <div class="grid">
-      <div>
-        <table id="tab">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Preço</th>
-              <th>Qtd</th>
-              <th>Subtotal</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-          <tfoot>
-            <tr>
-              <td colspan="3">Total</td>
-              <td id="total">R$ 0,00</td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-      <div class="card">
-        <h3>Dados para entrega</h3>
-        <div style="display:grid; gap:10px">
-          <div>
-            <label>Nome</label>
-            <input id="nome" placeholder="Seu nome" />
-          </div>
-          <div>
-            <label>Telefone</label>
-            <input id="tel" placeholder="(xx) xxxxx-xxxx" />
-          </div>
-          <button class="btn" id="btn-finalizar">Finalizar Pedido</button>
-          <button class="btn btn-outline" id="btn-limpar">Esvaziar Carrinho</button>
-        </div>
-      </div>
-    </div>
+    <div id="cart-wrap">Carregando…</div>
   </div>
 
   <script src="/cliente/cliente.js"></script>
-  <script>
-    function render() {
-      const tb = document.querySelector('#tab tbody');
-      const totalEl = document.getElementById('total');
-      const cart = APP.readCart();
-
-      tb.innerHTML = '';
-      let total = 0;
-
-      if (!cart.length) {
-        tb.innerHTML = '<tr><td colspan="5" class="muted">Seu carrinho está vazio.</td></tr>';
-        totalEl.textContent = APP.formatPrice(0);
-        return;
-      }
-
-      for (const item of cart) {
-        const tr = document.createElement('tr');
-        const sub = item.preco * item.qty;
-        total += sub;
-        tr.innerHTML = `
-          <td>${item.nome}</td>
-          <td>${APP.formatPrice(item.preco)}</td>
-          <td>
-            <input class="qty" type="number" min="1" value="${item.qty}">
-          </td>
-          <td>${APP.formatPrice(sub)}</td>
-          <td><button class="btn btn-outline">Remover</button></td>
-        `;
-        tr.querySelector('.qty').onchange = (e) => {
-          APP.updateQty(item.id, Number(e.target.value || 1));
-          render();
-        };
-        tr.querySelector('.btn-outline').onclick = () => {
-          APP.removeFromCart(item.id);
-          render();
-        };
-        tb.appendChild(tr);
-      }
-      totalEl.textContent = APP.formatPrice(total);
-    }
-
-    async function init() {
-      try {
-        const cfg = await APP.getConfig();
-        if (cfg?.appName) document.getElementById('brand').textContent = cfg.appName;
-      } catch {}
-      render();
-      APP.updateCartBadge();
-
-      document.getElementById('btn-limpar').onclick = () => {
-        APP.saveCart([]);
-        render();
-      };
-
-      document.getElementById('btn-finalizar').onclick = async () => {
-        const nome = document.getElementById('nome').value.trim();
-        const tel  = document.getElementById('tel').value.trim();
-        const items = APP.readCart().map(i => ({ id: i.id, qty: i.qty }));
-        if (!nome || !tel) return alert('Informe seu nome e telefone.');
-        if (!items.length) return alert('Carrinho vazio.');
-
-        const total = APP.cartTotal();
-        const resp = await fetch('/api/orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customer: { nome, telefone: tel }, items, total })
-        });
-        const data = await resp.json();
-        if (data?.ok) {
-          APP.saveCart([]);
-          window.location.href = '/pedido-confirmado';
-        } else {
-          alert('Falha ao finalizar. Tenta novamente.');
-        }
-      };
-    }
-    init();
-  </script>
 </body>
 </html>
