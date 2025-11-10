@@ -1,13 +1,13 @@
 {
   "name": "pitombo-lanches-app",
   "version": "1.0.0",
-  "description": "Aplicativo de delivery Pitombo Lanches",
-  "main": "app.js",
+  "private": true,
   "type": "module",
+  "engines": { "node": ">=20" },
   "scripts": {
     "start": "node app.js"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.19.2"
   }
 }
