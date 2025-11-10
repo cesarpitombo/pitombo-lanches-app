@@ -1,74 +1,72 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cardápio</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cardápio - Pitombo Lanches</title>
   <style>
-    body { font-family: system-ui, Arial; margin: 24px; }
-    h1 { margin-bottom: 8px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
-    .item { border: 1px solid #e5e5e5; border-radius: 12px; padding: 12px; }
-    .img { width: 100%; height: 140px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
-    .name { font-weight: 700; margin: 8px 0 4px; }
-    .price { color: #444; margin-bottom: 8px; }
-    button { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #111; background: #111; color: #fff; cursor: pointer; }
-    .toolbar { display:flex; justify-content: space-between; align-items:center; margin-bottom: 12px; }
-    a { color:#0a58ca; text-decoration:none; }
+    body { font-family: Arial; background:#fafafa; margin:0; padding:20px; text-align:center; }
+    h1 { color:#b22222; }
+    .menu { display:flex; flex-wrap:wrap; justify-content:center; gap:20px; margin-top:20px; }
+    .item { background:#fff; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,.1); padding:15px; width:220px; }
+    .item img { width:100%; border-radius:8px; }
+    .item h3 { margin:10px 0 5px; }
+    .item p { margin:0; color:#555; }
+    .item button { margin-top:10px; background:#b22222; color:#fff; border:none; border-radius:6px; padding:8px 12px; cursor:pointer; }
+    .item button:hover { background:#9e1e1e; }
+    .top { margin-bottom: 10px; }
+    .top a { display:inline-block; margin:0 6px; padding:8px 12px; background:#444; color:#fff; text-decoration:none; border-radius:6px; }
+    .top a:hover { background:#222; }
   </style>
 </head>
 <body>
-  <div class="toolbar">
-    <h1>Cardápio</h1>
-    <a href="/carrinho">Ver carrinho</a>
+  <div class="top">
+    <a href="/cliente/index.html">Início</a>
+    <a href="/cliente/carrinho.html">Carrinho 🛒</a>
   </div>
-  <div id="grid" class="grid"></div>
+  <h1>🍔 Cardápio</h1>
+  <div class="menu" id="menu"></div>
 
   <script>
-    const centsToMoney = c => 'R$ ' + (c/100).toFixed(2).replace('.', ',');
+    const storageKey = 'carrinho';
 
-    function addToCart(item){
-      const cart = JSON.parse(localStorage.getItem('pitombo_cart') || '[]');
-      const exists = cart.find(i => i.id === item.id);
-      if (exists) { exists.qtd += 1; }
-      else { cart.push({ id:item.id, name:item.name, price_cents:item.price_cents, image_url:item.image_url, qtd:1 }); }
-      localStorage.setItem('pitombo_cart', JSON.stringify(cart));
-      alert('Adicionado ao carrinho!');
+    function getCarrinho() {
+      try { return JSON.parse(localStorage.getItem(storageKey)) || []; }
+      catch { return []; }
     }
+    function setCarrinho(c) { localStorage.setItem(storageKey, JSON.stringify(c)); }
 
-    function render(items){
-      const grid = document.getElementById('grid');
-      grid.innerHTML = '';
-      if(!items.length){
-        grid.innerHTML = '<p>Sem itens no cardápio ainda.</p>';
-        return;
-      }
-      items.forEach(it => {
-        const div = document.createElement('div');
-        div.className = 'item';
-        div.innerHTML = `
-          <img class="img" src="${it.image_url || ''}" alt="">
-          <div class="name">${it.name}</div>
-          <div class="price">${centsToMoney(it.price_cents || 0)}</div>
-          <button>Adicionar</button>
-        `;
-        div.querySelector('button').onclick = () => addToCart(it);
-        grid.appendChild(div);
-      });
-    }
-
-    async function load(){
+    async function carregarCardapio() {
       try {
-        const r = await fetch('/api/menu');
-        const data = await r.json();
-        render(data);
-      } catch(e){
+        const resp = await fetch('/cardapio');
+        const produtos = await resp.json();
+        const el = document.getElementById('menu');
+        el.innerHTML = '';
+        produtos.forEach(p => {
+          const div = document.createElement('div');
+          div.className = 'item';
+          div.innerHTML = `
+            <img src="${p.imagem}" alt="${p.nome}" onerror="this.style.display='none'">
+            <h3>${p.nome}</h3>
+            <p>R$ ${Number(p.preco).toFixed(2).replace('.', ',')}</p>
+            <button>Adicionar</button>
+          `;
+          div.querySelector('button').onclick = () => {
+            const carrinho = getCarrinho();
+            const existente = carrinho.find(i => i.id === p.id);
+            if (existente) existente.quantidade += 1;
+            else carrinho.push({ id: p.id, nome: p.nome, preco: Number(p.preco), quantidade: 1 });
+            setCarrinho(carrinho);
+            alert(`${p.nome} adicionado!`);
+          };
+          el.appendChild(div);
+        });
+      } catch (e) {
+        document.getElementById('menu').innerHTML = '<p>Erro ao carregar o cardápio.</p>';
         console.error(e);
-        render([]);
       }
     }
-
-    load();
+    carregarCardapio();
   </script>
 </body>
 </html>
