@@ -1,41 +1,23 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <title>Cardápio - Pitombo Lanches</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8" />
+  <title>Cardápio • Pitombo Lanches</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 24px; background:#fafafa; }
-    h1 { text-align:center; }
-    .grid { 
-      display: grid; 
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 16px; 
-      margin-top: 24px;
-    }
-    .card {
-      background:#fff; border:1px solid #eee; border-radius:12px; overflow:hidden;
-      display:flex; flex-direction:column;
-      box-shadow: 0 2px 6px rgba(0,0,0,.04);
-    }
-    .card-img { height: 140px; background:#f3f3f3; display:flex; align-items:center; justify-content:center; }
-    .card-img img { max-height: 100%; max-width: 100%; }
-    .card-body { padding: 12px; display:flex; flex-direction:column; gap:8px; }
-    .card-title { font-weight:600; }
-    .card-price { color:#0a0a0a; }
-    .card button { padding: 8px 12px; border-radius:8px; border:1px solid #111; background:#111; color:#fff; cursor:pointer; }
-    .topbar { display:flex; justify-content:space-between; align-items:center; }
-    .topbar a { text-decoration:none; }
+    body { font-family: system-ui, Arial; background:#f6f6f6; margin:0; padding:24px; }
+    h1 { text-align:center; margin-bottom: 16px; }
+    ul.grid { list-style:none; display:grid; gap:16px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); padding:0;}
+    .card { background:#fff; border:1px solid #e8e8e8; border-radius:12px; padding:12px; display:flex; flex-direction:column; align-items:center; }
+    .card img { width:96px; height:96px; object-fit:cover; border-radius:10px; }
+    .card h3 { margin:10px 0 6px; font-size:16px; text-align:center; }
+    .preco { font-weight:700; margin-bottom:10px; }
+    .card button { cursor:pointer; padding:8px 12px; border-radius:8px; border:1px solid #222; background:#222; color:#fff; }
   </style>
 </head>
-<body onload="Pitombo.loadMenuAndRender()">
-  <div class="topbar">
-    <a href="/">← Voltar</a>
-    <h1>🍔 Cardápio Pitombo Lanches</h1>
-    <a href="/carrinho">🛒 Carrinho</a>
-  </div>
-
-  <div id="menu-grid" class="grid">Carregando…</div>
+<body>
+  <h1>🍔 Cardápio Pitombo Lanches</h1>
+  <ul id="lista-produtos" class="grid"></ul>
 
   <script src="/cliente/cliente.js"></script>
 </body>
