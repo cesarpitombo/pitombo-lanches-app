@@ -1,6 +1,6 @@
 [
-  { "nome": "X-Burger", "preco": 15.00 },
-  { "nome": "X-Bacon", "preco": 18.00 },
-  { "nome": "Refrigerante", "preco": 6.00 },
-  { "nome": "Suco Natural", "preco": 7.00 }
+  { "nome": "X-Burger", "preco": 15.0 },
+  { "nome": "X-Bacon",  "preco": 18.0 },
+  { "nome": "Refrigerante", "preco": 6.0 },
+  { "nome": "Suco Natural", "preco": 7.0 }
 ]
