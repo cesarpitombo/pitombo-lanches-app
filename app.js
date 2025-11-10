@@ -1,64 +1,54 @@
 import express from "express";
 import path from "path";
-import fs from "fs";
+import { readFile } from "fs/promises";
 import { fileURLToPath } from "url";
-
-const app = express();
-const PORT = process.env.PORT || 10000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Middleware para JSON e arquivos estáticos
+const app = express();
+const PORT = process.env.PORT || 10000;
+
 app.use(express.json());
+
+// arquivos estáticos
 app.use(express.static(path.join(__dirname, "public")));
 
-// Caminho do menu.json
-const menuPath = path.join(__dirname, "data", "menu.json");
-
-// Página inicial
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "cliente", "index.html"));
-});
-
-// Rota para o cardápio
-app.get("/cardapio", (req, res) => {
+// =================== API ===================
+app.get("/api/menu", async (_req, res) => {
   try {
-    const data = fs.readFileSync(menuPath);
-    const menu = JSON.parse(data);
-    res.json(menu);
+    const file = path.join(__dirname, "data", "menu.json");
+    const raw = await readFile(file, "utf8");
+    const data = JSON.parse(raw);
+    res.json(data);
   } catch (err) {
-    res.status(500).send("Erro ao carregar cardápio");
+    console.error("Erro lendo menu.json:", err);
+    res.status(500).json({ error: "Falha ao carregar cardápio" });
   }
 });
 
-// Adicionar item (admin)
-app.post("/admin/adicionar", (req, res) => {
-  try {
-    const novoItem = req.body;
-    const data = fs.readFileSync(menuPath);
-    const menu = JSON.parse(data);
+// =================== PÁGINAS ===================
+app.get("/", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "cliente", "index.html"))
+);
 
-    menu.push(novoItem);
-    fs.writeFileSync(menuPath, JSON.stringify(menu, null, 2));
+app.get("/cardapio", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "cliente", "cardapio.html"))
+);
 
-    res.send("Item adicionado com sucesso!");
-  } catch (err) {
-    res.status(500).send("Erro ao adicionar item");
-  }
-});
+app.get("/carrinho", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "cliente", "carrinho.html"))
+);
 
-// Página de carrinho
-app.get("/carrinho", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "cliente", "carrinho.html"));
-});
+app.get("/pedido-confirmado", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "cliente", "pedido-confirmado.html"))
+);
 
-// Página de confirmação
-app.get("/pedido-confirmado", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "cliente", "pedido-confirmado.html"));
-});
+// (opcional) admin
+app.get("/admin", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "admin", "index.html"))
+);
 
-// Inicializar servidor
 app.listen(PORT, () => {
-  console.log(`Servidor Pitombo Lanches rodando na porta ${PORT}`);
+  console.log(`🚀 Servidor Pitombo Lanches rodando na porta ${PORT}`);
 });
