@@ -1,77 +1,60 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Carrinho - Pitombo Lanches</title>
-  <style>
-    body { font-family: Arial, Helvetica, sans-serif; margin: 20px; }
-    .linha { display:flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #e5e5e5; }
-    .total { font-weight: bold; margin-top: 12px; }
-    button { padding: 10px 14px; border-radius: 10px; border: 1px solid #ddd; cursor: pointer; margin-right: 8px; }
-  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Carrinho • Pitombo Lanches</title>
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <h2>🛍️ Seu Carrinho</h2>
-  <div id="lista"></div>
-  <p class="total" id="total"></p>
+  <div class="container">
+    <h2>🛍️ Seu Carrinho</h2>
+    <ul id="itens" class="list"></ul>
+    <h3 id="total"></h3>
 
-  <div style="margin-top:12px;">
-    <button onclick="location.href='/cardapio'">Adicionar mais</button>
-    <button onclick="limpar()">Limpar</button>
-    <button onclick="finalizar()">Finalizar Pedido</button>
+    <div class="buttons">
+      <button onclick="finalizar()" class="btn">Finalizar Pedido ✅</button>
+      <button onclick="window.location.href='/cardapio'" class="btn secondary">Voltar</button>
+    </div>
   </div>
 
   <script>
-    const KEY = "carrinho";
-    const phone = "+351934869755";
+    const phone = '351934869755'; // teu número com DDI
 
-    function getCart(){ return JSON.parse(localStorage.getItem(KEY)) || []; }
-    function setCart(c){ localStorage.setItem(KEY, JSON.stringify(c)); }
+    function carregarCarrinho() {
+      const carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
+      const lista = document.getElementById('itens');
+      let total = 0;
+      lista.innerHTML = '';
 
-    function render(){
-      const cart = getCart();
-      const lista = document.getElementById("lista");
-      const totalEl = document.getElementById("total");
+      carrinho.forEach((item) => {
+        total += item.preco;
+        const li = document.createElement('li');
+        li.textContent = `${item.nome} - R$ ${item.preco.toFixed(2)}`;
+        lista.appendChild(li);
+      });
 
-      if(cart.length === 0){
-        lista.innerHTML = "<p>Carrinho vazio.</p>";
-        totalEl.textContent = "";
+      document.getElementById('total').textContent = `Total: R$ ${total.toFixed(2)}`;
+    }
+
+    function finalizar() {
+      const carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
+      if (carrinho.length === 0) {
+        alert('Adicione itens antes de finalizar!');
         return;
       }
 
-      lista.innerHTML = cart.map((i,idx)=>`
-        <div class="linha">
-          <span>${i.nome}</span>
-          <span>R$ ${Number(i.preco).toFixed(2)}</span>
-        </div>
-      `).join("");
+      const mensagem = encodeURIComponent(
+        'Olá! Quero fazer um pedido:\n' +
+        carrinho.map(i => `${i.nome} - R$ ${i.preco}`).join('\n')
+      );
 
-      const total = cart.reduce((s,i)=> s + Number(i.preco), 0);
-      totalEl.textContent = "Total: R$ " + total.toFixed(2);
+      window.open(`https://wa.me/${phone}?text=${mensagem}`, '_blank');
+      localStorage.removeItem('carrinho');
+      window.location.href = '/pedido-confirmado';
     }
 
-    function limpar(){
-      if(confirm("Limpar carrinho?")){
-        localStorage.removeItem(KEY);
-        render();
-      }
-    }
-
-    function finalizar(){
-      const cart = getCart();
-      if(cart.length === 0){ alert("Adicione itens antes de finalizar."); return; }
-
-      const linhas = cart.map(i => `${i.nome} - R$ ${Number(i.preco).toFixed(2)}`);
-      const msg = encodeURIComponent("Olá! Quero fazer um pedido:\n\n" + linhas.join("\n"));
-      const url = `https://wa.me/${phone}?text=${msg}`;
-
-      window.open(url, "_blank");             // abre WhatsApp
-      localStorage.removeItem(KEY);            // limpa carrinho
-      window.location.href = "/pedido-confirmado";
-    }
-
-    render();
+    carregarCarrinho();
   </script>
 </body>
 </html>
