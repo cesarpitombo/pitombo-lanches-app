@@ -1,103 +1,92 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Carrinho • Pitombo Lanches</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 0; background:#fafafa; color:#222; }
-    header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; background:#fff; border-bottom:1px solid #eee; position:sticky; top:0; }
-    .title { font-size:20px; font-weight:700; }
-    .actions a { margin-left:8px; text-decoration:none; padding:10px 14px; background:#111; color:#fff; border-radius:10px; font-weight:600; }
-    .wrap { max-width: 920px; margin: 18px auto; padding: 0 16px; }
-    table { width:100%; border-collapse: collapse; background:#fff; border:1px solid #eee; border-radius:12px; overflow:hidden; }
-    th, td { padding:12px; border-bottom:1px solid #f0f0f0; text-align:left; }
-    tfoot td { font-weight:700; }
-    .qty { display:inline-flex; gap:8px; align-items:center; }
-    .btn { cursor:pointer; border:0; padding:8px 10px; border-radius:10px; background:#0a7; color:#fff; font-weight:700; }
-    .btn.gray { background:#ddd; color:#111; }
-    .mt { margin-top:14px; }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;margin:0;padding:24px;background:#fff}
+    header{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:16px}
+    a.btn, button.btn{padding:10px 14px;border:1px solid #111;border-radius:10px;text-decoration:none;background:#fff;font-weight:600;cursor:pointer}
+    h1{font-size:22px;margin:0}
+    table{width:100%;border-collapse:collapse;margin:10px 0 16px}
+    th,td{border:1px solid #eee;padding:10px;text-align:left}
+    tfoot td{font-weight:700}
+    .qty{display:flex;gap:8px;align-items:center}
+    .qty button{padding:6px 10px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
   </style>
 </head>
 <body>
   <header>
-    <div class="title">🛒 Carrinho</div>
-    <div class="actions">
-      <a href="/cardapio">Cardápio</a>
-      <a href="/">Início</a>
-    </div>
+    <h1>🛒 Carrinho</h1>
+    <nav>
+      <a class="btn" href="/cardapio">Voltar ao Cardápio</a>
+      <a class="btn" href="/">Início</a>
+    </nav>
   </header>
 
-  <div class="wrap">
-    <table id="tb">
-      <thead>
-        <tr><th>Item</th><th>Preço</th><th>Qtd</th><th>Subtotal</th><th></th></tr>
-      </thead>
-      <tbody></tbody>
-      <tfoot>
-        <tr><td colspan="3">Total</td><td id="total">R$ 0,00</td><td></td></tr>
-      </tfoot>
-    </table>
+  <table id="cartTable">
+    <thead>
+      <tr><th>Item</th><th>Preço</th><th>Qtd</th><th>Subtotal</th><th>Ações</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+    <tfoot>
+      <tr><td colspan="3">Total</td><td id="total"></td><td></td></tr>
+    </tfoot>
+  </table>
 
-    <div class="mt" style="display:flex; gap:8px; flex-wrap:wrap;">
-      <button class="btn gray" onclick="limpar()">Limpar carrinho</button>
-      <button class="btn" onclick="finalizar()">Finalizar pelo WhatsApp</button>
-    </div>
+  <div class="actions">
+    <button class="btn" onclick="limpar()">Limpar carrinho</button>
+    <button class="btn" onclick="finalizar()">Finalizar pedido no WhatsApp</button>
   </div>
 
   <script>
     const CART_KEY = 'pitombo_cart';
-    const getCart = () => JSON.parse(localStorage.getItem(CART_KEY) || '[]');
-    const setCart = (c) => localStorage.setItem(CART_KEY, JSON.stringify(c));
-    const money = (v) => Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    const WHATSAPP_PHONE = '351934869755'; // DDI+DDD+numero (SEM +)
+    function money(v){ return `R$ ${Number(v).toFixed(2).replace('.',',')}`; }
+
+    function getCart(){ try{ return JSON.parse(localStorage.getItem(CART_KEY)||'[]'); }catch(_){ return []; } }
+    function setCart(list){ localStorage.setItem(CART_KEY, JSON.stringify(list)); }
 
     function render(){
-      const tb = document.querySelector('#tb tbody');
-      const totalEl = document.querySelector('#total');
       const cart = getCart();
-      tb.innerHTML = '';
-
-      let total = 0;
+      const tbody = document.getElementById('rows');
       if(cart.length === 0){
-        tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#777">Seu carrinho está vazio.</td></tr>';
-      } else {
-        cart.forEach((i,idx)=>{
-          const sub = Number(i.preco)*Number(i.qtd);
-          total += sub;
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
+        tbody.innerHTML = `<tr><td colspan="5">Seu carrinho está vazio.</td></tr>`;
+        document.getElementById('total').textContent = money(0);
+        return;
+      }
+      let total = 0;
+      const html = cart.map((i, idx) => {
+        const sub = Number(i.preco) * Number(i.qtd);
+        total += sub;
+        return `
+          <tr>
             <td>${i.nome}</td>
             <td>${money(i.preco)}</td>
-            <td>
-              <div class="qty">
-                <button class="btn gray" onclick="add(${idx},-1)">-</button>
-                <strong>${i.qtd}</strong>
-                <button class="btn gray" onclick="add(${idx},1)">+</button>
-              </div>
+            <td class="qty">
+              <button onclick="dec(${idx})">-</button>
+              ${i.qtd}
+              <button onclick="inc(${idx})">+</button>
             </td>
             <td>${money(sub)}</td>
-            <td><button class="btn gray" onclick="rem(${idx})">Remover</button></td>
-          `;
-          tb.appendChild(tr);
-        });
-      }
-      totalEl.textContent = money(total);
+            <td><button onclick="rem(${idx})">Remover</button></td>
+          </tr>
+        `;
+      }).join('');
+      tbody.innerHTML = html;
+      document.getElementById('total').textContent = money(total);
     }
 
-    function add(idx, delta){
-      const cart = getCart();
-      cart[idx].qtd += delta;
-      if (cart[idx].qtd <= 0) cart.splice(idx,1);
-      setCart(cart);
-      render();
+    function inc(idx){ const c=getCart(); c[idx].qtd++; setCart(c); render(); }
+    function dec(idx){
+      const c = getCart();
+      c[idx].qtd--;
+      if(c[idx].qtd <= 0) c.splice(idx,1);
+      setCart(c); render();
     }
-
-    function rem(idx){
-      const cart = getCart();
-      cart.splice(idx,1);
-      setCart(cart);
-      render();
-    }
+    function rem(idx){ const c=getCart(); c.splice(idx,1); setCart(c); render(); }
 
     function limpar(){
       if(confirm('Limpar carrinho?')){
@@ -108,26 +97,18 @@
 
     function finalizar(){
       const cart = getCart();
-      if(cart.length === 0){
-        alert('Adicione itens antes de finalizar.');
-        return;
-      }
+      if(cart.length === 0){ alert('Adicione itens antes de finalizar.'); return; }
 
-      // monta mensagem
-      const linhas = cart.map(i => `• ${i.qtd}x ${i.nome} — ${money(i.preco)} = ${money(i.preco*i.qtd)}`);
-      const total = cart.reduce((s,i)=>s + (Number(i.preco)*Number(i.qtd)),0);
-      linhas.push(`\nTotal: ${money(total)}`);
+      const linhas = cart.map(i => `• ${i.qtd}x ${i.nome} – ${money(i.preco)} = ${money(i.preco*i.qtd)}`);
+      const total = cart.reduce((s,i)=>s+(Number(i.preco)*Number(i.qtd)),0);
 
-      const msg = encodeURIComponent(`Olá! Quero fazer um pedido:\n\n${linhas.join('\n')}\n\nNome: `);
-const phone = '351934869755'; // número com DDI e DDD, sem sinais
-const url = `https://wa.me/${phone}?text=${msg}`;
+      const msg = encodeURIComponent(
+        `Olá! Quero fazer um pedido:\n\n${linhas.join('\n')}\n\nTotal: ${money(total)}\n\nNome: `
+      );
 
-window.open(url, '_blank'); // abre o WhatsApp
-window.location.href = '/pedido-confirmado';
-
-
-      window.open(url, '_blank'); // abre WhatsApp
-      window.location.href = '/pedido-confirmado';
+      const url = `https://wa.me/${WHATSAPP_PHONE}?text=${msg}`;
+      window.open(url, '_blank');          // abre WhatsApp
+      window.location.href = '/pedido-confirmado'; // redireciona confirmação
     }
 
     render();
