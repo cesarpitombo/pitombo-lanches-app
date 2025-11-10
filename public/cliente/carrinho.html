@@ -119,9 +119,12 @@
       linhas.push(`\nTotal: ${money(total)}`);
 
       const msg = encodeURIComponent(`Olá! Quero fazer um pedido:\n\n${linhas.join('\n')}\n\nNome: `);
-      // coloque seu número com DDI+DDD (ex.: 55 71 9xxxx-xxxx) SEM espaços/sinais
-      const phone = '5571999999999'; // <- troque aqui
-      const url = `https://wa.me/${phone}?text=${msg}`;
+const phone = '351934869755'; // número com DDI e DDD, sem sinais
+const url = `https://wa.me/${phone}?text=${msg}`;
+
+window.open(url, '_blank'); // abre o WhatsApp
+window.location.href = '/pedido-confirmado';
+
 
       window.open(url, '_blank'); // abre WhatsApp
       window.location.href = '/pedido-confirmado';
