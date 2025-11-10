@@ -1,156 +1,143 @@
-<!-- public/cliente/cliente.js -->
-<script>
-// Utils localStorage do carrinho
-const CART_KEY = 'pitombo_cart_v1';
+// Utilitários
+const BRL = v => (Number(v).toFixed(2)).replace('.', ',');
 
-function getCart() {
-  try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); }
-  catch { return []; }
-}
-function saveCart(cart) {
-  localStorage.setItem(CART_KEY, JSON.stringify(cart));
-}
-function addToCart(produto) {
-  const cart = getCart();
-  const idx = cart.findIndex(i => i.id === produto.id);
-  if (idx >= 0) {
-    cart[idx].quantidade += 1;
-  } else {
-    cart.push({ id: produto.id, nome: produto.nome, preco: Number(produto.preco), imagem: produto.imagem, quantidade: 1 });
-  }
-  saveCart(cart);
-  alert(`Adicionado: ${produto.nome}`);
+async function fetchProdutos() {
+  const res = await fetch('/api/produtos', { cache: 'no-store' });
+  if (!res.ok) throw new Error('Falha ao carregar produtos');
+  return res.json();
 }
 
-// Render do cardápio na página cardapio.html
-async function loadMenuAndRender() {
-  const place = document.getElementById('menu-grid');
-  if (!place) return;
+// ====== Cardápio ======
+async function montarCardapio() {
+  const lista = document.getElementById('lista-produtos');
+  if (!lista) return;
 
-  place.innerHTML = 'Carregando...';
+  lista.innerHTML = 'Carregando...';
+
   try {
-    const res = await fetch('/api/menu', { cache: 'no-store' });
-    const data = await res.json();
-
-    if (!Array.isArray(data)) {
-      place.innerHTML = 'Erro ao carregar menu.';
+    const produtos = await fetchProdutos();
+    if (!Array.isArray(produtos) || produtos.length === 0) {
+      lista.innerHTML = '<p>Nenhum item disponível.</p>';
       return;
     }
 
-    place.innerHTML = '';
-    data.forEach(prod => {
-      const card = document.createElement('div');
-      card.className = 'card';
+    lista.innerHTML = '';
+    produtos.forEach(p => {
+      const li = document.createElement('li');
+      li.className = 'card';
 
-      card.innerHTML = `
-        <div class="card-img">
-          <img src="${prod.imagem || '/cliente/img/placeholder.png'}" alt="${prod.nome}">
-        </div>
-        <div class="card-body">
-          <div class="card-title">${prod.nome}</div>
-          <div class="card-price">R$ ${Number(prod.preco).toFixed(2)}</div>
-          <button class="btn-add">Adicionar</button>
-        </div>
-      `;
-      card.querySelector('.btn-add').onclick = () => addToCart(prod);
-      place.appendChild(card);
+      const img = document.createElement('img');
+      img.alt = p.nome;
+      img.loading = 'lazy';
+      img.src = p.imagem || '/cliente/img/placeholder.png';
+
+      const title = document.createElement('h3');
+      title.textContent = p.nome;
+
+      const price = document.createElement('div');
+      price.className = 'preco';
+      price.textContent = `R$ ${BRL(p.preco)}`;
+
+      const btn = document.createElement('button');
+      btn.textContent = 'Adicionar';
+      btn.onclick = () => addToCart(p);
+
+      li.appendChild(img);
+      li.appendChild(title);
+      li.appendChild(price);
+      li.appendChild(btn);
+      lista.appendChild(li);
     });
   } catch (e) {
     console.error(e);
-    place.innerHTML = 'Erro ao carregar menu.';
+    lista.innerHTML = '<p>Erro ao carregar cardápio.</p>';
   }
 }
 
-// Render do carrinho na página carrinho.html
-function renderCartPage() {
+// ====== Carrinho (localStorage) ======
+const KEY = 'pitombo_cart';
+
+function getCart() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || []; }
+  catch { return []; }
+}
+function saveCart(c) { localStorage.setItem(KEY, JSON.stringify(c)); }
+
+function addToCart(prod) {
+  const cart = getCart();
+  const idx = cart.findIndex(i => i.id === prod.id);
+  if (idx >= 0) cart[idx].qtd += 1;
+  else cart.push({ id: prod.id, nome: prod.nome, preco: Number(prod.preco), qtd: 1 });
+  saveCart(cart);
+  alert('Adicionado ao carrinho!');
+}
+
+function montarCarrinho() {
   const tbody = document.getElementById('cart-body');
+  const totalEl = document.getElementById('cart-total');
   if (!tbody) return;
 
   const cart = getCart();
   tbody.innerHTML = '';
-
   let total = 0;
-  cart.forEach((item, idx) => {
-    const linha = document.createElement('tr');
-    const sub = Number(item.preco) * item.quantidade;
+
+  cart.forEach((item, i) => {
+    const tr = document.createElement('tr');
+
+    const tdNome = document.createElement('td');
+    tdNome.textContent = item.nome;
+
+    const tdQtd = document.createElement('td');
+    const menos = document.createElement('button');
+    menos.textContent = '−';
+    menos.onclick = () => { item.qtd = Math.max(1, item.qtd - 1); cart[i] = item; saveCart(cart); montarCarrinho(); };
+
+    const qtd = document.createElement('span');
+    qtd.textContent = ' ' + item.qtd + ' ';
+
+    const mais = document.createElement('button');
+    mais.textContent = '+';
+    mais.onclick = () => { item.qtd += 1; cart[i] = item; saveCart(cart); montarCarrinho(); };
+
+    tdQtd.append(menos, qtd, mais);
+
+    const tdPreco = document.createElement('td');
+    const sub = item.preco * item.qtd;
+    tdPreco.textContent = `R$ ${BRL(sub)}`;
     total += sub;
-    linha.innerHTML = `
-      <td>${item.nome}</td>
-      <td>R$ ${Number(item.preco).toFixed(2)}</td>
-      <td>
-        <button data-i="${idx}" class="menos">-</button>
-        <span class="qty">${item.quantidade}</span>
-        <button data-i="${idx}" class="mais">+</button>
-      </td>
-      <td>R$ ${sub.toFixed(2)}</td>
-      <td><button data-i="${idx}" class="remover">remover</button></td>
-    `;
-    tbody.appendChild(linha);
+
+    const tdRem = document.createElement('td');
+    const rm = document.createElement('button');
+    rm.textContent = 'Remover';
+    rm.onclick = () => { cart.splice(i, 1); saveCart(cart); montarCarrinho(); };
+    tdRem.appendChild(rm);
+
+    tr.append(tdNome, tdQtd, tdPreco, tdRem);
+    tbody.appendChild(tr);
   });
 
-  document.getElementById('cart-total').textContent = `R$ ${total.toFixed(2)}`;
-
-  tbody.onclick = (ev) => {
-    const i = ev.target.getAttribute('data-i');
-    if (i == null) return;
-    const cart = getCart();
-
-    if (ev.target.classList.contains('menos')) {
-      cart[i].quantidade = Math.max(1, cart[i].quantidade - 1);
-    } else if (ev.target.classList.contains('mais')) {
-      cart[i].quantidade += 1;
-    } else if (ev.target.classList.contains('remover')) {
-      cart.splice(i, 1);
-    }
-    saveCart(cart);
-    renderCartPage();
-  };
+  if (totalEl) totalEl.textContent = `R$ ${BRL(total)}`;
 }
 
-// Enviar pedido ao backend (carrinho.html)
-async function enviarPedido() {
-  const nome = document.getElementById('cli-nome').value.trim();
-  const tel = document.getElementById('cli-tel').value.trim();
-  const end = document.getElementById('cli-end').value.trim();
-  const obs = document.getElementById('cli-obs').value.trim();
+async function finalizarPedido() {
+  const nome = (document.getElementById('cliente-nome')?.value || 'Cliente');
   const cart = getCart();
+  const total = cart.reduce((s, i) => s + i.preco * i.qtd, 0);
 
-  if (!nome || !tel || cart.length === 0) {
-    alert('Preencha nome, telefone e tenha itens no carrinho.');
-    return;
-  }
+  await fetch('/api/pedidos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cliente_nome: nome, total })
+  });
 
-  const itens = cart.map(i => ({ produto_id: i.id, quantidade: i.quantidade }));
-  try {
-    const res = await fetch('/api/pedido', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        cliente: { nome, telefone: tel, endereco: end },
-        itens,
-        observacao: obs
-      })
-    });
-
-    const out = await res.json();
-    if (!res.ok) {
-      console.error(out);
-      alert('Falha ao enviar pedido.');
-      return;
-    }
-    // limpa carrinho e redireciona
-    localStorage.removeItem(CART_KEY);
-    window.location.href = '/pedido-confirmado';
-  } catch (e) {
-    console.error(e);
-    alert('Erro ao enviar pedido.');
-  }
+  localStorage.removeItem(KEY);
+  window.location.href = '/pedido-confirmado';
 }
 
-// Expose global para HTML usar
-window.Pitombo = {
-  loadMenuAndRender,
-  renderCartPage,
-  enviarPedido
-};
-</script>
+// Auto-init nas páginas
+document.addEventListener('DOMContentLoaded', () => {
+  montarCardapio();
+  montarCarrinho();
+  const btnFinalizar = document.getElementById('btn-finalizar');
+  if (btnFinalizar) btnFinalizar.onclick = finalizarPedido;
+});
