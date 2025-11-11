@@ -1,23 +1,42 @@
-// app.js (CommonJS)
-const express = require('express');
-const path = require('path');
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// serve tudo que estiver em /public
+// arquivos estáticos (CSS, imagens etc.)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// atalhos amigáveis (redirecionam pros htmls)
-app.get('/cliente', (_req, res) => res.redirect('/cliente/index.html'));
-app.get('/admin',  (_req, res) => res.redirect('/admin/index.html'));
+// home
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
-app.get('/cardapio',           (_req, res) => res.redirect('/cliente/cardapio.html'));
-app.get('/carrinho',           (_req, res) => res.redirect('/cliente/carrinho.html'));
-app.get('/pedido-confirmado',  (_req, res) => res.redirect('/cliente/pedido-confirmado.html'));
+// páginas do cliente
+app.get('/cliente', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'cliente', 'index.html'));
+});
+app.get('/cliente/cardapio.html', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'cliente', 'cardapio.html'));
+});
+app.get('/cliente/carrinho.html', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'cliente', 'carrinho.html'));
+});
+app.get('/cliente/pedido-confirmado.html', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'cliente', 'pedido-confirmado.html'));
+});
+app.get('/cliente/cliente.js', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'cliente', 'cliente.js'));
+});
 
-// health
-app.get('/healthz', (_req, res) => res.send('ok'));
+// admin
+app.get('/admin', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'admin', 'index.html'));
+});
 
 // 404
 app.use((_req, res) => res.status(404).send('Página não encontrada 😔'));
