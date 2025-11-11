@@ -1,40 +1,31 @@
 // app.js (CommonJS)
 const express = require('express');
 const path = require('path');
-
 const app = express();
+
 const PORT = process.env.PORT || 10000;
 
-// diretório público
-const PUBLIC_DIR = path.join(process.cwd(), 'public');
+// static
+app.use(express.static(path.join(__dirname, 'public')));
 
-// serve arquivos estáticos (html, css, js, imagens) de /public
-app.use(express.static(PUBLIC_DIR, { extensions: ['html'] }));
-
-// rotas de atalho
+// home -> cliente/index
 app.get('/', (_req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'cliente', 'index.html'));
 });
 
+// cliente
 app.get('/cliente', (_req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, 'cliente', 'index.html'));
+  res.redirect('/cliente/index.html');
 });
 
+// admin
 app.get('/admin', (_req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, 'admin', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
 });
 
-// atalho legado: /cardapio -> /cliente/cardapio.html
-app.get('/cardapio', (_req, res) => {
-  res.redirect(301, '/cliente/cardapio.html');
-});
-
-// 404
-app.use((_req, res) => {
-  res.status(404).send('Página não encontrada 😕');
-});
+// 404 simples
+app.use((req, res) => res.status(404).send('Página não encontrada 😕'));
 
 app.listen(PORT, () => {
-  console.log(`Servidor Pitombo Lanches rodando na porta ${PORT}`);
-  console.log(`Servindo estáticos de: ${PUBLIC_DIR}`);
+  console.log(`Pitombo rodando na porta ${PORT}`);
 });
