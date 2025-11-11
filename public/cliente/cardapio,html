@@ -1,43 +1,6 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cardápio • Pitombo Lanches</title>
   <link rel="stylesheet" href="/style.css">
 </head>
-<body>
-  <div class="container">
-    <h2>🍔 Cardápio Pitombo Lanches</h2>
-
-    <div id="menu" class="grid">
-      <div class="item">
-        <h3>X-Burger</h3>
-        <p>R$ 15,00</p>
-        <button onclick="addToCart('X-Burger', 15)" class="btn">Adicionar</button>
-      </div>
-      <div class="item">
-        <h3>X-Bacon</h3>
-        <p>R$ 18,00</p>
-        <button onclick="addToCart('X-Bacon', 18)" class="btn">Adicionar</button>
-      </div>
-      <div class="item">
-        <h3>Refrigerante</h3>
-        <p>R$ 6,00</p>
-        <button onclick="addToCart('Refrigerante', 6)" class="btn">Adicionar</button>
-      </div>
-    </div>
-
-    <button onclick="window.location.href='/carrinho'" class="btn secondary">Ver Carrinho 🛒</button>
-  </div>
-
-  <script>
-    function addToCart(nome, preco) {
-      let carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
-      carrinho.push({ nome, preco });
-      localStorage.setItem('carrinho', JSON.stringify(carrinho));
-      alert(`${nome} adicionado ao carrinho!`);
-    }
-  </script>
-</body>
-</html>
