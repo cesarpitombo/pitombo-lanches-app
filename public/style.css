@@ -6,15 +6,13 @@ body {
 }
 
 .container {
-  max-width: 800px;
+  max-width: 980px;
   margin: 40px auto;
   padding: 20px;
   text-align: center;
 }
 
-h1, h2, h3 {
-  color: #d32f2f;
-}
+h1, h2, h3 { color: #d32f2f; }
 
 button.btn {
   background-color: #d32f2f;
@@ -27,14 +25,8 @@ button.btn {
   font-size: 16px;
   transition: 0.3s;
 }
-
-button.btn:hover {
-  background-color: #b71c1c;
-}
-
-button.secondary {
-  background: #555;
-}
+button.btn:hover { background-color: #b71c1c; }
+button.secondary { background: #555; }
 
 .grid {
   display: grid;
@@ -47,15 +39,9 @@ button.secondary {
   border: 1px solid #eee;
   padding: 15px;
   border-radius: 10px;
-  box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 3px 6px rgba(0,0,0,.1);
 }
 
-.list {
-  list-style: none;
-  padding: 0;
-}
+.list { list-style: none; padding: 0; }
 
-.center {
-  text-align: center;
-  margin-top: 100px;
-}
+.center { text-align: center; margin-top: 100px; }
