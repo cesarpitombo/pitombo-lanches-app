@@ -1,60 +1,6 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Carrinho • Pitombo Lanches</title>
   <link rel="stylesheet" href="/style.css">
 </head>
-<body>
-  <div class="container">
-    <h2>🛍️ Seu Carrinho</h2>
-    <ul id="itens" class="list"></ul>
-    <h3 id="total"></h3>
-
-    <div class="buttons">
-      <button onclick="finalizar()" class="btn">Finalizar Pedido ✅</button>
-      <button onclick="window.location.href='/cardapio'" class="btn secondary">Voltar</button>
-    </div>
-  </div>
-
-  <script>
-    const phone = '351934869755'; // teu número com DDI
-
-    function carregarCarrinho() {
-      const carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
-      const lista = document.getElementById('itens');
-      let total = 0;
-      lista.innerHTML = '';
-
-      carrinho.forEach((item) => {
-        total += item.preco;
-        const li = document.createElement('li');
-        li.textContent = `${item.nome} - R$ ${item.preco.toFixed(2)}`;
-        lista.appendChild(li);
-      });
-
-      document.getElementById('total').textContent = `Total: R$ ${total.toFixed(2)}`;
-    }
-
-    function finalizar() {
-      const carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
-      if (carrinho.length === 0) {
-        alert('Adicione itens antes de finalizar!');
-        return;
-      }
-
-      const mensagem = encodeURIComponent(
-        'Olá! Quero fazer um pedido:\n' +
-        carrinho.map(i => `${i.nome} - R$ ${i.preco}`).join('\n')
-      );
-
-      window.open(`https://wa.me/${phone}?text=${mensagem}`, '_blank');
-      localStorage.removeItem('carrinho');
-      window.location.href = '/pedido-confirmado';
-    }
-
-    carregarCarrinho();
-  </script>
-</body>
-</html>
