@@ -1,5 +1,5 @@
-<!doctype html>
-<html lang="pt-br">
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,65 +8,11 @@
 </head>
 <body>
   <div class="container">
-    <h1>🧺 Seu Carrinho</h1>
-    <div id="itens"></div>
-
-    <p style="text-align:center; margin-top:20px;">
-      <a class="btn btn-secondary" href="/cliente/cardapio.html">Voltar ao Cardápio</a>
-      <button class="btn" onclick="finalizar()">Finalizar no WhatsApp</button>
-      <button class="btn btn-secondary" onclick="limpar()">Limpar</button>
-    </p>
+    <h2>Seu Carrinho</h2>
+    <ul id="cart" class="list"></ul>
+    <button class="btn" onclick="finalizar()">Finalizar Pedido ✅</button>
+    <button class="btn secondary" onclick="limpar()">Limpar Carrinho</button>
   </div>
-
-  <script>
-    const CART_KEY='pitombo_cart';
-    const money = v => Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-    function getCart(){ return JSON.parse(localStorage.getItem(CART_KEY)||'[]'); }
-    function setCart(v){ localStorage.setItem(CART_KEY, JSON.stringify(v)); }
-
-    function render(){
-      const cart = getCart();
-      const el = document.getElementById('itens');
-      if(cart.length===0){ el.innerHTML='<p class="center">Seu carrinho está vazio.</p>'; return; }
-      const linhas = cart.map((i,idx)=>`
-        <div class="item">
-          <strong>${i.nome}</strong><br>
-          ${money(i.preco)} × ${i.qtd} = <strong>${money(i.preco*i.qtd)}</strong><br>
-          <button class="btn btn-secondary" onclick="menos(${idx})">-</button>
-          <button class="btn" onclick="mais(${idx})">+</button>
-          <button class="btn btn-secondary" onclick="remover(${idx})">Remover</button>
-        </div>
-      `).join('');
-      const total = cart.reduce((s,i)=>s + Number(i.preco)*Number(i.qtd),0);
-      el.innerHTML = linhas + `<h2 class="center">Total: ${money(total)}</h2>`;
-    }
-    function menos(idx){ const c=getCart(); if(c[idx].qtd>1) c[idx].qtd--; setCart(c); render(); }
-    function mais(idx){ const c=getCart(); c[idx].qtd++; setCart(c); render(); }
-    function remover(idx){ const c=getCart(); c.splice(idx,1); setCart(c); render(); }
-    function limpar(){ if(confirm('Limpar carrinho?')){ localStorage.removeItem(CART_KEY); render(); } }
-
-    async function finalizar(){
-      const cart = getCart();
-      if(cart.length===0){ alert('Adicione itens antes de finalizar.'); return; }
-
-      // monta mensagem
-      const linhas = cart.map(i => `${i.qtd}x ${i.nome} — R$ ${Number(i.preco).toFixed(2)} = R$ ${(i.preco*i.qtd).toFixed(2)}`);
-      const total = cart.reduce((s,i)=>s + Number(i.preco)*Number(i.qtd),0);
-      linhas.push(`\nTotal: R$ ${total.toFixed(2)}`);
-
-      // pega número do banco (rota /api/config/phone)
-      let phone = '+351934869755'; // fallback
-      try{
-        const r = await fetch('/api/config/phone',{cache:'no-store'});
-        if(r.ok){ const j = await r.json(); if(j.phone) phone = j.phone; }
-      }catch(e){}
-
-      const msg = encodeURIComponent(`Olá! Quero fazer um pedido:\n\n${linhas.join('\n')}\n\nNome: `);
-      const url = `https://wa.me/${phone}?text=${msg}`;
-      window.open(url,'_blank');
-      window.location.href = '/cliente/pedido-confirmado.html';
-    }
-    render();
-  </script>
+  <script src="/cliente/cliente.js"></script>
 </body>
 </html>
