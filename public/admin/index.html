@@ -3,14 +3,35 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pitombo Lanches</title>
+  <title>Admin • Pitombo Lanches</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <div class="container center">
-    <h1>Bem-vindo ao Pitombo Lanches! 🍔</h1>
-    <p><a class="btn" href="/cliente/cardapio.html">Ver Cardápio</a></p>
-    <p><a class="btn btn-secondary" href="/admin/index.html">Admin</a></p>
+  <div class="container">
+    <h1>Admin</h1>
+
+    <h3>Nome do App</h3>
+    <input id="appName" placeholder="Pitombo Lanches">
+    <button class="btn" onclick="saveName()">Salvar</button>
+
+    <h3 style="margin-top:30px;">Telefone WhatsApp (com DDI + DDD)</h3>
+    <input id="phone" placeholder="+351934869755">
+    <button class="btn" onclick="savePhone()">Salvar</button>
+
+    <p style="margin-top:30px;"><a class="btn btn-secondary" href="/">Voltar</a></p>
   </div>
+
+  <script>
+    async function saveName(){
+      const value = document.getElementById('appName').value.trim();
+      await fetch('/api/config/appName',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value})});
+      alert('Nome salvo!');
+    }
+    async function savePhone(){
+      const value = document.getElementById('phone').value.trim();
+      await fetch('/api/config/phone',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value})});
+      alert('Telefone salvo!');
+    }
+  </script>
 </body>
 </html>
