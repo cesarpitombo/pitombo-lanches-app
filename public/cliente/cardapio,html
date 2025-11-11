@@ -1,6 +1,48 @@
+<!doctype html>
+<html lang="pt-br">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cardápio • Pitombo Lanches</title>
   <link rel="stylesheet" href="/style.css">
 </head>
+<body>
+  <div class="container">
+    <h1>🍔 Cardápio Pitombo Lanches</h1>
+
+    <div id="grid" class="grid"></div>
+
+    <p style="text-align:center; margin-top:20px;">
+      <a class="btn" href="/cliente/carrinho.html">Ver Carrinho</a>
+      <a class="btn btn-secondary" href="/">Início</a>
+    </p>
+  </div>
+
+  <script>
+    // carrega /data/menu.json e monta a grade
+    async function load(){
+      const res = await fetch('/data/menu.json', {cache:'no-store'});
+      const items = await res.json();
+      const el = document.getElementById('grid');
+      el.innerHTML = items.map(i => `
+        <div class="item">
+          <h3>${i.nome}</h3>
+          <p>${(i.preco).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</p>
+          <button class="btn" onclick='add(${JSON.stringify(i)})'>Adicionar</button>
+        </div>
+      `).join('');
+    }
+    const CART_KEY='pitombo_cart';
+    function getCart(){ return JSON.parse(localStorage.getItem(CART_KEY)||'[]'); }
+    function setCart(v){ localStorage.setItem(CART_KEY, JSON.stringify(v)); }
+    function add(prod){
+      const cart = getCart();
+      const idx = cart.findIndex(x=>x.id===prod.id);
+      if(idx>=0) cart[idx].qtd += 1; else cart.push({...prod,qtd:1});
+      setCart(cart);
+      alert('Adicionado ao carrinho!');
+    }
+    load();
+  </script>
+</body>
+</html>
