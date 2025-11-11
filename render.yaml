@@ -3,5 +3,6 @@ services:
     name: pitombo-lanches-app
     env: node
     plan: free
-    buildCommand: "npm install"
-    startCommand: "node app.js"
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
