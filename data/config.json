@@ -1,0 +1,14 @@
+{
+  "appName": "Pitombo Lanches",
+  "phone": "+351934869755",
+  "delivery": { "taxaFixa": 0, "minimo": 0 },
+  "horarios": {
+    "0": { "abre": "18:00", "fecha": "23:00", "fechado": false },
+    "1": { "abre": "18:00", "fecha": "23:00", "fechado": false },
+    "2": { "abre": "18:00", "fecha": "23:00", "fechado": false },
+    "3": { "abre": "18:00", "fecha": "23:00", "fechado": false },
+    "4": { "abre": "18:00", "fecha": "23:00", "fechado": false },
+    "5": { "abre": "18:00", "fecha": "00:30", "fechado": false },
+    "6": { "abre": "18:00", "fecha": "00:30", "fechado": false }
+  }
+}
