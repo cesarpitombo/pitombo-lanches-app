@@ -1,17 +1,8 @@
 [
-  { "id": 1, "nome": "X-Burger", "preco": 15.00, "imagem": "/cliente/img/xburger.png", "categoria": "Lanches" },
-  { "id": 2, "nome": "X-Bacon",  "preco": 18.00, "imagem": "/cliente/img/xbacon.png",  "categoria": "Lanches" },
-  { "id": 3, "nome": "X-Egg",    "preco": 17.00, "imagem": "/cliente/img/xegg.png",    "categoria": "Lanches" },
-  { "id": 4, "nome": "X-Tudo",   "preco": 22.00, "imagem": "/cliente/img/xtudo.png",   "categoria": "Lanches" },
-
-  { "id": 5, "nome": "Batata P", "preco": 9.00,  "imagem": "/cliente/img/batata.png",  "categoria": "Acompanhamentos" },
-  { "id": 6, "nome": "Batata G", "preco": 14.00, "imagem": "/cliente/img/batata.png",  "categoria": "Acompanhamentos" },
-  { "id": 7, "nome": "Nuggets 8", "preco": 16.00, "imagem": "/cliente/img/nuggets.png","categoria": "Acompanhamentos" },
-
-  { "id": 8,  "nome": "Refrigerante Lata", "preco": 6.00, "imagem": "/cliente/img/refri.png", "categoria": "Bebidas" },
-  { "id": 9,  "nome": "Água 500ml",        "preco": 4.00, "imagem": "/cliente/img/agua.png",  "categoria": "Bebidas" },
-  { "id": 10, "nome": "Suco Natural",      "preco": 7.00, "imagem": "/cliente/img/suco.png",  "categoria": "Bebidas" },
-
-  { "id": 11, "nome": "Açaí 300ml", "preco": 14.00, "imagem": "/cliente/img/acai.png",     "categoria": "Sobremesas" },
-  { "id": 12, "nome": "Petit Gâteau", "preco": 16.00, "imagem": "/cliente/img/petit.png", "categoria": "Sobremesas" }
+  { "nome": "X-Burguer", "preco": 6.50 },
+  { "nome": "X-Salada", "preco": 7.50 },
+  { "nome": "X-Bacon", "preco": 8.50 },
+  { "nome": "X-Tudo", "preco": 9.90 },
+  { "nome": "Refrigerante", "preco": 4.00 },
+  { "nome": "Suco Natural", "preco": 5.00 }
 ]
