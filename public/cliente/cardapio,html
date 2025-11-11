@@ -1,18 +1,31 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cardápio • Pitombo Lanches</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <div class="container">
-    <h2>Nosso Cardápio</h2>
-    <div id="cardapio" class="grid"></div>
-    <button class="btn" onclick="window.location.href='/cliente/carrinho.html'">Ver Carrinho 🛒</button>
+    <h1>Cardápio Pitombo Lanches</h1>
+    <ul id="grid" class="grid"></ul>
+
+    <p class="center" style="margin-top:30px">
+      <a class="btn" href="/cliente/carrinho.html">Ver Carrinho</a>
+    </p>
   </div>
 
   <script src="/cliente/cliente.js"></script>
+  <script>
+    // carrega itens (exemplo simples; depois a gente integra no DB se quiser)
+    const itens = [
+      { id: 1, nome: "X-Burger", preco: 15.00 },
+      { id: 2, nome: "X-Bacon",  preco: 18.00 },
+      { id: 3, nome: "Refrigerante", preco: 6.00 },
+      { id: 4, nome: "Suco Natural", preco: 7.00 }
+    ];
+    renderLista(itens);
+  </script>
 </body>
 </html>
