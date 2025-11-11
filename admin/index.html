@@ -1,14 +1,116 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin - Pitombo Lanches</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin • Pitombo</title>
   <link rel="stylesheet" href="/style.css">
+  <style>
+    .row{display:flex;gap:20px;flex-wrap:wrap}
+    .col{flex:1;min-width:320px}
+    textarea{width:100%;min-height:320px;font-family:ui-monospace,Menlo,monospace}
+    input[type=text],input[type=number]{width:100%;padding:8px}
+    .card{background:#fff;border:1px solid #eee;padding:16px;border-radius:8px}
+    .mt{margin-top:16px}
+  </style>
 </head>
-<body class="container">
-  <h1>Painel Administrativo</h1>
-  <p>Em breve: controle de pedidos e cardápio.</p>
+<body>
+  <div class="container">
+    <h1>Painel Admin</h1>
+
+    <div class="card">
+      <label>Token (Bearer)</label>
+      <input id="token" type="text" placeholder="Cole seu ADMIN_TOKEN">
+      <div class="mt">
+        <small>Dica: no Render > Environment > ADMIN_TOKEN</small>
+      </div>
+    </div>
+
+    <div class="row mt">
+      <div class="col">
+        <div class="card">
+          <h3>Configurações</h3>
+          <label>Nome do App</label>
+          <input id="appName" type="text" placeholder="Pitombo Lanches">
+          <label class="mt">WhatsApp (+DDI DDD número)</label>
+          <input id="phone" type="text" placeholder="+351934869755">
+          <div class="row mt">
+            <div class="col">
+              <label>Taxa Delivery (fixa)</label>
+              <input id="taxa" type="number" step="0.01" min="0">
+            </div>
+            <div class="col">
+              <label>Mínimo do Pedido</label>
+              <input id="minimo" type="number" step="0.01" min="0">
+            </div>
+          </div>
+          <button class="btn mt" id="btnSaveCfg">Salvar Config</button>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="card">
+          <h3>Menu (JSON)</h3>
+          <textarea id="menuBox" spellcheck="false">[]</textarea>
+          <button class="btn mt" id="btnSaveMenu">Salvar Menu</button>
+          <div class="mt">
+            <small>Formato: array de itens { id, nome, preco, img, categoria }</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt">
+      <h3>Atalhos</h3>
+      <a class="btn" href="/cliente/index.html" target="_blank">Abrir Cliente</a>
+      <a class="btn" href="/cliente/cardapio.html" target="_blank">Ver Cardápio</a>
+    </div>
+  </div>
+
+<script>
+const $ = s => document.querySelector(s);
+
+async function loadAll(){
+  const cfg = await fetch('/api/config').then(r=>r.json());
+  $('#appName').value = cfg.appName || '';
+  $('#phone').value = cfg.phone || '';
+  $('#taxa').value  = cfg.delivery?.taxaFixa ?? 0;
+  $('#minimo').value= cfg.delivery?.minimo ?? 0;
+
+  const menu = await fetch('/api/menu').then(r=>r.json());
+  $('#menuBox').value = JSON.stringify(menu,null,2);
+}
+
+function authHeaders(){
+  const t = $('#token').value.trim();
+  return t ? { 'Authorization': 'Bearer '+t, 'Content-Type':'application/json' } : {'Content-Type':'application/json'};
+}
+
+$('#btnSaveCfg').onclick = async ()=>{
+  const payload = {
+    appName: $('#appName').value.trim(),
+    phone: $('#phone').value.trim(),
+    delivery: {
+      taxaFixa: Number($('#taxa').value || 0),
+      minimo:   Number($('#minimo').value || 0)
+    },
+    horarios: {} // mantém o que já existe no arquivo se não enviar; simples por enquanto
+  };
+  const res = await fetch('/api/config', { method:'PUT', headers: authHeaders(), body: JSON.stringify(payload) });
+  if(res.ok) alert('Config salva!'); else alert('Erro ao salvar config');
+}
+
+$('#btnSaveMenu').onclick = async ()=>{
+  try{
+    const arr = JSON.parse($('#menuBox').value);
+    const res = await fetch('/api/menu', { method:'PUT', headers: authHeaders(), body: JSON.stringify(arr) });
+    if(res.ok) alert('Menu salvo!'); else alert('Erro ao salvar menu');
+  }catch(e){
+    alert('JSON inválido no menu.');
+  }
+}
+
+loadAll();
+</script>
 </body>
 </html>
-
