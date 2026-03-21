@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Pitombo Lanches - Caixa</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .caixa-dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .caixa-card {
+      background: #fff;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      border: 1px solid var(--border);
+    }
+    .caixa-card h3 {
+      font-size: 1rem;
+      color: var(--text-light);
+      margin-bottom: 0.5rem;
+    }
+    .caixa-card .value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+    .caixa-card.success .value { color: var(--success); }
+    .method-list {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid var(--border);
+    }
+    .method-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 1.1rem;
+    }
+    .method-item:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><h2>🍔 Pitombo</h2></div>
+      <nav class="sidebar-nav">
+        <ul>
+          <li><a href="/admin" class="menu-link">📦 Pedidos PDV</a></li>
+          <li><a href="/caixa.html" class="menu-item active">💰 Caixa / Financeiro</a></li>
+          <li><a href="/historico.html" class="menu-link">📊 Histórico (Nuvem)</a></li>
+          <li><a href="/cozinha" class="menu-link">👨‍🍳 Cozinha</a></li>
+          <li><a href="/entregador" class="menu-link">🛵 Entregador</a></li>
+          <li><a href="/" class="menu-link">🏪 Ver Loja</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <div class="main-wrapper">
+      <header class="topbar">
+        <h2>Controle de Caixa - <span id="dataHoje"></span></h2>
+      </header>
+      
+      <main class="content-body">
+        <div class="caixa-dashboard">
+          <div class="caixa-card success">
+            <h3>Total Recebido (Pago)</h3>
+            <div class="value" id="valTotalPago">R$ 0,00</div>
+          </div>
+          <div class="caixa-card">
+            <h3>Pendente / A Receber</h3>
+            <div class="value" id="valPendente" style="color:var(--danger)">R$ 0,00</div>
+          </div>
+          <div class="caixa-card">
+            <h3>Total de Pedidos Hoje</h3>
+            <div class="value" id="valPedidos" style="color:var(--text)">0</div>
+          </div>
+          <div class="caixa-card">
+            <h3>Pedidos Entregues</h3>
+            <div class="value" id="valEntregues" style="color:var(--info)">0</div>
+          </div>
+        </div>
+
+        <div class="method-list">
+          <h3 style="margin-bottom:1rem; border-bottom:1px solid #eee; padding-bottom:0.8rem">Resumo por Método de Pagamento (Apenas Pagos)</h3>
+          <div class="method-item">
+            <strong>Dinheiro</strong>
+            <span id="mDinheiro">R$ 0,00</span>
+          </div>
+          <div class="method-item">
+            <strong>MBWay / PIX</strong>
+            <span id="mPix">R$ 0,00</span>
+          </div>
+          <div class="method-item">
+            <strong>Cartão</strong>
+            <span id="mCartao">R$ 0,00</span>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/js/caixa.js"></script>
+</body>
+</html>

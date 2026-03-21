@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carregando...</title>
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/cozinha.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="header">
+    <h1>👨‍🍳 Tela da Cozinha - <span data-brand="display_name">Pitombo Lanches</span></h1>
+    <div class="header-right">
+      <button id="btnAtivarSom" onclick="ativarSom()" class="btn" title="Ativa avisos sonoros de novos pedidos" style="background:var(--warning, #ffc107); color:#000; border:none; margin-right:1rem; font-weight:600;">🔊 Ativar Som</button>
+      <span id="relogio" class="relogio">00:00:00</span>
+      <a href="/admin" class="btn">Voltar ao Admin</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="kitchen-section">
+      <h2 class="section-title fila-title">Na Fila / Em Preparo (<span id="count-fila">0</span>) <span style="font-size:0.7em; color:#fff; background:#dc3545; padding:0.2rem 0.6rem; border-radius:12px; margin-left:1rem; vertical-align:middle; font-weight:bold;">Atrasados: <span id="count-atrasados">0</span></span></h2>
+      <div id="gridPedidos" class="orders-grid">
+        <!-- Pedidos serao injetados aqui via JS -->
+        <div class="loading">Sincronizando fila...</div>
+      </div>
+    </div>
+    
+    <div class="kitchen-section" style="margin-top: 3rem;">
+      <h2 class="section-title prontos-title">Prontos / Aguardando Retirada (<span id="count-pronto">0</span>)</h2>
+      <div id="gridProntos" class="orders-grid prontos-grid">
+        <!-- Pedidos serao injetados aqui via JS -->
+        <div class="loading">Nenhum pedido pronto.</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/cozinha.js"></script>
+</body>
+</html>

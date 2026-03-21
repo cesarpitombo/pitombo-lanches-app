@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carregando...</title>
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/entregador.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="header">
+    <div class="header-container">
+      <h1>🛵 <span data-brand="display_name">Pitombo Lanches</span> - Entrega</h1>
+      <div class="header-nav">
+        <a href="/" class="nav-link">Loja</a>
+        <a href="/admin" class="nav-link">Admin</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="status-summary">
+      <p>Esperando por entregas...</p>
+    </div>
+
+    <div id="listaEntregas" class="delivery-grid">
+      <!-- Cards de entrega injetados pelo JS -->
+      <div class="loading">Carregando pedidos de entrega...</div>
+    </div>
+  </main>
+
+  <script src="/js/entregador.js"></script>
+</body>
+</html>

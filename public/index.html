@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Cardápio online do Pitombo Lanches — peça agora pelo site!" />
+  <title>Carregando...</title>
+  <script src="/js/theme.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="container header__inner">
+      <div class="header__brand" style="display:flex; align-items:center; gap:0.5rem;">
+        <img class="header__logo" data-brand="logo" src="" style="display:none; height:40px; border-radius:4px; object-fit:contain;" alt="Logo da loja">
+        <h1 class="header__title" data-brand="name">Pitombo Lanches</h1>
+      </div>
+      <button class="btn-carrinho" id="btnCarrinho" aria-label="Ver carrinho">
+        🛒 <span class="carrinho-badge" id="carrinhoBadge">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container hero__inner">
+      <h2 class="hero__title">Sabor que chega até você</h2>
+      <p class="hero__sub" data-brand="subtitle">Hambúrgueres artesanais, lanches irresistíveis e muito mais.</p>
+      <a href="#cardapio" class="btn btn--primary">Ver cardápio</a>
+    </div>
+  </section>
+
+  <!-- CARDÁPIO -->
+  <main class="container" id="cardapio">
+    <h2 class="section-title">Cardápio</h2>
+
+    <!-- Filtros de categoria (populados via JS) -->
+    <div class="categorias" id="categorias">
+      <button class="categoria-btn active" data-categoria="todos">Todos</button>
+    </div>
+
+    <!-- Grid de produtos (populado via JS) -->
+    <div class="produtos-grid" id="produtosLista"></div>
+  </main>
+
+  <!-- RODAPÉ -->
+  <footer class="footer">
+    <div class="container">
+      <p data-brand="footer">© 2026 Pitombo Lanches · Todos os direitos reservados</p>
+    </div>
+  </footer>
+
+  <!-- MODAL CARRINHO -->
+  <div class="modal-overlay" id="modalCarrinho" hidden>
+    <div class="modal" id="modalConteudo">
+      <h3>🛒 Seu Pedido</h3>
+      <div id="carrinhoItens"></div>
+
+      <!-- O formulário de nome agora fica apenas na página de checkout -->
+      <div class="modal__footer" style="margin-top: 1rem;">
+        <p class="modal__total">Total: <strong id="carrinhoTotal">R$ 0,00</strong></p>
+        <button class="btn btn--primary" id="btnFinalizarPedido">Ir para o Checkout</button>
+        <button class="btn btn--ghost" id="btnFecharModal">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>

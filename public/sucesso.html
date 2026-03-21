@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pitombo Lanches 🍔 — Acompanhe seu Pedido</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .tracking-container {
+      max-width: 650px;
+      margin: 2rem auto;
+      background: #fff;
+      padding: 0;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+      border: 1px solid #f0ebe5;
+      overflow: hidden;
+    }
+    .track-header {
+      background: var(--primary);
+      color: #fff;
+      padding: 2rem;
+      text-align: center;
+    }
+    .track-header h2 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .track-header p { font-size: 1.1rem; opacity: 0.9; }
+    
+    .track-body { padding: 2rem; }
+    
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      position: relative;
+      margin: 2rem 0;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 19px;
+      top: 10px;
+      bottom: 20px;
+      width: 2px;
+      background: #eee;
+      z-index: 1;
+    }
+    
+    .step {
+      display: flex;
+      gap: 1.2rem;
+      position: relative;
+      z-index: 2;
+      opacity: 0.4;
+      transition: 0.3s;
+    }
+    .step.active, .step.completed { opacity: 1; }
+    
+    .step-icon {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: #eee;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 2px #eee;
+      transition: 0.3s;
+    }
+    .step.completed .step-icon { background: var(--success); color: white; box-shadow: 0 0 0 2px var(--success); border-color: #fff; }
+    .step.active .step-icon { background: var(--primary); color: white; box-shadow: 0 0 0 4px rgba(232, 66, 10, 0.2); border-color: #fff; }
+    .step.cancelled .step-icon { background: var(--danger); color: white; box-shadow: 0 0 0 2px var(--danger); border-color: #fff; }
+    
+    .step-content { padding-top: 0.4rem; }
+    .step-content h4 { font-size: 1.1rem; margin-bottom: 0.2rem; color: #222; }
+    .step-content p { font-size: 0.9rem; color: #777; margin: 0; }
+    
+    .order-details {
+      background: #fafafa;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-top: 2rem;
+      border: 1px solid #eee;
+    }
+    
+    .loading-pulse {
+      display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(232, 66, 10, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(232, 66, 10, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(232, 66, 10, 0); }
+    }
+  </style>
+</head>
+<body style="background-color: #fbf9f6">
+
+  <header class="header">
+    <div class="container header__inner">
+      <div class="header__brand">
+        <a href="/" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 0.5rem;">
+          <span class="header__logo">🍔</span>
+          <h1 class="header__title">Pitombo Lanches</h1>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="tracking-container" id="trackView" style="display:none">
+      <div class="track-header" id="trackHeader">
+        <h2>Pedido Recebido! 🎉</h2>
+        <p>Pedido <strong id="numeroPedido">#</strong></p>
+      </div>
+      
+      <div class="track-body">
+        
+        <div id="statusWarning" style="display:none; background:#FFF3CD; color:#856404; padding:1rem; border-radius:8px; margin-bottom:1.5rem; border:1px solid #FFE79A; text-align:center; font-weight:600">
+          Pagamento pendente. Por favor, acerte com o entregador no ato da entrega.
+        </div>
+        
+        <h3 style="font-size:1.3rem; margin-bottom:0.5rem">Acompanhe ao vivo <span class="loading-pulse" style="margin-left:0.5rem"></span></h3>
+        <p style="color:#777; font-size:0.95rem; margin-bottom:2rem">Nós recarregamos essa página automaticamente pra você.</p>
+        
+        <div class="timeline" id="timelineContainer">
+          <!-- Timeline gerada dinamicamente via JS -->
+        </div>
+
+        <div class="order-details">
+          <h4 style="margin-bottom:1rem; display:flex; justify-content:space-between">
+            <span>Resumo</span>
+            <span id="txt-total" style="color:var(--primary); font-size:1.2rem"></span>
+          </h4>
+          <div style="font-size:0.95rem; color:#555; line-height:1.6" id="txt-items"></div>
+          
+          <hr style="border:none; border-top:1px dashed #ddd; margin:1rem 0">
+          
+          <div style="font-size:0.95rem; color:#555; line-height:1.6" id="txt-address"></div>
+        </div>
+        
+        <div style="text-align:center; margin-top:2rem">
+          <a href="/" class="btn btn--primary" style="background:#eee; color:#333">Fazer outro pedido</a>
+        </div>
+      </div>
+    </div>
+    
+    <div id="loadingView" style="text-align:center; padding:5rem 0; font-size:1.2rem; color:#666">
+      Buscando informações do seu pedido...<br><br>
+      <span class="loading-pulse" style="transform:scale(2)"></span>
+    </div>
+    
+    <div id="errorView" style="display:none; text-align:center; padding:5rem 0; font-size:1.2rem; color:var(--danger)">
+      <span style="font-size:3rem; display:block; margin-bottom:1rem">😕</span>
+      Não foi possível localizar este pedido.<br><br>
+      <a href="/" class="btn btn--primary">Voltar para a Loja</a>
+    </div>
+
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const pedidoId = localStorage.getItem('pitombo_ultimo_pedido');
+      
+      if (!pedidoId) {
+        document.getElementById('loadingView').style.display = 'none';
+        document.getElementById('errorView').style.display = 'block';
+        return;
+      }
+      
+      document.getElementById('numeroPedido').textContent = '#' + pedidoId;
+      
+      const statusMap = [
+        { key: 'recebido', icon: '📝', title: 'Pedido Recebido', desc: 'Aguardando confirmação da loja.' },
+        { key: 'em_preparo', icon: '👨‍🍳', title: 'Em Preparo', desc: 'Sua comida está sendo montada com carinho.' },
+        { key: 'pronto', icon: '🛍️', title: 'Pronto para Entrega', desc: 'Aguardando o entregador coletar o pacote.' },
+        { key: 'em_entrega', icon: '🛵', title: 'Saiu para Entrega', desc: 'O motoqueiro já está na rua indo até você.' },
+        { key: 'entregue', icon: '✅', title: 'Entregue', desc: 'Bom apetite! Obrigado por escolher o Pitombo.' }
+      ];
+
+      function renderizarTimeline(statusAtual, cancelado = false) {
+        if (cancelado) {
+          document.getElementById('timelineContainer').innerHTML = `
+            <div class="step cancelled">
+              <div class="step-icon">❌</div>
+              <div class="step-content">
+                <h4>Pedido Cancelado</h4>
+                <p>Infelizmente este pedido foi cancelado pelo restaurante.</p>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        let html = '';
+        let atingido = true;
+        
+        for (let i = 0; i < statusMap.length; i++) {
+          const s = statusMap[i];
+          const isCurrent = s.key === statusAtual;
+          
+          let cssClass = 'step';
+          if (isCurrent) {
+            cssClass += ' active';
+            atingido = false; // Os proximos não estão atingidos
+          } else if (atingido) {
+            cssClass += ' completed';
+            // Se o sistema saltar do recebido pro entregue direto (admin fez rapido), o atingido é falso dps
+          }
+          
+          html += `
+            <div class="${cssClass}">
+              <div class="step-icon">
+                ${cssClass.includes('completed') ? '✔️' : s.icon}
+              </div>
+              <div class="step-content">
+                <h4>${s.title}</h4>
+                <p>${s.desc}</p>
+              </div>
+            </div>
+          `;
+        }
+        
+        document.getElementById('timelineContainer').innerHTML = html;
+      }
+
+      async function carregarPedido() {
+        try {
+          const res = await fetch(`/api/pedidos/${pedidoId}`);
+          if (!res.ok) throw new Error('Not found');
+          
+          const p = await res.json();
+          
+          document.getElementById('loadingView').style.display = 'none';
+          document.getElementById('trackView').style.display = 'block';
+          
+          // Header e Timeline
+          if (p.status === 'cancelado') {
+            document.getElementById('trackHeader').style.background = 'var(--danger)';
+            document.getElementById('trackHeader').querySelector('h2').textContent = 'Pedido Cancelado';
+            renderizarTimeline('cancelado', true);
+          } else if (p.status === 'entregue') {
+            document.getElementById('trackHeader').style.background = 'var(--success)';
+            document.getElementById('trackHeader').querySelector('h2').textContent = 'Pedido Entregue! ✅';
+            renderizarTimeline('entregue');
+          } else {
+            document.getElementById('trackHeader').style.background = 'var(--primary)';
+            document.getElementById('trackHeader').querySelector('h2').textContent = 'Acompanhe seu Pedido';
+            renderizarTimeline(p.status);
+          }
+          
+          // Avisos de pagamento
+          const warning = document.getElementById('statusWarning');
+          if (p.status !== 'cancelado' && p.payment_status === 'pendente') {
+            warning.style.display = 'block';
+            if (p.payment_method === 'dinheiro') {
+              warning.innerHTML = `Pagamento de <strong>R$ ${Number(p.total).toFixed(2).replace('.',',')}</strong> pendente.<br>Por favor, pague em dinheiro ao entregador.`;
+            } else {
+               warning.innerHTML = `Pagamento via <strong>${p.payment_method === 'mbway/pix' ? 'PIX/MBWay' : p.payment_method.toUpperCase()}</strong>.<br>Realize o pagamento na entrega.`;
+            }
+          } else if (p.payment_status === 'pago') {
+             warning.style.display = 'block';
+             warning.style.background = '#d1e7dd';
+             warning.style.borderColor = '#badbcc';
+             warning.style.color = '#0f5132';
+             warning.innerHTML = `Pagamento já foi confirmado! ✅`;
+          } else {
+            warning.style.display = 'none';
+          }
+          
+          // Resumo
+          document.getElementById('txt-total').textContent = `R$ ${Number(p.total).toFixed(2).replace('.',',')}`;
+          
+          const itens = p.itens || [];
+          document.getElementById('txt-items').innerHTML = itens.map(i => `<strong>${i.quantidade}x</strong> ${i.nome_produto}`).join('<br>');
+          
+          document.getElementById('txt-address').innerHTML = `
+            <strong>Endereço de Entrega:</strong><br>
+            ${p.endereco}
+            ${p.observacoes ? `<br><br><strong>Ref:</strong> ${p.observacoes}` : ''}
+          `;
+
+          // Para de fazer poll se chegar no estado final
+          if (p.status === 'entregue' || p.status === 'cancelado') {
+             clearInterval(pollInterval);
+             document.querySelector('.loading-pulse').style.display = 'none';
+          }
+
+        } catch (err) {
+          console.error(err);
+          // Só mostra o erro se for a primeira carga
+          if (document.getElementById('loadingView').style.display !== 'none') {
+            document.getElementById('loadingView').style.display = 'none';
+            document.getElementById('errorView').style.display = 'block';
+          }
+        }
+      }
+
+      carregarPedido();
+      const pollInterval = setInterval(carregarPedido, 5000); // atualiza a cada 5s
+    });
+  </script>
+</body>
+</html>

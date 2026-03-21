@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Gerenciador</title>
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/admin.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" style="background-color:#1c1e21;">
+      <div class="sidebar-brand" style="background-color:var(--primary, #e8420a); padding:1.2rem; border-bottom:3px solid rgba(0,0,0,0.2); display:flex; justify-content:center; align-items:center; gap:0.5rem;">
+        <img data-brand="logo" src="" alt="Brand Logo" style="display:none; max-width:160px; max-height:40px; border-radius:4px; object-fit:contain;">
+        <h2 data-brand="name" style="font-size:1.6rem; letter-spacing:-1px; color:#fff; font-weight:900; text-transform:uppercase; margin:0;">🔥 PITOMBO</h2>
+      </div>
+      <nav class="sidebar-nav" style="padding-top:1rem;">
+        <ul style="display:flex; flex-direction:column; gap:0.2rem; padding:0 0.5rem;">
+          <li><button class="menu-item active" data-target="pedidos" style="padding:1rem; border-radius:6px; font-size:1.05rem; background:rgba(232, 66, 10, 0.15); color:#fff; border-left:4px solid #e8420a;"><span style="margin-right:0.6rem; font-size:1.2rem;">⚡</span> PDV & Fila</button></li>
+          <div style="border-top:1px solid rgba(255,255,255,0.05); margin:0.5rem 0;"></div>
+          <li><a href="/historico.html" class="menu-link" style="padding:0.8rem 1rem; border-radius:6px; color:#aaa; font-size:0.95rem;"><span>📊 Relatório Geral</span></a></li>
+          <li><button class="menu-item" data-target="produtos" style="padding:0.8rem 1rem; border-radius:6px; color:#aaa; font-size:0.95rem;"><span style="margin-right:0.6rem; font-size:1.2rem;">🍔</span> Editor de Cardápio</button></li>
+          <li><a href="/cozinha" class="menu-link" style="padding:0.8rem 1rem; border-radius:6px; color:#aaa; font-size:0.95rem;"><span style="margin-right:0.6rem; font-size:1.2rem;">👨‍🍳</span> Tela da Cozinha</a></li>
+          <div style="border-top:1px solid rgba(255,255,255,0.05); margin:0.5rem 0;"></div>
+          <li><button class="menu-item" data-target="configuracoes" style="padding:0.8rem 1rem; border-radius:6px; color:#aaa; font-size:0.95rem; width:100%; text-align:left; border:none; background:transparent; cursor:pointer;"><span style="margin-right:0.6rem; font-size:1.2rem;">⚙️</span> Configurações da Loja</button></li>
+        </ul>
+      </nav>
+      <div class="sidebar-footer" style="background-color:#141518; border-top:1px solid rgba(255,255,255,0.05); display:flex; flex-direction:column; gap:0.5rem; padding:1.2rem 1rem;">
+         <button id="btnAtivarSom" onclick="ativarSom()" class="btn-sound" style="margin-bottom:0; background:#ffc107; color:#000; border:none; padding:1rem; border-radius:6px; font-weight:900; text-transform:uppercase; letter-spacing:1px; box-shadow:0 4px 0 #d39e00;">🔊 Ligar Alarme</button>
+         <div class="connection-status" style="font-size:0.8rem; color:#4caf50; font-weight:800; text-align:center; margin-top:0.5rem; text-transform:uppercase;">🟢 Sistema Online</div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-wrapper">
+      <header class="topbar" style="background:#fff; border-bottom:2px solid #ddd; display:flex; justify-content:space-between; align-items:center; padding:0 2rem; height:70px;">
+        <h2 id="pageTitle" style="font-weight:900; color:#111; font-size:1.6rem; text-transform:uppercase; letter-spacing:-0.5px;">Painel Operacional</h2>
+        <div style="flex:1;"></div>
+        <div class="topbar-actions" style="display:flex; gap:1.2rem; align-items:center;">
+          <button style="background:#f1f1f1; border:none; padding:0.6rem; border-radius:8px; font-size:1.4rem; cursor:pointer; color:#333; font-weight:900;" title="Atualizar">↻</button>
+          <button class="btn" id="btnAppNovoPedido" style="background:var(--btn-main, #e8420a); color:#fff; border:none; padding:0.8rem 1.5rem; border-radius:8px; font-weight:900; font-size:1.1rem; cursor:pointer; text-transform:uppercase; box-shadow:0 4px 0 rgba(0,0,0,0.2); transition:transform 0.1s;">+ CRIAR PEDIDO</button>
+          <div style="width:2px; height:40px; background:#eee; margin:0 0.5rem;"></div>
+          <span class="user-profile" data-brand="display_name" style="display:flex; align-items:center; gap:0.5rem; background:#f8f9fa; border:2px solid #ddd; padding:0.6rem 1.2rem; border-radius:8px; font-weight:800; color:#333;">PITOMBO ADMIN</span>
+        </div>
+      </header>
+      
+      <main class="content-body">
+        <section id="pedidos" class="tab-content active">
+          
+          <!-- DASHBOARD INDICADORES -->
+          <div class="admin-kpis" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:1rem; margin-bottom:1.5rem;">
+            <div style="background:#fff; padding:1.2rem; border-radius:8px; border:1px solid #eee;">
+              <div style="font-size:0.85rem; color:#666; font-weight:600; text-transform:uppercase; margin-bottom:0.3rem">Total do Dia (Pago)</div>
+              <div id="dash-faturamento" style="font-size:1.6rem; font-weight:800; color:var(--success)">R$ 0,00</div>
+            </div>
+            <div style="background:#fff; padding:1.2rem; border-radius:8px; border:1px solid #eee;">
+              <div style="font-size:0.85rem; color:#666; font-weight:600; text-transform:uppercase; margin-bottom:0.3rem">Pedidos Hoje</div>
+              <div id="dash-hoje" style="font-size:1.6rem; font-weight:800; color:var(--text)">0</div>
+            </div>
+            <div style="background:#fff; padding:1.2rem; border-radius:8px; border:1px solid #eee;">
+              <div style="font-size:0.85rem; color:#666; font-weight:600; text-transform:uppercase; margin-bottom:0.3rem">Ativos na Loja</div>
+              <div id="dash-ativos" style="font-size:1.6rem; font-weight:800; color:var(--primary)">0</div>
+            </div>
+            <div style="background:#fff; padding:1.2rem; border-radius:8px; border:1px solid #eee; border-left:4px solid var(--danger);">
+              <div style="font-size:0.85rem; color:#666; font-weight:600; text-transform:uppercase; margin-bottom:0.3rem">Atrasados (>20m)</div>
+              <div id="dash-atrasados" style="font-size:1.6rem; font-weight:800; color:var(--danger)">0</div>
+            </div>
+          </div>
+
+          <div class="section-header" style="margin-bottom:1rem;">
+            <h2 style="font-weight:900; font-size:1.8rem; letter-spacing:-1px;">Fila Operacional</h2>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <button id="btnModoRapido" class="btn" style="background:#111; color:white; border:none; padding:0.6rem 1.2rem; border-radius:8px; font-weight:900; cursor:pointer; text-transform:uppercase; box-shadow:0 4px 0 #000; font-size:1rem;" title="Ocultar distrações visuais e manter foco central">🔥 Modo Pressão</button>
+              <div class="view-toggles" style="background:#eee; padding:0.2rem; border-radius:6px; display:flex;">
+                <button id="btnViewCards" class="view-btn active" style="padding:0.4rem 1rem; border:none; background:#fff; border-radius:4px; font-weight:bold; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.1)">🗂️ Cards</button>
+                <button id="btnViewList" class="view-btn" style="padding:0.4rem 1rem; border:none; background:transparent; border-radius:4px; font-weight:bold; cursor:pointer; color:#555">📋 Lista</button>
+              </div>
+              <button id="btnAtualizarPedidos" class="btn btn-secondary" style="font-weight:900; padding:0.6rem 1rem; border-radius:8px;">Atualizar Lista</button>
+            </div>
+          </div>
+          
+          <!-- Pitombo Style High-Contrast Tabs -->
+          <div class="olaclick-type-tabs" style="display:flex; border-bottom:3px solid #ddd; margin-bottom:1.5rem; padding-bottom:0px; gap:0.5rem; flex-wrap:nowrap; overflow-x:auto;">
+            <button class="type-tab active" data-type="todos" style="padding:1rem 2rem; border:none; background:#eee; border-radius:8px 8px 0 0; cursor:pointer; font-weight:900; color:#333; font-size:1.1rem; text-transform:uppercase; margin-bottom:-3px; z-index:10; flex-shrink:0;">
+              ☷ Fila Geral <span id="cnt-type-todos" style="background:#555; padding:2px 8px; border-radius:12px; font-size:0.8rem; margin-left:8px; color:#fff;">0</span>
+            </button>
+            <button class="type-tab" data-type="balcao" style="padding:1rem 2rem; border:none; background:transparent; cursor:pointer; color:#777; font-weight:900; font-size:1.1rem; text-transform:uppercase; flex-shrink:0;">
+              🏪 Salão/Balcão <span id="cnt-type-balcao" style="background:#ddd; padding:2px 8px; border-radius:12px; font-size:0.8rem; margin-left:8px; color:#555;">0</span>
+            </button>
+            <button class="type-tab" data-type="delivery" style="padding:1rem 2rem; border:none; background:transparent; cursor:pointer; color:#777; font-weight:900; font-size:1.1rem; text-transform:uppercase; flex-shrink:0;">
+              🛵 Moto Delivery <span id="cnt-type-delivery" style="background:#ddd; padding:2px 8px; border-radius:12px; font-size:0.8rem; margin-left:8px; color:#555;">0</span>
+            </button>
+          </div>
+
+          <div class="admin-controls" style="margin-bottom:1.5rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; background:#fff; padding:1rem; border-radius:8px; border:2px solid #eee;">
+            <!-- Pitombo Status Filters -->
+            <div class="olaclick-status-filters" id="statusFilterContainer" style="display:flex; gap:0.8rem; align-items:center; overflow-x:auto;">
+              <button class="status-filter active" data-status="todos" style="border:2px solid #333; background:#333; color:#fff; padding:0.6rem 1.2rem; border-radius:6px; font-weight:800; cursor:pointer; font-size:1rem; text-transform:uppercase; white-space:nowrap;">
+                ✓ Mostrar Tudo
+              </button>
+              <button class="status-filter" data-status="pendente" style="border:2px solid #ddd; background:#fff; color:#555; padding:0.6rem 1.2rem; border-radius:6px; font-weight:800; cursor:pointer; font-size:1rem; text-transform:uppercase; white-space:nowrap;">
+                ⚠️ Pendentes <span id="cnt-status-pendente" style="background:#ffc107; color:#000; padding:2px 8px; border-radius:12px; font-size:0.8rem; margin-left:8px;">0</span>
+              </button>
+              <button class="status-filter" data-status="em_curso" style="border:2px solid #ddd; background:#fff; color:#555; padding:0.6rem 1.2rem; border-radius:6px; font-weight:800; cursor:pointer; font-size:1rem; text-transform:uppercase; white-space:nowrap;">
+                🔥 Pista/Fogo <span id="cnt-status-em_curso" style="background:#e8420a; color:#fff; padding:2px 8px; border-radius:12px; font-size:0.8rem; margin-left:8px;">0</span>
+              </button>
+              <button class="status-filter" data-status="atrasados" style="border:2px solid #ddd; background:#fff; color:#555; padding:0.6rem 1.2rem; border-radius:6px; font-weight:800; cursor:pointer; font-size:1rem; text-transform:uppercase; white-space:nowrap;">
+                🚨 Atrasados <span id="cnt-status-atrasados" style="background:#dc3545; color:#fff; padding:2px 8px; border-radius:12px; font-size:0.8rem; margin-left:8px;">0</span>
+              </button>
+              <button class="status-filter" data-status="concluidos" style="border:2px solid #ddd; background:#fff; color:#555; padding:0.6rem 1.2rem; border-radius:6px; font-weight:800; cursor:pointer; font-size:1rem; text-transform:uppercase; white-space:nowrap;">
+                ✔️ Concluídos <span id="cnt-status-concluidos" style="background:#eee; color:#555; padding:2px 8px; border-radius:12px; font-size:0.8rem; margin-left:8px;">0</span>
+              </button>
+            </div>
+            
+            <div class="search-box" style="margin-bottom:0;">
+              <input type="text" id="inputBusca" placeholder="🔍 Rastrear Pedido/Cliente..." style="padding:0.8rem 1.2rem; border-radius:6px; border:2px solid #ddd; font-weight:700; font-size:1rem; width:280px; outline:none; background:#f9f9f9;" onfocus="this.style.borderColor='#e8420a'; this.style.background='#fff'" onblur="this.style.borderColor='#ddd'; this.style.background='#f9f9f9'">
+            </div>
+          </div>
+          
+          <!-- VIEW KANBAN CARDS -->
+          <div class="orders-kanban" id="listaPedidos">
+            <div class="loading">Carregando pedidos...</div>
+          </div>
+
+          <!-- VIEW LISTA TABELA (Inicia Oculto) -->
+          <div class="table-responsive" id="viewListaPedidos" style="display:none; background:#fff; border:1px solid #eee; border-radius:8px;">
+            <table class="data-table" style="margin-bottom:0">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Cliente</th>
+                  <th>Telefone</th>
+                  <th>Tipo</th>
+                  <th>Status</th>
+                  <th>Tempo SLA</th>
+                  <th>Total</th>
+                  <th>Pgto.</th>
+                  <th>Ações Rápidas</th>
+                </tr>
+              </thead>
+              <tbody id="listaPedidosTabela">
+                <tr><td colspan="9" class="loading">Carregando pedidos...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+    <section id="produtos" class="tab-content">
+      <div class="section-header">
+        <h2>Cardápio</h2>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nome</th>
+              <th>Categoria</th>
+              <th>Preço</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="listaProdutos">
+            <tr><td colspan="5" class="loading">Carregando produtos...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB CONFIGURACOES DA LOJA -->
+    <section id="configuracoes" class="tab-content">
+      <div class="section-header">
+        <h2>Identidade e Configurações da Loja</h2>
+      </div>
+
+      <div style="background:#fff; border-radius:12px; padding:2rem; box-shadow:0 4px 15px rgba(0,0,0,0.05); border:1px solid #eee;">
+        <form id="formConfig" style="display:flex; flex-direction:column; gap:2rem;">
+          
+          <!-- Secao 1: Identidade da Marca -->
+          <div>
+            <h3 style="border-bottom:2px solid #eee; padding-bottom:0.5rem; margin-bottom:1rem; color:#333;">1. Identidade da Marca</h3>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+              <div>
+                <label style="font-weight:700; margin-bottom:0.4rem; display:block;">Nome Dinâmico da Loja *</label>
+                <input type="text" id="cfgStoreName" name="store_name" required style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc;">
+              </div>
+              <div>
+                <label style="font-weight:700; margin-bottom:0.4rem; display:block;">Slogan / Subtítulo</label>
+                <input type="text" id="cfgStoreSubtitle" name="store_subtitle" style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc;">
+              </div>
+              <div>
+                <label style="font-weight:700; margin-bottom:0.4rem; display:block;">Logo (Upload)</label>
+                <input type="file" id="cfgLogoUrl" name="logo" accept="image/*" style="width:100%; padding:0.6rem; background:#f8f9fa; border-radius:6px; border:1px dashed #ccc;">
+              </div>
+              <div>
+                <label style="font-weight:700; margin-bottom:0.4rem; display:block;">Favicon (Upload)</label>
+                <input type="file" id="cfgFavicon" name="favicon" accept="image/*" style="width:100%; padding:0.6rem; background:#f8f9fa; border-radius:6px; border:1px dashed #ccc;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Secao 2: Cores do Sistema -->
+          <div>
+            <h3 style="border-bottom:2px solid #eee; padding-bottom:0.5rem; margin-bottom:1rem; color:#333;">2. Cores do Sistema Base</h3>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:1.5rem;">
+              <div>
+                <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:0.2rem;">Cor Principal</label>
+                <input type="color" id="cfgColorPrimary" name="color_primary" value="#e8420a" style="width:100%; height:40px; border:none; cursor:pointer;">
+              </div>
+              <div>
+                <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:0.2rem;">Cor do Top/Botões</label>
+                <input type="color" id="cfgColorBtn" name="color_button_main" value="#e8420a" style="width:100%; height:40px; border:none; cursor:pointer;">
+              </div>
+              <div>
+                <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:0.2rem;">Cor do Painel (BG)</label>
+                <input type="color" id="cfgColorPanelBg" name="color_panel_bg" value="#f8f9fa" style="width:100%; height:40px; border:none; cursor:pointer;">
+              </div>
+            </div>
+            
+            <h4 style="margin:1.5rem 0 0.8rem; font-size:0.95rem; color:#555;">Cores de Status (SLA Operacional)</h4>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:1rem;">
+               <div>
+                 <label style="font-size:0.8rem; font-weight:700;">Status Recebido</label>
+                 <input type="color" id="cfgStRecebido" name="color_status_recebido" value="#333333" style="width:100%; height:30px; border:none;">
+               </div>
+               <div>
+                 <label style="font-size:0.8rem; font-weight:700;">Status Em Preparo</label>
+                 <input type="color" id="cfgStPreparo" name="color_status_preparo" value="#ff9800" style="width:100%; height:30px; border:none;">
+               </div>
+               <div>
+                 <label style="font-size:0.8rem; font-weight:700;">Status Pronto</label>
+                 <input type="color" id="cfgStPronto" name="color_status_pronto" value="#e8420a" style="width:100%; height:30px; border:none;">
+               </div>
+               <div>
+                 <label style="font-size:0.8rem; font-weight:700;">Status Em Entrega</label>
+                 <input type="color" id="cfgStEntrega" name="color_status_entrega" value="#4caf50" style="width:100%; height:30px; border:none;">
+               </div>
+               <div>
+                 <label style="font-size:0.8rem; font-weight:700;">Card Atrasado (Alarme)</label>
+                 <input type="color" id="cfgStAtrasado" name="color_status_atrasado" value="#dc3545" style="width:100%; height:30px; border:none;">
+               </div>
+            </div>
+          </div>
+
+          <!-- Secao 3: Contatos e Footer -->
+          <div>
+            <h3 style="border-bottom:2px solid #eee; padding-bottom:0.5rem; margin-bottom:1rem; color:#333;">3. Contato e Presença Digital</h3>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+              <div>
+                <label style="font-weight:700; margin-bottom:0.4rem; display:block;">Telefone / WhatsApp</label>
+                <input type="text" id="cfgStorePhone" name="contact_whatsapp" style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc;">
+              </div>
+              <div>
+                <label style="font-weight:700; margin-bottom:0.4rem; display:block;">Domínio da Loja</label>
+                <input type="text" id="cfgStoreDomain" name="domain" placeholder="meudelivery.app" style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc;">
+              </div>
+              <div style="grid-column: span 2;">
+                <label style="font-weight:700; margin-bottom:0.4rem; display:block;">Nome de Exibição no Admin Topbar</label>
+                <input type="text" id="cfgAdminName" name="admin_display_name" placeholder="PITOMBO ADMIN" style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc;">
+              </div>
+              <div style="grid-column: span 2;">
+                <label style="font-weight:700; margin-bottom:0.4rem; display:block;">Texto de Rodapé (Footer)</label>
+                <input type="text" id="cfgStoreFooter" name="footer_text" style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc;">
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:1rem; text-align:right;">
+             <button type="submit" id="btnSalvarConfig" class="btn" style="background:#4caf50; color:white; border:none; padding:1.2rem 2.5rem; border-radius:8px; font-size:1.2rem; font-weight:900; cursor:pointer; box-shadow:0 4px 0 #388e3c; text-transform:uppercase;">💾 Salvar Identidade da Marca</button>
+             <div id="cfgStatusMsg" style="margin-top:1rem; font-weight:bold;"></div>
+          </div>
+        </form>
+      </div>
+    </section>
+      </main>
+    </div> <!-- main-wrapper -->
+  </div> <!-- app-layout -->
+
+  <!-- MODAL DE DETALHES -->
+  <div class="modal-overlay" id="modalDetalhes" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+    <div class="modal-content" style="background:#fff; width:90%; max-width:650px; border-radius:8px; padding:1.5rem; max-height:90vh; overflow-y:auto; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid #eee; padding-bottom:0.8rem;">
+        <h3 style="margin:0; color:var(--primary); font-size:1.4rem;">Detalhes do Pedido <span id="detalheId"></span></h3>
+        <button onclick="fecharDetalhes()" style="background:none; border:none; font-size:1.8rem; cursor:pointer; color:#999; line-height:1;">&times;</button>
+      </div>
+      <div id="detalheConteudo"></div>
+      <div style="margin-top:2rem; text-align:right;">
+        <button onclick="fecharDetalhes()" class="btn btn-secondary">Voltar / Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PDV NOVO PEDIDO MANUAL -->
+  <div class="modal-overlay" id="modalPdv" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:2000; align-items:center; justify-content:center;">
+    <div class="modal-content" style="background:#fff; width:90%; max-width:800px; border-radius:12px; padding:2rem; max-height:95vh; overflow-y:auto; box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; border-bottom:1px solid #eee; padding-bottom:1rem;">
+        <h3 style="margin:0; color:#111; font-size:1.5rem;">Criar Novo Pedido Manual (PDV)</h3>
+        <button onclick="document.getElementById('modalPdv').style.display='none'" style="background:none; border:none; font-size:2rem; cursor:pointer; color:#555; line-height:1;">&times;</button>
+      </div>
+      
+      <form id="formPdv" style="display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
+        <div>
+          <div style="margin-bottom:1rem;">
+            <label style="display:block; font-weight:bold; margin-bottom:0.4rem; font-size:0.9rem;">Tipo de Pedido</label>
+            <select id="pdvTipo" style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc; font-size:1rem;" onchange="togglePdvEnd(this.value)">
+              <option value="delivery">Delivery 🛵</option>
+              <option value="balcao">Retirada no Balcão 🏪</option>
+            </select>
+          </div>
+          <div style="margin-bottom:1rem;">
+            <label style="display:block; font-weight:bold; margin-bottom:0.4rem; font-size:0.9rem;">Nome do Cliente *</label>
+            <input type="text" id="pdvNome" required style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc; font-size:1rem;">
+          </div>
+          <div style="margin-bottom:1rem; position:relative;">
+            <label style="display:block; font-weight:bold; margin-bottom:0.4rem; font-size:0.9rem;">Telefone / WhatsApp</label>
+            <input type="text" id="pdvFone" placeholder="(00) 00000-0000" style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc; font-size:1rem;">
+            <div id="pdvSugestaoBox" style="display:none; margin-top:0.5rem; background:#e3f2fd; border:1px solid #90caf9; padding:0.8rem; border-radius:6px; font-size:0.85rem; color:#0d47a1;">
+               <!-- Conteudo injetado via JS -->
+            </div>
+          </div>
+          <div style="margin-bottom:1rem;" id="pdvEndBox">
+            <label style="display:block; font-weight:bold; margin-bottom:0.4rem; font-size:0.9rem;">Endereço Completo *</label>
+            <textarea id="pdvEnd" required placeholder="Rua, Número, Bairro, Complemento" rows="3" style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc; font-size:1rem; resize:vertical;"></textarea>
+          </div>
+        </div>
+        
+        <div style="background:#fafafa; border:1px solid #eee; padding:1.5rem; border-radius:8px;">
+          <h4 style="margin-bottom:1rem; border-bottom:1px solid #ddd; padding-bottom:0.5rem;">Itens da Venda</h4>
+          <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+            <select id="pdvProdutoSelect" style="flex:1; padding:0.6rem; border-radius:4px; border:1px solid #ccc;">
+              <option value="">Carregando cardápio...</option>
+            </select>
+            <input type="number" id="pdvProdutoQtd" value="1" min="1" style="width:60px; padding:0.6rem; border-radius:4px; border:1px solid #ccc;">
+            <button type="button" onclick="addPdvItem()" class="btn btn-secondary" style="padding:0.6rem 1rem;">Add</button>
+          </div>
+          <ul id="pdvItensLista" style="list-style:none; padding:0; margin-bottom:1.5rem; min-height:80px; font-size:0.9rem;">
+          </ul>
+          
+          <div style="margin-bottom:1rem;">
+            <label style="display:block; font-weight:bold; margin-bottom:0.4rem; font-size:0.9rem;">Método de Pagto.</label>
+            <select id="pdvPagto" style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc; font-size:1rem;">
+              <option value="dinheiro">Dinheiro</option>
+              <option value="cartao">Cartão</option>
+              <option value="mbway/pix">PIX / MBWay</option>
+            </select>
+          </div>
+          
+          <div style="display:flex; justify-content:space-between; font-size:1.3rem; font-weight:800; border-top:2px dashed #ddd; padding-top:1rem; margin-bottom:2rem;">
+            <span>Total:</span>
+            <span id="pdvTotalLabel" style="color:var(--primary);">R$ 0,00</span>
+          </div>
+
+          <button type="submit" id="btnSalvarPdv" class="btn btn--primary" style="width:100%; padding:1rem; font-size:1.1rem; border-radius:6px; box-shadow:0 4px 15px rgba(232, 66, 10, 0.3);">🟢 Confirmar Venda PDV</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

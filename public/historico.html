@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Pitombo Lanches - Relatórios e Histórico</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .metric-card { background: #fff; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    .metric-card h3 { font-size: 0.9rem; color: var(--text-light); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 600; }
+    .metric-card .value { font-size: 1.8rem; font-weight: 700; color: var(--text); }
+    .metric-card .sub-value { font-size: 0.85rem; color: var(--success); font-weight: 600; margin-top: 0.5rem; }
+
+    .filters-bar { background: #fff; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .filter-group label { font-size: 0.85rem; font-weight: 600; color: var(--text-light); }
+    .filter-group input, .filter-group select { padding: 0.6rem; border: 1px solid #ddd; border-radius: 6px; font-family: 'Inter'; outline: none; background: #fafafa; font-size:0.95rem; }
+    .filter-group input:focus, .filter-group select:focus { border-color: var(--primary); }
+    
+    .table-container { background: #fff; border-radius: 8px; border: 1px solid var(--border); overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 800px; }
+    th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+    th { background: #f8f9fa; font-weight: 700; color: var(--text-light); text-transform: uppercase; font-size: 0.85rem; }
+    tr:hover { background: #fdfdfd; }
+    .status-badge { padding: 0.3rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><h2>🍔 Pitombo</h2></div>
+      <nav class="sidebar-nav">
+        <ul>
+          <li><a href="/admin" class="menu-link">📦 Pedidos PDV</a></li>
+          <li><a href="/caixa.html" class="menu-link">💰 Caixa / Financeiro</a></li>
+          <li><button class="menu-item active">📊 Histórico (Nuvem)</button></li>
+          <li><a href="/cozinha" class="menu-link">👨‍🍳 Cozinha</a></li>
+          <li><a href="/entregador" class="menu-link">🛵 Entregador</a></li>
+          <li><a href="/" class="menu-link">🏪 Ver Loja</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <div class="main-wrapper">
+      <header class="topbar">
+        <h2>Painel Analítico de Vendas</h2>
+        <button onclick="exportarCSV()" class="btn-fast" style="background:#198754; color:white; border:none; padding:0.6rem 1.2rem; border-radius:6px; cursor:pointer; font-weight:bold; font-size:0.95rem">📥 Planilha CSV</button>
+      </header>
+      
+      <main class="content-body">
+        
+        <!-- RESUMO KPIs -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <h3>Faturamento Entregue</h3>
+            <div class="value" id="kpi-faturamento">R$ 0,00</div>
+            <div class="sub-value" id="kpi-faturamento-sub"></div>
+          </div>
+          <div class="metric-card">
+            <h3>Volume Entregue</h3>
+            <div class="value" id="kpi-entregues">0</div>
+            <div class="sub-value" id="kpi-ticket">Ticket Médio: R$ 0,00</div>
+          </div>
+          <div class="metric-card">
+            <h3>Cancelados / Atrasados</h3>
+            <div class="value" id="kpi-problemas" style="color:var(--danger)">0 / 0</div>
+            <div class="sub-value" style="color:#666">Taxa de falha</div>
+          </div>
+          <div class="metric-card">
+            <h3>Tempo Médio (SLA)</h3>
+            <div class="value" id="kpi-tempo">0 min</div>
+            <div class="sub-value" style="color:#666">Recebido até Entregue</div>
+          </div>
+        </div>
+
+        <!-- BARRA DE FILTROS -->
+        <div class="filters-bar">
+          <div class="filter-group">
+            <label>Período de Extração</label>
+            <select id="filter-periodo">
+              <option value="tudo" selected>Todo o Histórico</option>
+              <option value="hoje">Apenas Hoje</option>
+              <option value="ontem">Ontem</option>
+              <option value="7dias">Últimos 7 dias</option>
+              <option value="custom">Período Personalizado</option>
+            </select>
+          </div>
+          <div class="filter-group" id="filter-custom-dates" style="display:none; flex-direction:row; gap:1rem;">
+            <div style="display:flex; flex-direction:column; gap:0.4rem">
+              <label>Data de Início</label>
+              <input type="date" id="filter-data-inicio">
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.4rem">
+              <label>Data de Fim</label>
+              <input type="date" id="filter-data-fim">
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Situação</label>
+            <select id="filter-status">
+              <option value="">Todos os status</option>
+              <option value="entregue">✅ Entregues</option>
+              <option value="cancelado">❌ Cancelados</option>
+              <option value="recebido">Pendente/Cozinha</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Forma Recebimento</label>
+            <select id="filter-pagamento">
+              <option value="">Qualquer meio</option>
+              <option value="dinheiro">Dinheiro</option>
+              <option value="cartao">Cartão</option>
+              <option value="mbway/pix">PIX / MBWay</option>
+            </select>
+          </div>
+          <div class="filter-group" style="flex:1; min-width:200px;">
+            <label>Busca Inteligente</label>
+            <input type="text" id="filter-busca" placeholder="Busque por Nome, ID ou #Pedido...">
+          </div>
+        </div>
+
+        <!-- TABELA ANALITICA -->
+        <div class="table-container">
+          <table id="tabela-historico">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Data</th>
+                <th>Cliente Alvo</th>
+                <th>Pacote</th>
+                <th>Valor Pagar</th>
+                <th>Meio Pgto.</th>
+                <th>Status Operacional</th>
+                <th>SLA (Tempo)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="8" style="text-align:center">Buscando inteligência de dados...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <script src="/js/historico.js"></script>
+</body>
+</html>

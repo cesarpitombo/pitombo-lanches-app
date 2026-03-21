@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carregando...</title>
+  <script src="/js/theme.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .checkout-container {
+      max-width: 900px;
+      margin: 2rem auto;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 2rem;
+      align-items: start;
+    }
+    @media (max-width: 768px) {
+      .checkout-container { grid-template-columns: 1fr; }
+    }
+    .checkout-form, .checkout-summary {
+      background: #fff;
+      padding: 1.8rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+      border: 1px solid #f0ebe5;
+    }
+    .checkout-summary { position: sticky; top: 1.5rem; }
+    
+    .checkout-block {
+      border: 1px solid #eee;
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      background: #fafafa;
+    }
+    .block-title {
+      font-size: 1.1rem;
+      color: #333;
+      margin-bottom: 1.2rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .form-group { margin-bottom: 1.2rem; }
+    .form-group label {
+      display: block; font-weight: 600; margin-bottom: 0.5rem; color: #444; font-size: 0.9rem;
+    }
+    .form-row { display: flex; gap: 1rem; }
+    @media (max-width: 600px) { .form-row { flex-direction: column; gap: 0; } }
+    
+    .form-group input, .form-group textarea {
+      width: 100%; padding: 0.8rem; border: 1.5px solid #dcdce1; border-radius: 8px; font-family: inherit; font-size: 1rem; outline: none; transition: 0.2s; background: #fff;
+    }
+    .form-group input:focus, .form-group textarea:focus { border-color: #e8420a; box-shadow: 0 0 0 3px rgba(232, 66, 10, 0.1); }
+    
+    .payment-methods {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem;
+    }
+    .pay-option {
+      background: #fff; border: 2px solid #ddd; border-radius: 8px; padding: 1rem 0.5rem; text-align: center; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; user-select: none;
+    }
+    .pay-option input { display: none; }
+    .pay-option span { font-weight: 600; font-size: 0.9rem; color: #555; }
+    .pay-option:has(input:checked) { border-color: #e8420a; background: #fffaf8; }
+    .pay-option:has(input:checked) span { color: #e8420a; }
+
+    .summary-item {
+      display: flex; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #f0ebe5; font-size: 0.95rem; color: #555;
+    }
+    .taxa-entrega {
+      display: flex; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px dashed #eee; font-size: 0.95rem; color: #555;
+    }
+    .summary-total {
+      display: flex; justify-content: space-between; font-weight: 800; font-size: 1.3rem; color: #111; margin-top: 1rem; align-items: center;
+    }
+    .btn-finalizar {
+      width: 100%; padding: 1.2rem; font-size: 1.2rem; font-weight: 700; text-transform: uppercase; border-radius: 8px; letter-spacing: 0.5px; margin-top: 1rem; box-shadow: 0 4px 15px rgba(232, 66, 10, 0.3);
+    }
+  </style>
+</head>
+<body style="background-color: #fbf9f6">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="container header__inner">
+      <div class="header__brand">
+        <a href="/" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 0.5rem;">
+          <img class="header__logo" data-brand="logo" src="" style="display:none; height:40px; border-radius:4px; object-fit:contain;" alt="Logo da loja">
+          <h1 class="header__title" data-brand="name">Pitombo Lanches</h1>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="checkout-container">
+      <!-- FORMULÁRIO -->
+      <div>
+        <h2 style="margin-bottom:1.5rem; font-size:1.8rem; color:#222">Finalizar Pedido</h2>
+        <form id="formCheckout" class="checkout-form">
+          
+          <!-- Bloco 1: Cliente -->
+          <div class="checkout-block">
+            <h4 class="block-title">👤 Seus Dados</h4>
+            <div class="form-group">
+              <label for="nome">Nome Completo *</label>
+              <input type="text" id="nome" required placeholder="Ex: João da Silva">
+            </div>
+            <div class="form-group">
+              <label for="telefone">WhatsApp *</label>
+              <input type="tel" id="telefone" required placeholder="(00) 00000-0000">
+            </div>
+          </div>
+
+          <!-- Bloco 2: Endereço -->
+          <div class="checkout-block">
+            <h4 class="block-title">📍 Endereço de Entrega</h4>
+            <div class="form-row">
+              <div class="form-group" style="flex:3">
+                <label for="end_rua">Rua/Avenida *</label>
+                <input type="text" id="end_rua" required placeholder="Ex: Rua das Flores">
+              </div>
+              <div class="form-group" style="flex:1">
+                <label for="end_num">Número *</label>
+                <input type="text" id="end_num" required placeholder="Ex: 123">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group" style="flex:1">
+                <label for="end_bairro">Bairro *</label>
+                <input type="text" id="end_bairro" required placeholder="Ex: Centro">
+              </div>
+              <div class="form-group" style="flex:1">
+                <label for="end_comp">Complemento (Opcional)</label>
+                <input type="text" id="end_comp" placeholder="Apto 42, Bloco B...">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="observacoes">Ponto de Referência para Entrega</label>
+              <textarea id="observacoes" rows="2" placeholder="Ex: Perto da praça, portão preto, muro amarelo..."></textarea>
+            </div>
+          </div>
+
+          <!-- Bloco 3: Pagamento -->
+          <div class="checkout-block">
+            <h4 class="block-title">💳 Forma de Pagamento</h4>
+            <div class="payment-methods">
+              <label class="pay-option">
+                <input type="radio" name="formaPagamento" value="dinheiro" required> <span>💵 Dinheiro</span>
+              </label>
+              <label class="pay-option">
+                <input type="radio" name="formaPagamento" value="mbway/pix"> <span>📱 PIX / MBWay</span>
+              </label>
+              <label class="pay-option">
+                <input type="radio" name="formaPagamento" value="cartao"> <span>💳 Cartão</span>
+              </label>
+            </div>
+            
+            <div class="form-group" id="divTroco" style="display: none; margin-top:1.5rem;">
+              <label for="trocoPara">Troco para quanto?</label>
+              <input type="number" id="trocoPara" placeholder="Deixe em branco se tiver o dinheiro trocado" step="0.01" min="0">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn--primary btn-finalizar" id="btnEnviarPedido">Confirmar Pedido</button>
+        </form>
+      </div>
+
+      <!-- RESUMO -->
+      <div class="checkout-summary">
+        <h3 style="margin-bottom:1.5rem; display:flex; align-items:center; gap:0.5rem">🛒 Seu Pedido</h3>
+        <div id="resumoItens">
+          <!-- Renderizado via JS -->
+        </div>
+        <div class="taxa-entrega">
+          <span>Taxa de Entrega</span>
+          <strong style="color: #198754;">Grátis</strong>
+        </div>
+        <div class="summary-total">
+          <span>Total Final</span>
+          <span id="resumoTotal" style="color:var(--primary);">R$ 0,00</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const itensCarrinho = JSON.parse(localStorage.getItem('pitombo_carrinho')) || [];
+      const totalCarrinho = parseFloat(localStorage.getItem('pitombo_total')) || 0;
+
+      if (itensCarrinho.length === 0) {
+        alert('Seu carrinho está vazio!');
+        window.location.href = '/';
+        return;
+      }
+
+      const resumoItens = document.getElementById('resumoItens');
+      resumoItens.innerHTML = itensCarrinho.map(item => `
+        <div class="summary-item">
+          <div>
+            <strong>${item.quantidade}x ${item.nome}</strong>
+          </div>
+          <div>
+            R$ ${(item.preco * item.quantidade).toFixed(2).replace('.', ',')}
+          </div>
+        </div>
+      `).join('');
+
+      document.getElementById('resumoTotal').textContent = `R$ ${totalCarrinho.toFixed(2).replace('.', ',')}`;
+
+      document.getElementById('formCheckout').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const btn = document.getElementById('btnEnviarPedido');
+        btn.disabled = true;
+        btn.textContent = 'Trabalhando...';
+
+        const rua = document.getElementById('end_rua').value.trim();
+        const num = document.getElementById('end_num').value.trim();
+        const bairro = document.getElementById('end_bairro').value.trim();
+        const comp = document.getElementById('end_comp').value.trim();
+        let endFinal = `${rua}, ${num} - ${bairro}`;
+        if (comp) endFinal += ` (${comp})`;
+
+        const formaPagamentoNode = document.querySelector('input[name="formaPagamento"]:checked');
+        if (!formaPagamentoNode) {
+          alert('Selecione uma forma de pagamento antes de fechar.');
+          btn.disabled = false; btn.textContent = 'Confirmar Pedido';
+          return;
+        }
+
+        const payload = {
+          cliente: document.getElementById('nome').value.trim(),
+          telefone: document.getElementById('telefone').value.trim(),
+          endereco: endFinal,
+          forma_pagamento: formaPagamentoNode.value,
+          troco_para: document.getElementById('trocoPara').value ? parseFloat(document.getElementById('trocoPara').value) : null,
+          observacoes: document.getElementById('observacoes').value.trim(),
+          itens: itensCarrinho,
+          total: totalCarrinho
+        };
+
+        try {
+          const res = await fetch('/api/pedidos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error || 'Erro interno da loja');
+          }
+
+          const pedido = await res.json();
+          
+          localStorage.removeItem('pitombo_carrinho');
+          localStorage.removeItem('pitombo_total');
+          
+          localStorage.setItem('pitombo_ultimo_pedido', pedido.id);
+          window.location.href = '/sucesso';
+
+        } catch (err) {
+          console.error(err);
+          alert('Erro de Conexão: ' + err.message);
+          btn.disabled = false;
+          btn.textContent = 'Confirmar Pedido';
+        }
+      });
+
+      const payRadios = document.querySelectorAll('input[name="formaPagamento"]');
+      payRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          const divTroco = document.getElementById('divTroco');
+          if (e.target.value === 'dinheiro') {
+            divTroco.style.display = 'block';
+          } else {
+            divTroco.style.display = 'none';
+            document.getElementById('trocoPara').value = '';
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
