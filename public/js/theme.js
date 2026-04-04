@@ -62,19 +62,32 @@ async function loadStoreBrand() {
     const brandSubtitles = document.querySelectorAll('[data-brand="subtitle"]');
     brandSubtitles.forEach(el => el.textContent = settings.store_subtitle);
 
+    const brandAddresses = document.querySelectorAll('[data-brand="address"]');
+    if (brandAddresses.length > 0) {
+      brandAddresses.forEach(el => el.textContent = settings.store_address || '');
+    }
+
     const brandFooters = document.querySelectorAll('[data-brand="footer"]');
     brandFooters.forEach(el => el.textContent = settings.footer_text);
     
     const brandPhones = document.querySelectorAll('[data-brand="contact_whatsapp"]');
-    brandPhones.forEach(el => {
-      // Se for um link do whatsapp, auto formata o href
-      if (el.tagName === 'A' && el.href.includes('wa.me')) {
-        const num = settings.contact_whatsapp.replace(/\D/g, '');
-        el.href = 'https://wa.me/' + (num.startsWith('55') ? num : '55'+num);
-      } else {
-        el.textContent = settings.contact_whatsapp;
-      }
-    });
+    if (brandPhones.length > 0) {
+      const _waNum = (() => {
+        if (settings.whatsapp_dial_code && settings.whatsapp_number)
+          return settings.whatsapp_dial_code.replace(/\D/g,'') + settings.whatsapp_number.replace(/\D/g,'');
+        const n = (settings.contact_whatsapp || '').replace(/\D/g,'');
+        return n.startsWith('55') ? n : '55'+n;
+      })();
+      brandPhones.forEach(el => {
+        if (el.tagName === 'A' && el.href.includes('wa.me')) {
+          el.href = 'https://wa.me/' + _waNum;
+        } else {
+          el.textContent = settings.whatsapp_number
+            ? (settings.whatsapp_dial_code || '') + ' ' + settings.whatsapp_number
+            : (settings.contact_whatsapp || '');
+        }
+      });
+    }
 
   } catch (err) {
     console.error('Falha ao carregar tema da loja:', err);

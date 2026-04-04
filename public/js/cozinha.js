@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let pedidosConhecidos = new Set();
   let primeiraCarga = true;
 
-  window.ativarSom = function() {
+  window.ativarSom = function () {
     window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     window.somAtivado = true;
     document.getElementById('btnAtivarSom').style.display = 'none';
@@ -23,10 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function tocarSom() {
     if (!window.somAtivado || !window.audioCtx) return;
     if (window.audioCtx.state === 'suspended') window.audioCtx.resume();
-    
+
     // Reproduz um ding simples duplo
     const time = window.audioCtx.currentTime;
-    
+
     // Primeiro ding
     const osc1 = window.audioCtx.createOscillator();
     const gain1 = window.audioCtx.createGain();
@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     gain1.gain.linearRampToValueAtTime(0.3, time + 0.05);
     gain1.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
     osc1.start(time); osc1.stop(time + 0.3);
-    
+
     // Segundo ding
     const osc2 = window.audioCtx.createOscillator();
     const gain2 = window.audioCtx.createGain();
@@ -54,10 +54,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function carregarPedidos() {
     try {
+      let queueBeforeMinutes = 20; // default
+      try {
+        const sRes = await fetch('/api/settings');
+        if (sRes.ok) { const s = await sRes.json(); queueBeforeMinutes = parseInt(s.scheduling_queue_before) || 20; }
+      } catch (_) { }
+
       const res = await fetch('/api/pedidos');
       const pedidos = await res.json();
-      
-      let fila = pedidos.filter(p => ['recebido', 'em_preparo'].includes(p.status));
+
+      const queueBeforeMs = queueBeforeMinutes * 60 * 1000;
+      const now = Date.now();
+
+      // Pedidos agendados só entram na fila quando estiverem próximos do horário
+      let fila = pedidos.filter(p => {
+        if (!['em_preparo'].includes(p.status)) return false;
+        if (p.is_scheduled && p.scheduled_for) {
+          const scheduledTime = new Date(p.scheduled_for).getTime();
+          return (scheduledTime - now) <= queueBeforeMs;
+        }
+        return true;
+      });
       let prontos = pedidos.filter(p => p.status === 'pronto');
 
       const sortPedidos = (a, b) => {
@@ -65,14 +82,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const bDelay = Math.floor((new Date() - new Date(b.criado_em)) / 60000) >= 20;
         if (aDelay && !bDelay) return -1;
         if (!aDelay && bDelay) return 1;
-        return a.id - b.id; 
+        return a.id - b.id;
       };
       fila.sort(sortPedidos);
       prontos.sort(sortPedidos);
 
       document.getElementById('count-fila').textContent = fila.length;
       document.getElementById('count-pronto').textContent = prontos.length;
-      
+
       let atrasadosCont = 0;
       fila.forEach(p => {
         if (Math.floor((new Date() - new Date(p.criado_em)) / 60000) >= 20) atrasadosCont++;
@@ -87,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
           pedidosConhecidos.add(p.id);
         }
       });
-      
+
       if (temNovo) {
         tocarSom();
       }
@@ -100,9 +117,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return listaArray.map(p => {
           const createdAt = new Date(p.criado_em);
-          const timeStr = createdAt.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+          const timeStr = createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
           const diffMinutes = Math.floor((new Date() - createdAt) / 60000);
-          
+
           const isAtrasado = diffMinutes >= 20;
           const isAtencao = diffMinutes >= 10 && diffMinutes < 20;
 
@@ -110,9 +127,9 @@ document.addEventListener('DOMContentLoaded', () => {
           if (isAtrasado) tempoElapsed = `<span class="text-pulse" style="color:#ff4d4d; font-weight:800; margin-left:0.4rem; letter-spacing:0.5px">(${diffMinutes} min) ATRASADO</span>`;
           else if (isAtencao) tempoElapsed = `<span style="color:#ffc107; font-weight:700; margin-left:0.4rem">(${diffMinutes} min)</span>`;
           else tempoElapsed = `<span style="color:#aaa; margin-left:0.4rem; font-weight:normal">${tempoElapsed}</span>`;
-          
+
           const cardClassAdd = isAtrasado ? 'card-atrasado' : '';
-          
+
           let itemsHtml = '<ul class="item-list">';
           p.itens.forEach(i => {
             itemsHtml += `<li><span class="qtd">${i.quantidade}x</span> ${i.nome_produto}</li>`;
@@ -138,10 +155,13 @@ document.addEventListener('DOMContentLoaded', () => {
               <div class="order-header">
                 <span class="order-id" style="font-size:1.3rem">#${p.id}</span>
                 <span class="order-time" style="font-weight:700; color:#fff; font-size:1.1rem">${timeStr} ${tempoElapsed}</span>
-                <span class="order-status">${statusLabel}</span>
+                <span class="order-status">${statusLabel}
+                  ${p.is_scheduled ? `<span style="background:#7c4dff;color:#fff;font-size:.75rem;padding:.1rem .5rem;border-radius:8px;margin-left:.3rem">⏰ AGENDADO</span>` : ''}
+                </span>
               </div>
               <div class="order-body">
                 <strong style="display:block;margin-bottom:0.5rem;color:#ccc;font-size:1.1rem">${p.cliente}</strong>
+                ${p.is_scheduled && p.scheduled_for ? `<div style="color:#b39ddb;font-size:.9rem;margin-bottom:.5rem">⏰ Para: ${new Date(p.scheduled_for).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>` : ''}
                 ${itemsHtml}
               </div>
               ${actionBtn ? `<div class="order-footer">${actionBtn}</div>` : ''}
@@ -164,14 +184,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  window.alterarStatus = async function(id, novoStatus) {
+  window.alterarStatus = async function (id, novoStatus) {
     try {
       const res = await fetch(`/api/pedidos/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: novoStatus, origem: 'cozinha' })
       });
-      
+
       if (res.ok) {
         carregarPedidos();
       }

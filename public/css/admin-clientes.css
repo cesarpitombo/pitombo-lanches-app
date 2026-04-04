@@ -1,0 +1,82 @@
+/* PITOMBO - Estilos Aba Clientes */
+
+.clientes-filters .chip {
+  padding: 0.6rem 1.2rem;
+  border-radius: 20px;
+  border: 1.5px solid #ddd;
+  background: #fff;
+  color: #666;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  outline: none;
+}
+
+.clientes-filters .chip:hover {
+  border-color: #bbb;
+  background: #f8f8f8;
+  transform: translateY(-1px);
+}
+
+.clientes-filters .chip.active {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.cliente-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08) !important;
+}
+
+.dropdown-content {
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  overflow: hidden;
+  animation: fadeInClientes 0.15s ease-out;
+}
+
+.dropdown-content button:hover {
+  background: #f9f9f9 !important;
+}
+
+@keyframes fadeInClientes {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.spinner-small {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(0,0,0,0.05);
+  border-top: 3px solid #e8420a;
+  border-radius: 50%;
+  animation: spinClient 0.8s linear infinite;
+}
+
+@keyframes spinClient {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsividade Mobile */
+@media (max-width: 768px) {
+  #clientes-lista-container {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .clientes-filters {
+    padding: 1rem !important;
+  }
+  
+  .section-header div {
+    width: 100%;
+  }
+  
+  .section-header button {
+    width: 100%;
+    justify-content: center;
+  }
+}

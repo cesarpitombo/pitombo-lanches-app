@@ -1,21 +1,9 @@
-# Dependências
-node_modules/
-
-# Variáveis de ambiente (nunca suba para o git)
+﻿node_modules/
+local.db
+local.db-journal
 .env
-
-# Logs
-*.log
-npm-debug.log*
-
-# Sistema operacional
-.DS_Store
-Thumbs.db
-
-# Editor
-.vscode/
-.idea/
-
-# Build (se aplicável no futuro)
-dist/
-build/
+.gemini/
+tmp/
+*.bak
+/public/uploads/*
+!/public/uploads/.gitkeep

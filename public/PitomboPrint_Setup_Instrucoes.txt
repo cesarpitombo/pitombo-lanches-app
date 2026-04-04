@@ -1,0 +1,14 @@
+PITOMBO LANCHES - CLIENTE DE IMPRESSÃO PC (VERSÃO DE DEMONSTRAÇÃO)
+
+=======================================================
+PROVA DE CONCEITO DE REDE
+=======================================================
+Este é um arquivo de demonstração criado pelo motor Antigravity para provar ao Lojista que a rota de download de executáveis da nuvem Pitombo está operando perfeitamente. 
+
+Sua infraestrutura WEB consegue entregar as dependências pesadas de Desktop!
+No futuro, o seu time de desenvolvimento fará o upload do instalador real `.EXE` do servidor de Impressão (Node/Electron/C#) para que os restaurantes o baixem diretamente da sua prateleira administrativa.
+
+Instruções Futuras:
+1. Instale o Aplicativo
+2. Busque suas impressoras EPSON/Bematech/Bluetooth no painel
+3. O software escutará a rota /api/pedidos e disparará cupons na cozinha 1 e caixa automaticamente!

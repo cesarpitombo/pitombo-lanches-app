@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find \"c:\\\\Users\\\\pc\\\\Downloads\\\\Pitombo_Lanches_App\\\\routes\" -name \"*.js\" -exec wc -l {} \\\\;)",
+      "Bash(node -e ':*)"
+    ]
+  }
+}

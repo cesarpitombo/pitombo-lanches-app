@@ -32,14 +32,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      document.getElementById('valTotalPago').textContent = `R$ ${totPago.toFixed(2).replace('.',',')}`;
-      document.getElementById('valPendente').textContent = `R$ ${totPendente.toFixed(2).replace('.',',')}`;
+      document.getElementById('valTotalPago').textContent = `${window.formatCurrency(totPago)}`;
+      document.getElementById('valPendente').textContent = `${window.formatCurrency(totPendente)}`;
       document.getElementById('valPedidos').textContent = qdtPedidos;
       document.getElementById('valEntregues').textContent = qdtEntregues;
       
-      document.getElementById('mDinheiro').textContent = `R$ ${mDinheiro.toFixed(2).replace('.',',')}`;
-      document.getElementById('mPix').textContent = `R$ ${mPix.toFixed(2).replace('.',',')}`;
-      document.getElementById('mCartao').textContent = `R$ ${mCartao.toFixed(2).replace('.',',')}`;
+      document.getElementById('mDinheiro').textContent = `${window.formatCurrency(mDinheiro)}`;
+      document.getElementById('mPix').textContent = `${window.formatCurrency(mPix)}`;
+      document.getElementById('mCartao').textContent = `${window.formatCurrency(mCartao)}`;
       
     } catch (err) {
       console.error('Erro ao carregar o caixa:', err);

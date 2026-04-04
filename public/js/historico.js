@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     el.addEventListener('change', renderDados);
   });
   
-  await fetchPedidos();
+  await Promise.all([ fetchPedidos(), fetchDespesasHoje() ]);
 });
 
 function handlePeriodoChange(e) {
@@ -88,12 +88,12 @@ function renderDados() {
   const fatCartao = entregues.filter(p => p.payment_method === 'cartao').reduce((acc, p) => acc + Number(p.total), 0);
   const fatPix = entregues.filter(p => p.payment_method === 'mbway/pix').reduce((acc, p) => acc + Number(p.total), 0);
 
-  document.getElementById('kpi-faturamento').textContent = `R$ ${faturamento.toFixed(2).replace('.',',')}`;
+  document.getElementById('kpi-faturamento').textContent = `${window.formatCurrency(faturamento)}`;
   document.getElementById('kpi-faturamento-sub').textContent = `Din: R$${fatDinheiro.toFixed(0)} | PIX: R$${fatPix.toFixed(0)} | Cart: R$${fatCartao.toFixed(0)}`;
   
   document.getElementById('kpi-entregues').textContent = entregues.length;
   const ticket = entregues.length ? (faturamento / entregues.length) : 0;
-  document.getElementById('kpi-ticket').textContent = `Ticket Médio: R$ ${ticket.toFixed(2).replace('.',',')}`;
+  document.getElementById('kpi-ticket').textContent = `Ticket Médio: ${window.formatCurrency(ticket)}`;
 
   // Resumo Operacional
   const cancelados = pedidos.filter(p => p.status === 'cancelado').length;
@@ -156,7 +156,7 @@ function renderDados() {
         <td>${dataStr}</td>
         <td><strong>${p.cliente}</strong><br><small>${p.telefone}</small></td>
         <td style="font-size:0.8rem; color:#555">${p.itens.map(i => `${i.quantidade}x ${i.nome_produto}`).join('<br>')}</td>
-        <td style="font-weight:bold; color:var(--primary)">R$ ${Number(p.total).toFixed(2).replace('.',',')}</td>
+        <td style="font-weight:bold; color:var(--primary)">${window.formatCurrency(p.total)}</td>
         <td>${pgNm}</td>
         <td><span class="status-badge" style="background:${corBg}; color:${corTx}">${p.status.toUpperCase()}</span></td>
         <td><strong>${slaLabel}</strong></td>
@@ -197,3 +197,77 @@ function exportarCSV() {
   link.click();
   document.body.removeChild(link);
 }
+
+// ── Gestão de Despesas ──
+
+let despesasDeHoje = [];
+
+async function fetchDespesasHoje() {
+  try {
+    const res = await fetch('/api/despesas');
+    despesasDeHoje = await res.json();
+    renderDespesas();
+  } catch (err) {
+    console.error('Erro ao buscar despesas:', err);
+  }
+}
+
+function renderDespesas() {
+  const lista = document.getElementById('listaDespesas');
+  let totalDegastos = 0;
+  let html = '';
+  
+  if(despesasDeHoje.length === 0) {
+    html = '<div style="color:#999; font-size:0.9rem; text-align:center;">Nenhuma despesa registrada hoje.</div>';
+  } else {
+    despesasDeHoje.forEach(d => {
+      totalDegastos += Number(d.valor);
+      html += `
+        <div style="display:flex; justify-content:space-between; padding:0.6rem 0; border-bottom:1px solid #eee; font-size:0.95rem;">
+          <div><strong>${d.descricao}</strong></div>
+          <div style="color:#c62828; font-weight:bold;">- ${window.formatCurrency(d.valor)}</div>
+        </div>
+      `;
+    });
+  }
+  
+  lista.innerHTML = html;
+  document.getElementById('kpi-despesas').innerText = `${window.formatCurrency(totalDegastos)}`;
+  
+  // Atualiza o líquido (Considerando vendas DE HOJE)
+  const hojeStr = new Date().toDateString();
+  const vendasHoje = allPedidos
+    .filter(p => new Date(p.criado_em).toDateString() === hojeStr && p.status === 'entregue')
+    .reduce((acc, p) => acc + Number(p.total), 0);
+    
+  document.getElementById('kpi-liquido').innerText = `${window.formatCurrency((vendasHoje - totalDegastos))}`;
+}
+
+window.salvarDespesa = async function() {
+  const desc = document.getElementById('descDespesa').value.trim();
+  const valor = parseFloat(document.getElementById('valorDespesa').value);
+  
+  if(!desc || !valor || isNaN(valor)) {
+      alert('Preencha a descrição e valor válidos!');
+      return;
+  }
+  
+  try {
+    const res = await fetch('/api/despesas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ descricao: desc, valor })
+    });
+    if(res.ok) {
+        document.getElementById('descDespesa').value = '';
+        document.getElementById('valorDespesa').value = '';
+        await fetchDespesasHoje();
+        renderDados(); // Atualizar possivelmente o resto
+    } else {
+        alert('Erro ao gravar despesa no banco.');
+    }
+  } catch(err) {
+    console.error(err);
+    alert('Erro de conexão ao salvar despesa.');
+  }
+};

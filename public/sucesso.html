@@ -170,57 +170,50 @@
       
       document.getElementById('numeroPedido').textContent = '#' + pedidoId;
       
-      const statusMap = [
-        { key: 'recebido', icon: '📝', title: 'Pedido Recebido', desc: 'Aguardando confirmação da loja.' },
-        { key: 'em_preparo', icon: '👨‍🍳', title: 'Em Preparo', desc: 'Sua comida está sendo montada com carinho.' },
-        { key: 'pronto', icon: '🛍️', title: 'Pronto para Entrega', desc: 'Aguardando o entregador coletar o pacote.' },
-        { key: 'em_entrega', icon: '🛵', title: 'Saiu para Entrega', desc: 'O motoqueiro já está na rua indo até você.' },
-        { key: 'entregue', icon: '✅', title: 'Entregue', desc: 'Bom apetite! Obrigado por escolher o Pitombo.' }
+      // Etapas visíveis para o cliente — sem "Pronto para Entrega"
+      const steps = [
+        { keys: ['pendente_aprovacao', 'recebido'], icon: '📝', title: 'Pedido enviado',      desc: 'Recebemos seu pedido! Aguardando confirmação da loja.' },
+        { keys: ['em_preparo'],                     icon: '👨‍🍳', title: 'Em preparo',          desc: 'Sua comida está sendo feita com carinho.' },
+        { keys: ['em_entrega', 'pronto'],            icon: '🛵', title: 'Saiu para entrega',   desc: 'O entregador já está a caminho!' },
+        { keys: ['entregue'],                        icon: '✅', title: 'Entregue',             desc: 'Bom apetite! Obrigado por escolher o Pitombo.' }
       ];
 
-      function renderizarTimeline(statusAtual, cancelado = false) {
-        if (cancelado) {
+      // Ordem interna dos status para saber qual posição é "mais avançada"
+      const statusOrder = ['pendente_aprovacao', 'recebido', 'em_preparo', 'pronto', 'em_entrega', 'entregue'];
+
+      function renderizarTimeline(statusAtual, encerrado = false, iconeEncerrado = '❌', tituloEncerrado = 'Pedido Cancelado', descEncerrado = 'Infelizmente este pedido foi cancelado.') {
+        if (encerrado) {
           document.getElementById('timelineContainer').innerHTML = `
             <div class="step cancelled">
-              <div class="step-icon">❌</div>
-              <div class="step-content">
-                <h4>Pedido Cancelado</h4>
-                <p>Infelizmente este pedido foi cancelado pelo restaurante.</p>
-              </div>
-            </div>
-          `;
+              <div class="step-icon">${iconeEncerrado}</div>
+              <div class="step-content"><h4>${tituloEncerrado}</h4><p>${descEncerrado}</p></div>
+            </div>`;
           return;
         }
 
+        const posAtual = statusOrder.indexOf(statusAtual);
         let html = '';
-        let atingido = true;
-        
-        for (let i = 0; i < statusMap.length; i++) {
-          const s = statusMap[i];
-          const isCurrent = s.key === statusAtual;
-          
+
+        steps.forEach(s => {
+          // Posição máxima deste step na ordem interna
+          const posPasso = Math.max(...s.keys.map(k => statusOrder.indexOf(k)));
+          const posMin   = Math.min(...s.keys.map(k => statusOrder.indexOf(k)).filter(n => n >= 0));
+
           let cssClass = 'step';
-          if (isCurrent) {
-            cssClass += ' active';
-            atingido = false; // Os proximos não estão atingidos
-          } else if (atingido) {
-            cssClass += ' completed';
-            // Se o sistema saltar do recebido pro entregue direto (admin fez rapido), o atingido é falso dps
+          if (posAtual >= posPasso) {
+            // Status atual é igual ou posterior a este passo
+            cssClass += s.keys.includes(statusAtual) ? ' active' : ' completed';
           }
-          
+          // Se status atual == algum key deste step → active (sobrescreve completed)
+          if (s.keys.includes(statusAtual)) cssClass = 'step active';
+
           html += `
             <div class="${cssClass}">
-              <div class="step-icon">
-                ${cssClass.includes('completed') ? '✔️' : s.icon}
-              </div>
-              <div class="step-content">
-                <h4>${s.title}</h4>
-                <p>${s.desc}</p>
-              </div>
-            </div>
-          `;
-        }
-        
+              <div class="step-icon">${cssClass.includes('completed') ? '✔️' : s.icon}</div>
+              <div class="step-content"><h4>${s.title}</h4><p>${s.desc}</p></div>
+            </div>`;
+        });
+
         document.getElementById('timelineContainer').innerHTML = html;
       }
 
@@ -235,17 +228,22 @@
           document.getElementById('trackView').style.display = 'block';
           
           // Header e Timeline
+          const header = document.getElementById('trackHeader');
           if (p.status === 'cancelado') {
-            document.getElementById('trackHeader').style.background = 'var(--danger)';
-            document.getElementById('trackHeader').querySelector('h2').textContent = 'Pedido Cancelado';
-            renderizarTimeline('cancelado', true);
+            header.style.background = 'var(--danger)';
+            header.querySelector('h2').textContent = 'Pedido Cancelado';
+            renderizarTimeline(null, true, '❌', 'Pedido Cancelado', 'Infelizmente este pedido foi cancelado pelo restaurante.');
+          } else if (p.status === 'rejeitado') {
+            header.style.background = '#6c757d';
+            header.querySelector('h2').textContent = 'Pedido Não Aceito';
+            renderizarTimeline(null, true, '⛔', 'Pedido não aceito', 'A loja não pôde aceitar este pedido. Entre em contato para saber mais.');
           } else if (p.status === 'entregue') {
-            document.getElementById('trackHeader').style.background = 'var(--success)';
-            document.getElementById('trackHeader').querySelector('h2').textContent = 'Pedido Entregue! ✅';
+            header.style.background = 'var(--success)';
+            header.querySelector('h2').textContent = 'Pedido Entregue! ✅';
             renderizarTimeline('entregue');
           } else {
-            document.getElementById('trackHeader').style.background = 'var(--primary)';
-            document.getElementById('trackHeader').querySelector('h2').textContent = 'Acompanhe seu Pedido';
+            header.style.background = 'var(--primary)';
+            header.querySelector('h2').textContent = 'Acompanhe seu Pedido';
             renderizarTimeline(p.status);
           }
           
@@ -281,7 +279,7 @@
           `;
 
           // Para de fazer poll se chegar no estado final
-          if (p.status === 'entregue' || p.status === 'cancelado') {
+          if (['entregue', 'cancelado', 'rejeitado'].includes(p.status)) {
              clearInterval(pollInterval);
              document.querySelector('.loading-pulse').style.display = 'none';
           }

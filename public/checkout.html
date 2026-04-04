@@ -29,7 +29,7 @@
       border: 1px solid #f0ebe5;
     }
     .checkout-summary { position: sticky; top: 1.5rem; }
-    
+
     .checkout-block {
       border: 1px solid #eee;
       border-radius: 10px;
@@ -52,12 +52,41 @@
     }
     .form-row { display: flex; gap: 1rem; }
     @media (max-width: 600px) { .form-row { flex-direction: column; gap: 0; } }
-    
+
     .form-group input, .form-group textarea {
       width: 100%; padding: 0.8rem; border: 1.5px solid #dcdce1; border-radius: 8px; font-family: inherit; font-size: 1rem; outline: none; transition: 0.2s; background: #fff;
     }
     .form-group input:focus, .form-group textarea:focus { border-color: #e8420a; box-shadow: 0 0 0 3px rgba(232, 66, 10, 0.1); }
-    
+    .form-group input.campo-erro { border-color: #ef4444 !important; }
+
+    /* Tipo de Entrega */
+    .tipo-entrega-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .tipo-option {
+      border: 2.5px solid #ddd;
+      border-radius: 10px;
+      padding: 1.2rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: 0.2s;
+      user-select: none;
+      background: #fff;
+    }
+    .tipo-option input { display: none; }
+    .tipo-option__icon { font-size: 2rem; display: block; margin-bottom: 0.4rem; }
+    .tipo-option__label { font-weight: 700; font-size: 1rem; color: #444; }
+    .tipo-option__sub { font-size: 0.8rem; color: #888; margin-top: 0.2rem; }
+    .tipo-option:has(input:checked) {
+      border-color: #e8420a;
+      background: #fffaf8;
+      box-shadow: 0 0 0 3px rgba(232,66,10,0.1);
+    }
+    .tipo-option:has(input:checked) .tipo-option__label { color: #e8420a; }
+    .tipo-option.tipo-erro { border-color: #ef4444; background: #fff5f5; }
+
     .payment-methods {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem;
     }
@@ -68,6 +97,7 @@
     .pay-option span { font-weight: 600; font-size: 0.9rem; color: #555; }
     .pay-option:has(input:checked) { border-color: #e8420a; background: #fffaf8; }
     .pay-option:has(input:checked) span { color: #e8420a; }
+    .pay-block-erro { outline: 2px solid #ef4444; border-radius: 8px; }
 
     .summary-item {
       display: flex; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #f0ebe5; font-size: 0.95rem; color: #555;
@@ -81,6 +111,21 @@
     .btn-finalizar {
       width: 100%; padding: 1.2rem; font-size: 1.2rem; font-weight: 700; text-transform: uppercase; border-radius: 8px; letter-spacing: 0.5px; margin-top: 1rem; box-shadow: 0 4px 15px rgba(232, 66, 10, 0.3);
     }
+
+    /* Erro inline */
+    .erro-box {
+      display: none;
+      background: #fef2f2;
+      border: 1.5px solid #ef4444;
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      margin-bottom: 1.2rem;
+      color: #b91c1c;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+    .erro-box.visivel { display: block; }
+    .erro-box ul { margin: 0.4rem 0 0 1.2rem; }
   </style>
 </head>
 <body style="background-color: #fbf9f6">
@@ -102,38 +147,57 @@
       <!-- FORMULÁRIO -->
       <div>
         <h2 style="margin-bottom:1.5rem; font-size:1.8rem; color:#222">Finalizar Pedido</h2>
-        <form id="formCheckout" class="checkout-form">
-          
+        <form id="formCheckout" class="checkout-form" novalidate>
+
+          <!-- Bloco 0: Tipo de Entrega -->
+          <div class="checkout-block" id="blocoTipoEntrega">
+            <h4 class="block-title">🚀 Como você quer receber?</h4>
+            <div class="tipo-entrega-grid">
+              <label class="tipo-option">
+                <input type="radio" name="tipoEntrega" value="delivery">
+                <span class="tipo-option__icon">🛵</span>
+                <span class="tipo-option__label">Delivery</span>
+                <span class="tipo-option__sub">Entrega no seu endereço</span>
+              </label>
+              <label class="tipo-option">
+                <input type="radio" name="tipoEntrega" value="balcao">
+                <span class="tipo-option__icon">🏪</span>
+                <span class="tipo-option__label">Retirar na Loja</span>
+                <span class="tipo-option__sub">Take away</span>
+              </label>
+            </div>
+          </div>
+
           <!-- Bloco 1: Cliente -->
           <div class="checkout-block">
             <h4 class="block-title">👤 Seus Dados</h4>
             <div class="form-group">
               <label for="nome">Nome Completo *</label>
-              <input type="text" id="nome" required placeholder="Ex: João da Silva">
+              <input type="text" id="nome" placeholder="Ex: João da Silva">
             </div>
             <div class="form-group">
               <label for="telefone">WhatsApp *</label>
-              <input type="tel" id="telefone" required placeholder="(00) 00000-0000">
+              <input type="tel" id="telefone" placeholder="(00) 00000-0000">
             </div>
           </div>
 
-          <!-- Bloco 2: Endereço -->
-          <div class="checkout-block">
+          <!-- Bloco 2: Endereço (oculto para Take Away) -->
+          <div class="checkout-block" id="blocoEndereco" style="display:none;">
             <h4 class="block-title">📍 Endereço de Entrega</h4>
             <div class="form-row">
               <div class="form-group" style="flex:3">
                 <label for="end_rua">Rua/Avenida *</label>
-                <input type="text" id="end_rua" required placeholder="Ex: Rua das Flores">
+                <input type="text" id="end_rua" placeholder="Ex: Rua das Flores">
               </div>
               <div class="form-group" style="flex:1">
                 <label for="end_num">Número *</label>
-                <input type="text" id="end_num" required placeholder="Ex: 123">
+                <input type="text" id="end_num" placeholder="Ex: 123">
               </div>
             </div>
             <div class="form-row">
               <div class="form-group" style="flex:1">
                 <label for="end_bairro">Bairro *</label>
-                <input type="text" id="end_bairro" required placeholder="Ex: Centro">
+                <input type="text" id="end_bairro" placeholder="Ex: Centro">
               </div>
               <div class="form-group" style="flex:1">
                 <label for="end_comp">Complemento (Opcional)</label>
@@ -141,30 +205,47 @@
               </div>
             </div>
             <div class="form-group">
-              <label for="observacoes">Ponto de Referência para Entrega</label>
+              <label for="observacoes">Ponto de Referência</label>
               <textarea id="observacoes" rows="2" placeholder="Ex: Perto da praça, portão preto, muro amarelo..."></textarea>
+            </div>
+          </div>
+
+          <!-- Bloco 2b: Agendamento -->
+          <div class="checkout-block" id="schedulingBox" style="display:none;">
+            <h4 class="block-title">⏰ Quando você quer receber?</h4>
+            <div style="display:flex; gap:1rem; margin-bottom:0.8rem;">
+              <label style="flex:1; display:flex; align-items:center; gap:0.5rem; cursor:pointer; background:#f5f5f5; padding:0.8rem; border-radius:8px; border:2px solid #e8420a;">
+                <input type="radio" name="schedMode" value="agora" checked id="schedAgora"> <span style="font-weight:700;">Quero agora</span>
+              </label>
+              <label style="flex:1; display:flex; align-items:center; gap:0.5rem; cursor:pointer; background:#f5f5f5; padding:0.8rem; border-radius:8px; border:2px solid #ddd;" id="labelSchedFuturo">
+                <input type="radio" name="schedMode" value="agendar" id="schedFuturo"> <span style="font-weight:700;">🗓️ Agendar para depois</span>
+              </label>
+            </div>
+            <div id="schedPickerBox" style="display:none;">
+              <div class="form-group">
+                <label for="schedDatetime">Data e Hora da Entrega</label>
+                <input type="datetime-local" id="schedDatetime" style="width:100%; padding:0.8rem; border:1.5px solid #dcdce1; border-radius:8px; font-family:inherit; font-size:1rem;">
+              </div>
             </div>
           </div>
 
           <!-- Bloco 3: Pagamento -->
           <div class="checkout-block">
             <h4 class="block-title">💳 Forma de Pagamento</h4>
-            <div class="payment-methods">
-              <label class="pay-option">
-                <input type="radio" name="formaPagamento" value="dinheiro" required> <span>💵 Dinheiro</span>
-              </label>
-              <label class="pay-option">
-                <input type="radio" name="formaPagamento" value="mbway/pix"> <span>📱 PIX / MBWay</span>
-              </label>
-              <label class="pay-option">
-                <input type="radio" name="formaPagamento" value="cartao"> <span>💳 Cartão</span>
-              </label>
+            <div class="payment-methods" id="paymentMethodsContainer">
+              <span style="font-size:0.9rem; color:#777;">Carregando métodos...</span>
             </div>
-            
+
             <div class="form-group" id="divTroco" style="display: none; margin-top:1.5rem;">
               <label for="trocoPara">Troco para quanto?</label>
               <input type="number" id="trocoPara" placeholder="Deixe em branco se tiver o dinheiro trocado" step="0.01" min="0">
             </div>
+          </div>
+
+          <!-- Erro inline -->
+          <div class="erro-box" id="erroBox">
+            <strong>⚠️ Por favor, corrija os campos abaixo:</strong>
+            <ul id="erroLista"></ul>
           </div>
 
           <button type="submit" class="btn btn--primary btn-finalizar" id="btnEnviarPedido">Confirmar Pedido</button>
@@ -179,7 +260,7 @@
         </div>
         <div class="taxa-entrega">
           <span>Taxa de Entrega</span>
-          <strong style="color: #198754;">Grátis</strong>
+          <strong id="taxaEntregaValor" style="color: #198754;">—</strong>
         </div>
         <div class="summary-total">
           <span>Total Final</span>
@@ -190,101 +271,303 @@
   </main>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       const itensCarrinho = JSON.parse(localStorage.getItem('pitombo_carrinho')) || [];
       const totalCarrinho = parseFloat(localStorage.getItem('pitombo_total')) || 0;
 
       if (itensCarrinho.length === 0) {
-        alert('Seu carrinho está vazio!');
         window.location.href = '/';
         return;
       }
 
+      // ── Resumo do carrinho ───────────────────────────────────────────────────
       const resumoItens = document.getElementById('resumoItens');
       resumoItens.innerHTML = itensCarrinho.map(item => `
         <div class="summary-item">
-          <div>
-            <strong>${item.quantidade}x ${item.nome}</strong>
-          </div>
-          <div>
-            R$ ${(item.preco * item.quantidade).toFixed(2).replace('.', ',')}
-          </div>
+          <div><strong>${item.quantidade}x ${item.nome}</strong></div>
+          <div>R$ ${(item.preco * item.quantidade).toFixed(2).replace('.', ',')}</div>
         </div>
       `).join('');
 
-      document.getElementById('resumoTotal').textContent = `R$ ${totalCarrinho.toFixed(2).replace('.', ',')}`;
+      // ── Estado ───────────────────────────────────────────────────────────────
+      let tipoEntregaSelecionado = null;  // 'delivery' | 'balcao'
+      let taxaEntrega = 0;
+      let taxaDeliveryPadrao = 0;         // carregada da 1ª zona
 
+      const taxaEntregaEl = document.getElementById('taxaEntregaValor');
+      const resumoTotalEl = document.getElementById('resumoTotal');
+      const blocoEndereco = document.getElementById('blocoEndereco');
+
+      function atualizarTotal() {
+        const taxa = tipoEntregaSelecionado === 'delivery' ? taxaEntrega : 0;
+        const totalFinal = totalCarrinho + taxa;
+        if (taxa > 0) {
+          taxaEntregaEl.textContent = `R$ ${taxa.toFixed(2).replace('.', ',')}`;
+          taxaEntregaEl.style.color = '#e8420a';
+        } else if (tipoEntregaSelecionado === 'balcao') {
+          taxaEntregaEl.textContent = 'Grátis (retirada)';
+          taxaEntregaEl.style.color = '#198754';
+        } else if (tipoEntregaSelecionado === 'delivery') {
+          taxaEntregaEl.textContent = 'Grátis';
+          taxaEntregaEl.style.color = '#198754';
+        } else {
+          taxaEntregaEl.textContent = '—';
+          taxaEntregaEl.style.color = '#999';
+        }
+        resumoTotalEl.textContent = `R$ ${totalFinal.toFixed(2).replace('.', ',')}`;
+      }
+
+      // ── Buscar taxa da 1ª zona disponível ───────────────────────────────────
+      try {
+        const res = await fetch('/api/zonas/ativas');
+        if (res.ok) {
+          const zonas = await res.json();
+          if (zonas.length > 0) {
+            taxaDeliveryPadrao = parseFloat(zonas[0].taxa) || 0;
+            taxaEntrega = taxaDeliveryPadrao;
+          }
+        }
+      } catch(e) { /* sem zona — taxa 0 */ }
+
+      // ── Tipo de Entrega ──────────────────────────────────────────────────────
+      document.querySelectorAll('input[name="tipoEntrega"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          tipoEntregaSelecionado = e.target.value;
+          const isDelivery = tipoEntregaSelecionado === 'delivery';
+          blocoEndereco.style.display = isDelivery ? 'block' : 'none';
+
+          // Resetar erros visuais no bloco de tipo
+          document.querySelectorAll('.tipo-option').forEach(el => el.classList.remove('tipo-erro'));
+
+          atualizarTotal();
+        });
+      });
+
+      atualizarTotal();
+
+      // ── Agendamento + Pagamento ──────────────────────────────────────────────
+      let isAgendado = false;
+      let scheduledFor = null;
+
+      try {
+        const sRes = await fetch('/api/settings');
+        if (sRes.ok) {
+          const settings = await sRes.json();
+
+          if (settings.scheduling_enabled) {
+            const schedBox = document.getElementById('schedulingBox');
+            if (schedBox) schedBox.style.display = 'block';
+            const minAdvance = parseInt(settings.scheduling_min_advance) || 30;
+            const minDt = new Date(Date.now() + minAdvance * 60000);
+            const schedDt = document.getElementById('schedDatetime');
+            if (schedDt) {
+              const pad = n => String(n).padStart(2,'0');
+              schedDt.min = `${minDt.getFullYear()}-${pad(minDt.getMonth()+1)}-${pad(minDt.getDate())}T${pad(minDt.getHours())}:${pad(minDt.getMinutes())}`;
+            }
+          }
+
+          const payCont = document.getElementById('paymentMethodsContainer');
+          if (payCont) {
+            payCont.innerHTML = '';
+            const addPay = (val, icon, text) => {
+              payCont.innerHTML += `
+               <label class="pay-option">
+                 <input type="radio" name="formaPagamento" value="${val}"> <span>${icon} ${text}</span>
+               </label>`;
+            };
+            if (settings.pay_money !== false)        addPay('dinheiro',    '💵', 'Dinheiro');
+            if (settings.pay_pix !== false)          addPay('mbway/pix',   '📱', 'PIX / MBWay');
+            if (settings.pay_card_machine !== false) addPay('cartao',      '💳', 'Cartão');
+            if (settings.pay_amex)                   addPay('amex',        '💳', 'American Express');
+            if (settings.pay_visa)                   addPay('visa',        '💳', 'Visa');
+            if (settings.pay_mastercard)             addPay('mastercard',  '💳', 'Mastercard');
+            if (settings.pay_online_stripe)          addPay('online',      '🌐', 'Pagamento Online');
+
+            if (payCont.innerHTML === '') {
+              payCont.innerHTML = '<span style="color:red">Nenhum meio de pagamento disponível. Entre em contato com o restaurante.</span>';
+            }
+
+            document.querySelectorAll('input[name="formaPagamento"]').forEach(radio => {
+              radio.addEventListener('change', (e) => {
+                const divTroco = document.getElementById('divTroco');
+                if (e.target.value === 'dinheiro') {
+                  divTroco.style.display = 'block';
+                } else {
+                  divTroco.style.display = 'none';
+                  document.getElementById('trocoPara').value = '';
+                }
+                // Limpar erro do bloco de pagamento
+                document.getElementById('paymentMethodsContainer').classList.remove('pay-block-erro');
+              });
+            });
+          }
+        }
+      } catch(_) {}
+
+      document.querySelectorAll('input[name="schedMode"]').forEach(r => {
+        r.addEventListener('change', (e) => {
+          const picker = document.getElementById('schedPickerBox');
+          const isAgendar = e.target.value === 'agendar';
+          if (picker) picker.style.display = isAgendar ? 'block' : 'none';
+          isAgendado = isAgendar;
+          if (!isAgendar) scheduledFor = null;
+        });
+      });
+      const schedDtEl = document.getElementById('schedDatetime');
+      if (schedDtEl) schedDtEl.addEventListener('change', e => { scheduledFor = e.target.value || null; });
+
+      // ── Validação inline ─────────────────────────────────────────────────────
+      function mostrarErros(erros) {
+        const box = document.getElementById('erroBox');
+        const lista = document.getElementById('erroLista');
+        if (erros.length === 0) {
+          box.classList.remove('visivel');
+          return;
+        }
+        lista.innerHTML = erros.map(e => `<li>${e}</li>`).join('');
+        box.classList.add('visivel');
+        box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      function limparErrosCampo(el) {
+        if (el) el.classList.remove('campo-erro');
+      }
+      ['nome','telefone','end_rua','end_num','end_bairro'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', () => limparErrosCampo(el));
+      });
+
+      // ── Submit ───────────────────────────────────────────────────────────────
       document.getElementById('formCheckout').addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const btn = document.getElementById('btnEnviarPedido');
-        btn.disabled = true;
-        btn.textContent = 'Trabalhando...';
+        const erros = [];
 
-        const rua = document.getElementById('end_rua').value.trim();
-        const num = document.getElementById('end_num').value.trim();
-        const bairro = document.getElementById('end_bairro').value.trim();
-        const comp = document.getElementById('end_comp').value.trim();
-        let endFinal = `${rua}, ${num} - ${bairro}`;
-        if (comp) endFinal += ` (${comp})`;
+        // Limpar estados de erro
+        document.querySelectorAll('.tipo-option').forEach(el => el.classList.remove('tipo-erro'));
+        document.querySelectorAll('.campo-erro').forEach(el => el.classList.remove('campo-erro'));
+        document.getElementById('paymentMethodsContainer').classList.remove('pay-block-erro');
 
+        // 1. Tipo de entrega
+        if (!tipoEntregaSelecionado) {
+          erros.push('Selecione o tipo de entrega: Delivery ou Retirar na Loja.');
+          document.querySelectorAll('.tipo-option').forEach(el => el.classList.add('tipo-erro'));
+        }
+
+        // 2. Dados do cliente
+        const nome = document.getElementById('nome').value.trim();
+        const telefone = document.getElementById('telefone').value.trim();
+        if (!nome) {
+          erros.push('Informe seu nome completo.');
+          document.getElementById('nome').classList.add('campo-erro');
+        }
+        if (!telefone) {
+          erros.push('Informe seu WhatsApp.');
+          document.getElementById('telefone').classList.add('campo-erro');
+        }
+
+        // 3. Endereço (somente para delivery)
+        let endFinal = '';
+        if (tipoEntregaSelecionado === 'delivery') {
+          const rua    = document.getElementById('end_rua').value.trim();
+          const num    = document.getElementById('end_num').value.trim();
+          const bairro = document.getElementById('end_bairro').value.trim();
+          const comp   = document.getElementById('end_comp').value.trim();
+          if (!rua) {
+            erros.push('Informe a rua/avenida para entrega.');
+            document.getElementById('end_rua').classList.add('campo-erro');
+          }
+          if (!num) {
+            erros.push('Informe o número do endereço.');
+            document.getElementById('end_num').classList.add('campo-erro');
+          }
+          if (!bairro) {
+            erros.push('Informe o bairro para entrega.');
+            document.getElementById('end_bairro').classList.add('campo-erro');
+          }
+          if (rua && num && bairro) {
+            endFinal = `${rua}, ${num} - ${bairro}`;
+            if (comp) endFinal += ` (${comp})`;
+          }
+        }
+
+        // 4. Forma de pagamento
         const formaPagamentoNode = document.querySelector('input[name="formaPagamento"]:checked');
         if (!formaPagamentoNode) {
-          alert('Selecione uma forma de pagamento antes de fechar.');
-          btn.disabled = false; btn.textContent = 'Confirmar Pedido';
+          erros.push('Selecione uma forma de pagamento.');
+          document.getElementById('paymentMethodsContainer').classList.add('pay-block-erro');
+        }
+
+        if (erros.length > 0) {
+          mostrarErros(erros);
           return;
         }
 
+        mostrarErros([]);
+        btn.disabled = true;
+        btn.textContent = 'Enviando pedido...';
+
+        const taxaFinal = tipoEntregaSelecionado === 'delivery' ? taxaEntrega : 0;
+        const totalFinal = totalCarrinho + taxaFinal;
+
+        const itensSaneados = itensCarrinho
+          .map(item => ({
+            id:         Number(item.id),
+            nome:       item.nome,
+            preco:      parseFloat(item.preco),
+            quantidade: parseInt(item.quantidade)
+          }))
+          .filter(item => item.id && !isNaN(item.id));
+
         const payload = {
-          cliente: document.getElementById('nome').value.trim(),
-          telefone: document.getElementById('telefone').value.trim(),
-          endereco: endFinal,
+          cliente:         nome,
+          telefone:        telefone,
+          endereco:        endFinal,
+          tipo:            tipoEntregaSelecionado,
           forma_pagamento: formaPagamentoNode.value,
-          troco_para: document.getElementById('trocoPara').value ? parseFloat(document.getElementById('trocoPara').value) : null,
-          observacoes: document.getElementById('observacoes').value.trim(),
-          itens: itensCarrinho,
-          total: totalCarrinho
+          troco_para:      document.getElementById('trocoPara').value
+                             ? parseFloat(document.getElementById('trocoPara').value)
+                             : null,
+          observacoes:     document.getElementById('observacoes') ? document.getElementById('observacoes').value.trim() : '',
+          itens:           itensSaneados,
+          total:           totalFinal,
+          taxa_entrega:    taxaFinal,
+          is_scheduled:    isAgendado,
+          scheduled_for:   isAgendado && scheduledFor ? scheduledFor : null
         };
 
         try {
           const res = await fetch('/api/pedidos', {
-            method: 'POST',
+            method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body:    JSON.stringify(payload)
           });
 
           if (!res.ok) {
             const errData = await res.json();
+            if (res.status === 400 && errData.error && errData.error.includes('IDs inválidos')) {
+              localStorage.removeItem('pitombo_carrinho');
+              localStorage.removeItem('pitombo_total');
+              mostrarErros(['Alguns produtos não estão mais disponíveis. O carrinho foi limpo. Por favor, refaça seu pedido.']);
+              setTimeout(() => window.location.href = '/', 3000);
+              return;
+            }
             throw new Error(errData.error || 'Erro interno da loja');
           }
 
           const pedido = await res.json();
-          
           localStorage.removeItem('pitombo_carrinho');
           localStorage.removeItem('pitombo_total');
-          
           localStorage.setItem('pitombo_ultimo_pedido', pedido.id);
           window.location.href = '/sucesso';
 
         } catch (err) {
           console.error(err);
-          alert('Erro de Conexão: ' + err.message);
+          mostrarErros(['Erro ao enviar pedido: ' + err.message]);
           btn.disabled = false;
           btn.textContent = 'Confirmar Pedido';
         }
-      });
-
-      const payRadios = document.querySelectorAll('input[name="formaPagamento"]');
-      payRadios.forEach(radio => {
-        radio.addEventListener('change', (e) => {
-          const divTroco = document.getElementById('divTroco');
-          if (e.target.value === 'dinheiro') {
-            divTroco.style.display = 'block';
-          } else {
-            divTroco.style.display = 'none';
-            document.getElementById('trocoPara').value = '';
-          }
-        });
       });
     });
   </script>

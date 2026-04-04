@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Cardápio online do Pitombo Lanches — peça agora pelo site!" />
+  <meta name="description" content="Cardápio online — peça agora pelo site!" />
   <title>Carregando...</title>
   <script src="/js/theme.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -13,63 +13,405 @@
 </head>
 <body>
 
-  <!-- HEADER -->
-  <header class="header">
-    <div class="container header__inner">
-      <div class="header__brand" style="display:flex; align-items:center; gap:0.5rem;">
-        <img class="header__logo" data-brand="logo" src="" style="display:none; height:40px; border-radius:4px; object-fit:contain;" alt="Logo da loja">
-        <h1 class="header__title" data-brand="name">Pitombo Lanches</h1>
-      </div>
-      <button class="btn-carrinho" id="btnCarrinho" aria-label="Ver carrinho">
-        🛒 <span class="carrinho-badge" id="carrinhoBadge">0</span>
-      </button>
-    </div>
-  </header>
+  <!-- HERO: vídeo OU imagem de fundo + overlay com logo, nome, slogan, CTA -->
+  <section class="landing-hero">
+    <!-- Fundo desfocado: preenche as laterais com a imagem/poster borrada -->
+    <div class="landing-hero__bg-blur" id="heroBgBlur"></div>
 
-  <!-- HERO -->
-  <section class="hero">
-    <div class="container hero__inner">
-      <h2 class="hero__title">Sabor que chega até você</h2>
-      <p class="hero__sub" data-brand="subtitle">Hambúrgueres artesanais, lanches irresistíveis e muito mais.</p>
-      <a href="#cardapio" class="btn btn--primary">Ver cardápio</a>
+    <video id="heroVideo" class="landing-hero__media" autoplay muted loop playsinline style="display:none;">
+      <source id="heroVideoSrc" src="" type="video/mp4">
+    </video>
+    <img id="heroImg" class="landing-hero__media" alt="" style="display:none;">
+    <div class="landing-hero__fallback" id="heroFallback"></div>
+
+    <div class="landing-hero__overlay">
+      <img data-brand="logo" src="" alt="Logo" class="landing-hero__logo" style="display:none;">
+      <h1 class="landing-hero__nome" data-brand="name">Carregando...</h1>
+      <p class="landing-hero__sub" data-brand="subtitle"></p>
+      <div id="ctaContainer">
+        <a href="/cardapio" id="heroCta" class="landing-hero__cta">🛒 Pedir Agora</a>
+      </div>
     </div>
   </section>
 
-  <!-- CARDÁPIO -->
-  <main class="container" id="cardapio">
-    <h2 class="section-title">Cardápio</h2>
-
-    <!-- Filtros de categoria (populados via JS) -->
-    <div class="categorias" id="categorias">
-      <button class="categoria-btn active" data-categoria="todos">Todos</button>
-    </div>
-
-    <!-- Grid de produtos (populado via JS) -->
-    <div class="produtos-grid" id="produtosLista"></div>
-  </main>
-
-  <!-- RODAPÉ -->
-  <footer class="footer">
-    <div class="container">
-      <p data-brand="footer">© 2026 Pitombo Lanches · Todos os direitos reservados</p>
-    </div>
-  </footer>
-
-  <!-- MODAL CARRINHO -->
-  <div class="modal-overlay" id="modalCarrinho" hidden>
-    <div class="modal" id="modalConteudo">
-      <h3>🛒 Seu Pedido</h3>
-      <div id="carrinhoItens"></div>
-
-      <!-- O formulário de nome agora fica apenas na página de checkout -->
-      <div class="modal__footer" style="margin-top: 1rem;">
-        <p class="modal__total">Total: <strong id="carrinhoTotal">R$ 0,00</strong></p>
-        <button class="btn btn--primary" id="btnFinalizarPedido">Ir para o Checkout</button>
-        <button class="btn btn--ghost" id="btnFecharModal">Fechar</button>
-      </div>
+  <!-- SERVICES BAR: badges de serviço + endereço + horário -->
+  <div class="landing-services-bar">
+    <div class="landing-services-bar__inner">
+      <div class="svc-chip svc-chip--primary">🛵 <strong>Delivery</strong></div>
+      <div class="svc-chip svc-chip--primary">🏪 <strong>Retirada na loja</strong></div>
+      <div class="svc-chip" id="svcAddress" style="display:none;">📍 <span id="svcAddressText"></span></div>
+      <div class="svc-chip" id="svcHours" style="display:none;">🕐 <span id="svcHoursText"></span></div>
     </div>
   </div>
 
-  <script src="/js/main.js"></script>
+  <!-- FOOTER com links rápidos e redes sociais -->
+  <footer class="landing-footer">
+    <div class="landing-footer__links">
+      <a href="/cardapio" class="lf-link">🍔 Cardápio</a>
+      <a id="lfWhatsapp"  href="#" class="lf-link" style="display:none;">💬 WhatsApp</a>
+      <a id="lfInstagram" href="#" class="lf-link" style="display:none;">📷 Instagram</a>
+      <a id="lfFacebook"  href="#" class="lf-link" style="display:none;">👥 Facebook</a>
+      <a href="mailto:" id="lfReportar" class="lf-link">⚠️ Reportar algo</a>
+    </div>
+    <p class="landing-footer__brand">Menu digital por <strong>Pitombo PDV</strong></p>
+  </footer>
+    <!-- MODAL: Informações da Loja (Cliente) -->
+    <div id="modalStoreInfo" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:10000; align-items:center; justify-content:center; backdrop-filter: blur(8px);">
+      <div class="modal-content" style="background:#fff; width:95%; max-width:480px; border-radius:24px; overflow:hidden; animation: modalFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); display:flex; flex-direction:column; max-height:90vh;">
+        
+        <!-- Header com Imagem de Fundo/Logo -->
+        <div style="position:relative; height:120px; background:linear-gradient(135deg, #e8420a 0%, #ff6b3d 100%); display:flex; align-items:flex-end; padding:0 1.5rem; margin-bottom: 2.5rem;">
+          <button type="button" onclick="window.closeStoreModal()" style="position:absolute; top:1rem; right:1rem; background:rgba(255,255,255,0.2); border:none; width:32px; height:32px; border-radius:50%; color:#fff; font-size:1.2rem; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px);">&times;</button>
+          
+          <div style="position:absolute; bottom:-30px; left:1.5rem; background:#fff; width:80px; height:80px; border-radius:18px; padding:4px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); display:flex; align-items:center; justify-content:center;">
+            <img id="modalStoreLogo" src="" alt="Logo" style="width:100%; height:100%; object-fit:contain; border-radius:14px; display:none;">
+            <span id="modalStoreLogoFallback" style="font-size:2.2rem;">🍔</span>
+          </div>
+          
+          <div id="modalStatusBadge" style="position:absolute; bottom:-12px; right:1.5rem;">
+            <!-- Status Badge (Aberto/Fechado) -->
+          </div>
+        </div>
+
+        <div style="padding:0 1.5rem 1.5rem; overflow-y:auto; flex:1;">
+          <h2 id="modalStoreName" style="margin:0 0 0.3rem; font-size:1.5rem; color:#111; font-weight:800;">Nome da Loja</h2>
+          <div id="modalStoreAddress" style="font-size:0.9rem; color:#666; margin-bottom:1.5rem; display:flex; align-items:center; gap:0.4rem;">
+            <span>📍</span> <span id="modalStoreAddressText">Endereço não informado</span>
+          </div>
+
+          <!-- Serviços -->
+          <div style="display:flex; gap:0.6rem; margin-bottom:1.8rem;">
+            <div id="modalSvcDelivery" class="svc-tag">🛵 Delivery</div>
+            <div id="modalSvcRetirada" class="svc-tag">🏪 Retirada</div>
+          </div>
+
+          <!-- Redes Sociais -->
+          <div style="display:flex; gap:1rem; margin-bottom:2rem; justify-content:center;">
+             <a id="modalLinkWa" href="#" target="_blank" class="social-btn social-btn--wa"><span>💬</span> WhatsApp</a>
+             <a id="modalLinkIg" href="#" target="_blank" class="social-btn social-btn--ig"><span>📷</span> Instagram</a>
+             <a id="modalLinkFb" href="#" target="_blank" class="social-btn social-btn--fb"><span>👥</span> Facebook</a>
+          </div>
+
+          <!-- Horários -->
+          <div style="background:#f8f9fa; border-radius:16px; padding:1.2rem;">
+            <h3 style="margin:0 0 1rem; font-size:1rem; color:#333; display:flex; align-items:center; gap:0.5rem;">🕒 Horários de Atendimento</h3>
+            <div id="modalWeeklyContent" style="display:flex; flex-direction:column; gap:0.6rem;">
+              <!-- Preenchido via JS -->
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:1.2rem; text-align:center; background:#fff; border-top:1px solid #eee;">
+          <button type="button" onclick="window.closeStoreModal()" style="width:100%; padding:1rem; border-radius:14px; border:none; background:#e8420a; color:#fff; font-weight:800; cursor:pointer; font-size:1rem; box-shadow: 0 4px 15px rgba(232, 66, 10, 0.25);">Fechar</button>
+        </div>
+      </div>
+    </div>
+    <style>
+      @keyframes modalFadeIn {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .status-badge {
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-weight: 800;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        margin-left: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+      }
+      .status-badge--open { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+      .status-badge--closed { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+      
+      .btn-see-more {
+        background: rgba(255,255,255,0.8);
+        border: 1px solid #ddd;
+        color: #444;
+        font-size: 0.75rem;
+        padding: 4px 10px;
+        border-radius: 6px;
+        margin-left: 8px;
+        cursor: pointer;
+        font-weight: 700;
+        transition: all 0.2s;
+      }
+      .btn-see-more:hover { background: #fff; border-color: #e8420a; color: #e8420a; }
+  
+      .hero-cta--closed {
+        background: #666 !important;
+        cursor: pointer !important;
+        box-shadow: none !important;
+      }
+
+      .svc-tag {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #444;
+        background: #f0f0f0;
+        padding: 0.4rem 0.8rem;
+        border-radius: 10px;
+        border: 1px solid #e0e0e0;
+      }
+
+      .social-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.5rem 0.8rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: transform 0.2s;
+        border: 1px solid transparent;
+      }
+      .social-btn:active { transform: scale(0.95); }
+      .social-btn--wa { background: #e8f5e9; color: #1b5e20; border-color: #c8e6c9; }
+      .social-btn--ig { background: #fdf2f8; color: #9d174d; border-color: #fce4ec; }
+      .social-btn--fb { background: #eff6ff; color: #1e40af; border-color: #dbeafe; }
+    </style>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const res = await fetch('/api/settings');
+        if (!res.ok) return;
+        const s = await res.json();
+
+        // Helper: monta número wa.me da loja com DDI correto
+        const buildStoreWaNum = (st) => {
+          if (st && st.whatsapp_dial_code && st.whatsapp_number)
+            return st.whatsapp_dial_code.replace(/\D/g,'') + st.whatsapp_number.replace(/\D/g,'');
+          const n = ((st && st.contact_whatsapp) || '').replace(/\D/g,'');
+          return n.startsWith('55') ? n : '55'+n;
+        };
+
+        if (s.store_name) document.title = s.store_name;
+
+        // --- Logo Loja ---
+        const logoImg = document.querySelector('[data-brand="logo"]');
+        if (logoImg && s.logo_url) {
+          logoImg.src = s.logo_url;
+          logoImg.style.display = 'block';
+        }
+
+        // ── Mídia: prioridade vídeo > imagem > fallback colorido ──
+        const video    = document.getElementById('heroVideo');
+        const videoSrc = document.getElementById('heroVideoSrc');
+        const img      = document.getElementById('heroImg');
+        const bgBlur   = document.getElementById('heroBgBlur');
+        const fallback = document.getElementById('heroFallback');
+
+        const hasVideo = !!s.hero_video_url;
+        const hasImage = !!s.hero_image_url;
+
+        // Blur backdrop decorativo: preenche as laterais com a imagem desfocada
+        // (resolve espaço vazio nos lados de vídeos verticais com object-fit:contain)
+        if (hasImage) {
+          bgBlur.style.backgroundImage = `url('${s.hero_image_url}')`;
+        }
+
+        if (!hasVideo && !hasImage) {
+          // Caso 1: nenhuma mídia → fundo colorido
+          fallback.style.display = 'block';
+
+        } else if (!hasVideo) {
+          // Caso 2: somente imagem → exibir imagem diretamente
+          img.src = s.hero_image_url;
+          img.style.display = 'block';
+
+        } else if (!hasImage) {
+          // Caso 3: somente vídeo → exibir vídeo; fallback colorido em caso de erro
+          videoSrc.src = s.hero_video_url;
+          video.style.display = 'block';
+          video.load();
+          video.addEventListener('error', () => {
+            video.style.display = 'none';
+            fallback.style.display = 'block';
+          });
+
+        } else {
+          // Caso 4: vídeo + imagem
+          // BUG CORRIGIDO: antes, a imagem era apenas video.poster (invisível com autoplay).
+          // Agora: exibir a imagem imediatamente enquanto o vídeo carrega.
+          // Quando o vídeo estiver pronto (canplay), ele substitui a imagem.
+          // Se o vídeo falhar, a imagem continua visível automaticamente.
+          img.src = s.hero_image_url;
+          img.style.display = 'block';   // ← imagem visível enquanto vídeo carrega
+          video.poster = s.hero_image_url; // também como poster nativo do <video>
+
+          videoSrc.src = s.hero_video_url;
+          video.load();
+
+          // Quando o vídeo puder reproduzir: trocar imagem por vídeo
+          video.addEventListener('canplay', () => {
+            img.style.display = 'none';
+            video.style.display = 'block';
+          }, { once: true });
+
+          // Se o vídeo falhar: imagem já está visível, não precisa fazer nada
+          video.addEventListener('error', () => {
+            console.warn('Hero: vídeo não carregou, exibindo imagem.');
+          });
+        }
+
+        // ── Info chips ──
+         if (s.store_address) {
+           document.getElementById('svcAddressText').textContent = s.store_address;
+           document.getElementById('svcAddress').style.display = 'inline-flex';
+         }
+         
+         if (s.operating_hours || s.weekly_hours) {
+           const hoursText = s.operating_hours || 'Horários';
+           document.getElementById('svcHoursText').textContent = hoursText;
+           
+           if (s.is_open) {
+             // Add Status Badge
+             const statusSpan = document.createElement('span');
+             statusSpan.id = 'svcStoreStatus';
+             statusSpan.className = 'status-badge status-badge--open';
+             statusSpan.innerHTML = '● Aberto';
+             document.getElementById('svcHours').appendChild(statusSpan);
+           }
+ 
+           // Handler para abrir o modal de informações completo
+           window.openStoreModal = () => {
+              const modal = document.getElementById('modalStoreInfo');
+              if (!modal) return;
+
+              // Dados básicos
+              document.getElementById('modalStoreName').textContent = s.store_name || 'Bem-vindo';
+              const logoEl = document.getElementById('modalStoreLogo');
+              const logoFb = document.getElementById('modalStoreLogoFallback');
+              if (s.logo_url) {
+                logoEl.src = s.logo_url; logoEl.style.display = 'block';
+                if (logoFb) logoFb.style.display = 'none';
+              } else {
+                logoEl.style.display = 'none';
+                if (logoFb) logoFb.style.display = 'block';
+              }
+              document.getElementById('modalStoreAddressText').textContent = s.store_address || 'Endereço não informado';
+
+              // Status no modal
+              const statusContainer = document.getElementById('modalStatusBadge');
+              statusContainer.innerHTML = `<span class="status-badge ${s.is_open ? 'status-badge--open' : 'status-badge--closed'}">${s.is_open ? '● Aberto' : '● Fechado'}</span>`;
+
+              // Serviços
+              document.getElementById('modalSvcDelivery').style.display = (s.delivery_enabled !== false) ? 'block' : 'none';
+              document.getElementById('modalSvcRetirada').style.display = (s.cfg_retirada !== false) ? 'block' : 'none';
+
+              // Redes Sociais
+              const setupSocial = (id, val, base) => {
+                const el = document.getElementById(id);
+                if (!val) { el.style.display = 'none'; return; }
+                el.style.display = 'flex';
+                el.href = val.startsWith('http') ? val : base + val.replace('@', '');
+              };
+              const waNumModal = buildStoreWaNum(s);
+              const waEl  = document.getElementById('modalLinkWa');
+              if (waNumModal) {
+                waEl.href = 'https://wa.me/' + waNumModal;
+                waEl.style.display = 'flex';
+              } else {
+                waEl.style.display = 'none';
+              }
+              setupSocial('modalLinkIg', s.social_instagram, 'https://instagram.com/');
+              setupSocial('modalLinkFb', s.social_facebook, 'https://facebook.com/');
+
+              // Horários Semanais
+              const hoursContent = document.getElementById('modalWeeklyContent');
+              if (s.weekly_hours) {
+                const DIAS_LABELS = { segunda: 'Segunda-feira', terca: 'Terça-feira', quarta: 'Quarta-feira', quinta: 'Quinta-feira', sexta: 'Sexta-feira', sabado: 'Sábado', domingo: 'Domingo' };
+                const DIAS_ORDEM = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo'];
+                const diaHojeIdx = new Date().getDay();
+                const diaHojeChave = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'][diaHojeIdx];
+
+                hoursContent.innerHTML = DIAS_ORDEM.map(dia => {
+                  const intervals = s.weekly_hours[dia] || [];
+                  const isHoje = dia === diaHojeChave;
+                  return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; padding:0.2rem 0; ${isHoje ? 'font-weight:800; color:#e8420a;' : 'color:#555;'}">
+                      <span>${isHoje ? '➜ ' : ''}${DIAS_LABELS[dia]}</span>
+                      <span style="text-align:right;">${intervals.length === 0 ? 'Fechado' : intervals.map(i => `${i.open}–${i.close}`).join('<br>')}</span>
+                    </div>
+                  `;
+                }).join('');
+              } else if (s.operating_hours) {
+                hoursContent.innerHTML = `<div style="font-size:0.9rem; color:#555; text-align:center;">${s.operating_hours}</div>`;
+              } else {
+                 hoursContent.innerHTML = `<div style="font-size:0.9rem; color:#999; text-align:center;">Horários não informados</div>`;
+              }
+
+              modal.style.display = 'flex';
+           };
+
+           window.closeStoreModal = () => {
+              document.getElementById('modalStoreInfo').style.display = 'none';
+           };
+
+           // Botão Ver todos
+           if (s.is_open) {
+             const btnMore = document.createElement('button');
+             btnMore.className = 'btn-see-more';
+             btnMore.textContent = 'Ver todos';
+             btnMore.onclick = (e) => {
+                e.stopPropagation();
+                window.openStoreModal();
+             };
+             document.getElementById('svcHours').appendChild(btnMore);
+           }
+           
+           // Mostrar chip de horários apenas se estiver aberto ou se o usuário quiser manter informação de texto
+           // Seguindo a regra de "Interface mais limpa" e "Apenas UM ponto de entrada", ocultamos quando fechado.
+           if (s.is_open) {
+             document.getElementById('svcHours').style.display = 'inline-flex';
+           }
+         }
+ 
+         // ── CTA Logic ──
+         const heroCta = document.getElementById('heroCta');
+         if (heroCta) {
+           if (!s.is_open) {
+             heroCta.textContent = '🔒 Loja Fechada (Ver Horários)';
+             heroCta.className = 'landing-hero__cta hero-cta--closed';
+             heroCta.href = 'javascript:void(0)';
+             heroCta.onclick = (e) => {
+               e.preventDefault();
+               window.openStoreModal();
+             };
+           }
+         }
+
+
+        // ── Footer: redes sociais e contato ──
+        const waNumFooter = buildStoreWaNum(s);
+        if (waNumFooter) {
+          const el = document.getElementById('lfWhatsapp');
+          el.href = 'https://wa.me/' + waNumFooter;
+          el.style.display = 'inline-flex';
+        }
+        if (s.social_instagram) {
+          const el = document.getElementById('lfInstagram');
+          el.href = s.social_instagram.startsWith('http')
+            ? s.social_instagram
+            : 'https://instagram.com/' + s.social_instagram.replace('@', '');
+          el.style.display = 'inline-flex';
+        }
+        if (s.social_facebook) {
+          const el = document.getElementById('lfFacebook');
+          el.href = s.social_facebook.startsWith('http')
+            ? s.social_facebook
+            : 'https://facebook.com/' + s.social_facebook;
+          el.style.display = 'inline-flex';
+        }
+        if (s.contact_email) {
+          document.getElementById('lfReportar').href = 'mailto:' + s.contact_email;
+        }
+
+      } catch(e) { /* silencioso */ }
+    });
+  </script>
 </body>
 </html>

@@ -1,0 +1,111 @@
+/* PITOMBO - Estilos Gestão de Cozinhas */
+
+#cozinhas-tabs-container .cozinha-tab {
+    padding: 0.8rem 1.5rem;
+    background: #fff;
+    border: 1.2px solid #ddd;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: #444;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#cozinhas-tabs-container .cozinha-tab:hover {
+    background: #f1f1f1;
+    border-color: #bbb;
+}
+
+#cozinhas-tabs-container .cozinha-tab.active {
+    background: #e3f2fd;
+    border-color: #2196f3;
+    color: #1976d2;
+    box-shadow: 0 4px 10px rgba(33, 150, 243, 0.15);
+}
+
+.cozinha-config-item {
+    background: #fff;
+    border: 1px solid #eee;
+    padding: 1rem;
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+}
+
+.cozinha-config-item:hover {
+    background: #fafafa;
+}
+
+/* Toggle Switch Base */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked + .slider {
+    background-color: #2196f3;
+}
+
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+.slider.round {
+    border-radius: 24px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+/* Empty State */
+#pedidos-cozinha-grid:empty::before {
+    content: "🍳\A Nenhum pedido em preparação.";
+    white-space: pre-wrap;
+    display: block;
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 5rem;
+    color: #888;
+    background: #f9f9f9;
+    border-radius: 12px;
+    border: 2px dashed #ddd;
+    font-weight: 800;
+}

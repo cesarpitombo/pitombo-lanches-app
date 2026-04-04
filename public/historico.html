@@ -63,6 +63,16 @@
             <div class="sub-value" id="kpi-ticket">Ticket Médio: R$ 0,00</div>
           </div>
           <div class="metric-card">
+            <h3>Despesas Hoje</h3>
+            <div class="value" id="kpi-despesas" style="color:#c62828">R$ 0,00</div>
+            <div class="sub-value" style="color:#666">Gastos operacionais</div>
+          </div>
+          <div class="metric-card" style="border: 2px solid var(--primary);">
+            <h3>Lucro Líquido (Hoje)</h3>
+            <div class="value" id="kpi-liquido" style="color:var(--primary)">R$ 0,00</div>
+            <div class="sub-value" style="color:#666">Caixa real do dia</div>
+          </div>
+          <div class="metric-card">
             <h3>Cancelados / Atrasados</h3>
             <div class="value" id="kpi-problemas" style="color:var(--danger)">0 / 0</div>
             <div class="sub-value" style="color:#666">Taxa de falha</div>
@@ -120,6 +130,24 @@
           </div>
         </div>
 
+        <!-- GESTÃO DE DESPESAS -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+          <div style="background:#fff; padding:1.5rem; border-radius:8px; border:1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <h3 style="margin-bottom:1rem; font-size:1.1rem; color:var(--text);">💸 Lançar Despesa (Hoje)</h3>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+              <input type="text" id="descDespesa" placeholder="Motivo (ex: Gelo, Motoboy...)" style="flex:2; padding:0.8rem; border-radius:6px; border:1px solid #ccc; font-size:0.95rem; outline:none;">
+              <input type="number" id="valorDespesa" placeholder="Valor (R$)" step="0.01" style="flex:1; padding:0.8rem; border-radius:6px; border:1px solid #ccc; font-size:0.95rem; outline:none;">
+              <button onclick="salvarDespesa()" style="background:#c62828; color:#fff; border:none; padding:0.8rem 1.2rem; border-radius:6px; font-weight:bold; cursor:pointer;">Registrar Gasto</button>
+            </div>
+          </div>
+          <div style="background:#fff; padding:1.5rem; border-radius:8px; border:1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <h3 style="margin-bottom:1rem; font-size:1.1rem; color:var(--text);">📉 Gastos Registrados Hoje</h3>
+            <div id="listaDespesas" style="max-height:100px; overflow-y:auto; padding-right:0.5rem;">
+              <div style="color:#999; font-size:0.9rem; text-align:center;">Carregando despesas...</div>
+            </div>
+          </div>
+        </div>
+
         <!-- TABELA ANALITICA -->
         <div class="table-container">
           <table id="tabela-historico">
@@ -145,6 +173,7 @@
     </div>
   </div>
 
+  <script src="/js/currency.js"></script>
   <script src="/js/historico.js"></script>
 </body>
 </html>

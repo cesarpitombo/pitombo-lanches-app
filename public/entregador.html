@@ -20,16 +20,25 @@
   </header>
 
   <main class="container">
-    <div class="status-summary">
-      <p>Esperando por entregas...</p>
+    <div class="entregador-tabs">
+      <button class="etab-btn etab-ativo" data-tab="ativas" onclick="trocarAba('ativas')">🛵 Em Entrega</button>
+      <button class="etab-btn" data-tab="historico" onclick="trocarAba('historico')">📋 Histórico</button>
     </div>
 
-    <div id="listaEntregas" class="delivery-grid">
-      <!-- Cards de entrega injetados pelo JS -->
-      <div class="loading">Carregando pedidos de entrega...</div>
+    <div id="tab-ativas">
+      <div id="listaEntregas" class="delivery-grid">
+        <div class="loading">Carregando pedidos de entrega...</div>
+      </div>
+    </div>
+
+    <div id="tab-historico" style="display:none;">
+      <div id="listaHistorico" class="delivery-grid">
+        <div class="loading">Carregando histórico...</div>
+      </div>
     </div>
   </main>
 
+  <script src="/js/currency.js"></script>
   <script src="/js/entregador.js"></script>
 </body>
 </html>

@@ -1,0 +1,423 @@
+/* Estilos baseados no OlaClick para a Página de Produtos */
+
+/* --- SECTION HEADER --- */
+.oc-section-header {
+    background: transparent;
+    border-bottom: none;
+}
+.oc-btn-primary {
+    background: #0284c7;
+    color: white;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    padding: 0.7rem 1.2rem;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    box-shadow: 0 2px 4px rgba(2, 132, 199, 0.2);
+}
+.oc-btn-primary:hover {
+    background: #0369a1;
+}
+.oc-search-box {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    padding: 0.4rem 1rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.oc-search-box input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.95rem;
+    color: #374151;
+    width: 200px;
+}
+
+/* --- ACCORDION CATEGORIAS --- */
+.oc-category-card {
+    background: #fff;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    border: 1px solid #f3f4f6;
+    overflow: hidden;
+}
+.oc-cat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.2rem;
+    cursor: pointer;
+    background: #fafafa;
+    border-bottom: 1px solid #f3f4f6;
+    user-select: none;
+}
+.oc-cat-title-container {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+.oc-cat-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1f2937;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.oc-cat-count {
+    background: #e5e7eb;
+    color: #4b5563;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.1rem 0.6rem;
+    border-radius: 12px;
+}
+.oc-cat-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: #6b7280;
+}
+.oc-cat-body {
+    padding: 0.5rem 1rem;
+    display: none; /* starts hidden or JS logic */
+}
+.oc-cat-body.open {
+    display: block;
+}
+.oc-add-product-row {
+    display: flex;
+    justify-content: center;
+    padding: 1rem 0;
+}
+.oc-add-product-btn-text {
+    color: #0284c7;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+.oc-add-product-btn-text:hover {
+    text-decoration: underline;
+}
+
+/* --- ROW PRODUTO --- */
+.oc-product-row {
+    display: flex;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid #f3f4f6;
+    gap: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.oc-product-row:last-child {
+    border-bottom: none;
+}
+.oc-product-row:hover {
+    background: #f9fafb;
+}
+.oc-product-thumb {
+    width: 60px;
+    height: 60px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #f3f4f6;
+}
+.oc-product-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.oc-product-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #111827;
+    margin-bottom: 0.2rem;
+}
+.oc-product-desc {
+    color: #6b7280;
+    font-size: 0.85rem;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.oc-product-price {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #1f2937;
+}
+.oc-product-actions {
+    color: #9ca3af;
+    padding: 0.5rem;
+    font-size: 1.1rem;
+}
+
+/* --- MODAL EDITOR (Estilo OlaClick) --- */
+.oc-modal-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Header flutuante Imagem + Textos */
+.oc-top-block {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+}
+.oc-img-container {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    border-radius: 16px;
+    background: #f3f4f6;
+    border: 1px dashed #d1d5db;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.oc-img-preview {
+    width: 100%;
+    height: 100%;
+    border-radius: 16px;
+    object-fit: cover;
+}
+.oc-camera-btn {
+    position: absolute;
+    bottom: -8px;
+    right: -8px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    color: #0284c7;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+}
+.oc-inputs-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+.oc-input-group {
+    position: relative;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 0.8rem 1rem 0.4rem;
+    background: #fff;
+}
+.oc-input-group label {
+    position: absolute;
+    top: -10px;
+    left: 10px;
+    background: #fff;
+    padding: 0 0.4rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+.oc-input-group input, .oc-input-group textarea {
+    width: 100%;
+    border: none;
+    outline: none;
+    font-family: inherit;
+    font-size: 1rem;
+    color: #111827;
+    resize: none;
+}
+
+/* Banners IA (estéticos) */
+.oc-ia-banners {
+    display: flex;
+    gap: 0.8rem;
+    margin-top: 1rem;
+    justify-content: center;
+}
+.oc-ia-btn {
+    background: #fff;
+    border: 1px solid #cce4f7;
+    color: #0284c7;
+    padding: 0.6rem 1.2rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+/* Bloco Preço */
+.oc-block-section {
+    border-top: 6px solid #f3f4f6;
+    padding: 1.5rem 0 0 0;
+    margin-top: 0.5rem;
+}
+.oc-block-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+.oc-block-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #1f2937;
+    margin: 0;
+}
+.oc-tabs {
+    display: flex;
+    border: 1px solid #d1d5db;
+    border-radius: 20px;
+    overflow: hidden;
+}
+.oc-tab {
+    padding: 0.4rem 1.2rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: #fff;
+    color: #4b5563;
+    cursor: pointer;
+}
+.oc-tab.active {
+    background: #f0f9ff;
+    color: #0284c7;
+    border-left: 1px solid #d1d5db;
+    border-right: 1px solid #d1d5db;
+}
+
+.oc-price-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1rem;
+}
+.oc-status-badge {
+    background: #def7ec;
+    color: #03543f;
+    border: 1px solid #31c48d;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+}
+.oc-action-chip {
+    background: #fff;
+    border: 1px solid #d1d5db;
+    color: #4b5563;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* Estoque */
+.oc-stock-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.oc-switch {
+    width: 44px;
+    height: 24px;
+    background: #d1d5db;
+    border-radius: 12px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+.oc-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.oc-switch.active {
+    background: #10b981;
+}
+.oc-switch.active::after {
+    transform: translateX(20px);
+}
+
+/* Modificadores */
+.oc-add-mod-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid #0284c7;
+    background: #fff;
+    color: #0284c7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+.oc-mod-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+.oc-mod-item {
+    display: flex;
+    align-items: center;
+    padding: 0.8rem 0;
+    border-bottom: 1px dashed #e5e7eb;
+}
+.oc-mod-drag {
+    color: #d1d5db;
+    margin-right: 0.8rem;
+    cursor: grab;
+}
+.oc-mod-name {
+    flex: 1;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.95rem;
+}
+.oc-mod-actions {
+    display: flex;
+    gap: 1rem;
+    color: #9ca3af;
+}
+
+/* Cozinha */
+.oc-kitchen-select {
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #f9fafb;
+    outline: none;
+    font-size: 1rem;
+    color: #374151;
+    appearance: none;
+}

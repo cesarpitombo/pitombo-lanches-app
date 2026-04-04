@@ -1,0 +1,1519 @@
+/* ============================================================
+   ADMIN PRODUTOS CSS v3 — OlaClick Style for Pitombo Lanches
+   Desktop: 2-column layout. Mobile: stacked responsive layout.
+   ============================================================ */
+
+:root {
+  --primary: #e8420a;
+  --primary-light: #fff0ed;
+  --primary-dark: #c73509;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+}
+
+/* ============================================================
+   PRODUTOS — LAYOUT DE 2 COLUNAS (OLACLICK STYLE)
+   ============================================================ */
+
+.oc-products-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 0;
+  min-height: calc(100vh - 80px);
+  background: var(--gray-50);
+}
+
+/* ---- Sidebar de Categorias ---- */
+.oc-categories-sidebar {
+  background: #fff;
+  border-right: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: sticky;
+  top: 0;
+  height: calc(100vh - 80px);
+}
+
+.oc-sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--gray-100);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.oc-sidebar-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.oc-btn-new-cat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px dashed var(--primary);
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.oc-btn-new-cat:hover {
+  background: var(--primary);
+  color: #fff;
+  border-style: solid;
+}
+
+.oc-cat-search-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--gray-700);
+  background: var(--gray-50);
+  box-sizing: border-box;
+}
+
+.oc-cat-search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.oc-categories-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0.5rem 0;
+}
+
+.oc-cat-sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-left: 3px solid transparent;
+  gap: 0.5rem;
+}
+
+.oc-cat-sidebar-item:hover {
+  background: var(--gray-50);
+}
+
+.oc-cat-sidebar-item.active {
+  background: var(--primary-light);
+  border-left-color: var(--primary);
+}
+
+.oc-cat-sidebar-item.active .oc-cat-sidebar-name {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.oc-cat-sidebar-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gray-700);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-cat-sidebar-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--gray-400);
+  background: var(--gray-100);
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.oc-cat-sidebar-actions {
+  display: none;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.oc-cat-sidebar-item:hover .oc-cat-sidebar-actions {
+  display: flex;
+}
+
+.oc-cat-action-btn {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: var(--gray-400);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.oc-cat-action-btn:hover {
+  background: var(--gray-200);
+  color: var(--gray-700);
+}
+
+.oc-cat-action-btn.danger:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* ---- Inline Category Name Edit ---- */
+.oc-cat-sidebar-item.editing .oc-cat-sidebar-name-display {
+  display: none;
+}
+
+.oc-cat-inline-edit {
+  display: none;
+  flex: 1;
+  padding: 0.2rem 0.4rem;
+  border: 1.5px solid var(--primary);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.oc-cat-sidebar-item.editing .oc-cat-inline-edit {
+  display: block;
+}
+
+/* ---- Área Principal de Produtos ---- */
+.oc-products-main {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  max-height: calc(100vh - 80px);
+}
+
+.oc-products-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  background: #fff;
+  border-bottom: 1px solid var(--gray-100);
+  gap: 1rem;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.oc-products-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--gray-900);
+  margin: 0;
+}
+
+.oc-search-box {
+  display: flex;
+  align-items: center;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 0.45rem 0.8rem;
+  gap: 0.5rem;
+  min-width: 200px;
+}
+
+.oc-search-box input {
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  color: var(--gray-700);
+  outline: none;
+  width: 100%;
+}
+
+.oc-search-box input::placeholder {
+  color: var(--gray-400);
+}
+
+.oc-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.oc-btn-primary:hover {
+  background: var(--primary-dark);
+}
+
+/* ---- Acordeão de Produtos (área direita) ---- */
+.oc-products-list {
+  flex: 1;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.oc-category-card {
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.oc-cat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+  gap: 0.5rem;
+}
+
+.oc-cat-header:hover {
+  background: var(--gray-50);
+}
+
+.oc-cat-title-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.oc-cat-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.oc-cat-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--gray-500);
+  background: var(--gray-100);
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+}
+
+.oc-cat-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.oc-cat-actions i {
+  color: var(--gray-400);
+  font-size: 0.9rem;
+  transition: color 0.15s;
+}
+
+.oc-cat-actions .oc-chevron {
+  font-size: 0.8rem;
+}
+
+.oc-cat-body {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.3s ease;
+  border-top: 1px solid transparent;
+}
+
+.oc-cat-body.open {
+  max-height: 9999px;
+  border-top-color: var(--gray-100);
+}
+
+.oc-product-row {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--gray-100);
+  cursor: pointer;
+  transition: background 0.15s;
+  gap: 0.75rem;
+}
+
+.oc-product-row:hover {
+  background: var(--gray-50);
+}
+
+.oc-product-row:last-child {
+  border-bottom: none;
+}
+
+.oc-product-thumb {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: var(--gray-100);
+}
+
+.oc-product-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.oc-product-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.oc-product-desc {
+  font-size: 0.8rem;
+  color: var(--gray-500);
+  margin-top: 0.15rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.oc-product-price {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--gray-700);
+  white-space: nowrap;
+}
+
+.oc-product-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem;
+  border-radius: 6px;
+  color: var(--gray-400);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.oc-product-actions:hover {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.oc-add-product-row {
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--gray-100);
+}
+
+.oc-add-product-btn-text {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.3rem 0;
+  transition: opacity 0.15s;
+}
+
+.oc-add-product-btn-text:hover {
+  opacity: 0.75;
+}
+
+/* ---- Estado vazio ---- */
+.oc-empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--gray-400);
+}
+
+.oc-empty-state i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.3;
+  display: block;
+}
+
+.oc-empty-state p {
+  font-weight: 500;
+  margin: 0;
+}
+
+/* ============================================================
+   MODAL DE PRODUTO V3 — OlaClick Style
+   ============================================================ */
+
+.oc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.oc-modal-layout {
+  background: #fff;
+  width: 100%;
+  max-width: 600px;
+  max-height: 95vh;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+}
+
+/* Tabs da modal */
+.oc-tab-bar {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.oc-tab {
+  flex: 1;
+  padding: 0.5rem;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #fff;
+  color: var(--gray-500);
+  border: none;
+  transition: all 0.2s;
+}
+
+.oc-tab.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Chips de ação no produto */
+.oc-action-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--gray-300);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gray-600);
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.oc-action-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+.oc-price-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.oc-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid #31c48d;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #03543f;
+  background: #def7ec;
+  cursor: pointer;
+}
+
+/* Input groups */
+.oc-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.oc-input-group label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gray-600);
+}
+
+.oc-input-group input,
+.oc-input-group textarea,
+.oc-input-group select {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--gray-800);
+  background: var(--gray-50);
+  font-family: inherit;
+  transition: border-color 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.oc-input-group input:focus,
+.oc-input-group textarea:focus,
+.oc-input-group select:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: #fff;
+}
+
+/* Layout do Bloco Superior (Imagem + Inputs) */
+.oc-top-block {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+@media (max-width: 600px) {
+  .oc-top-block {
+    flex-direction: column;
+    align-items: center;
+  }
+  .oc-img-container {
+    width: 150px;
+    margin: 0 auto 1rem auto;
+  }
+}
+
+.oc-inputs-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.oc-block-section {
+  padding: 1.2rem 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.oc-block-section:last-of-type {
+  border-bottom: none;
+}
+
+.oc-block-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin: 0 0 0.3rem 0;
+}
+
+/* Switch */
+.oc-switch {
+  width: 42px;
+  height: 24px;
+  background: var(--gray-300);
+  border-radius: 999px;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.oc-switch::after {
+  content: '';
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.oc-switch.active {
+  background: var(--primary);
+}
+
+/* Imagem do editor restrita */
+.oc-img-container {
+  width: 100%;
+  max-width: 150px;
+  height: 150px;
+  background: var(--gray-100);
+  border-radius: 12px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 2px dashed var(--gray-300);
+  margin-bottom: 1rem;
+}
+.oc-img-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.oc-camera-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: #fff;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  color: var(--primary);
+}
+
+.oc-switch.active::after {
+  transform: translateX(18px);
+}
+
+/* Botões do modal */
+.pm-btn-save {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7rem 1.5rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.pm-btn-save:hover {
+  background: var(--primary-dark);
+}
+
+.pm-btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Modificadores na modal */
+.oc-mod-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.oc-mod-item:last-child {
+  border-bottom: none;
+}
+
+.oc-mod-drag {
+  color: var(--gray-300);
+  cursor: grab;
+  font-size: 0.8rem;
+}
+
+.oc-mod-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.oc-mod-actions {
+  color: var(--gray-400);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.oc-mod-actions:hover {
+  color: #dc2626;
+  background: #fee2e2;
+}
+
+/* Popup de busca de modificador */
+.pm-popup-mod {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pm-popup-mod-box {
+  background: #fff;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+}
+
+.pm-popup-mod-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.pm-popup-mod-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--gray-900);
+}
+
+.pm-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--gray-500);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.pm-popup-mod-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.pm-popup-search {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  box-sizing: border-box;
+}
+
+.pm-popup-search:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.pm-popup-group-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pm-popup-group-item:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.pm-popup-group-name {
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+.pm-popup-group-desc {
+  font-size: 0.8rem;
+  color: var(--gray-500);
+}
+
+.pm-btn-outline {
+  background: #fff;
+  color: var(--gray-600);
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pm-btn-outline:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* ============================================================
+   MODIFICADORES — NOVO LAYOUT OlaClick (Inline Expanding)
+   ============================================================ */
+
+.oc-modif-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  min-height: 500px;
+  gap: 0;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.oc-modif-sidebar {
+  border-right: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  background: var(--gray-50);
+  max-height: calc(100vh - 200px);
+  overflow: hidden;
+}
+
+.oc-modif-sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: #fff;
+}
+
+.oc-modif-sidebar-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--gray-700);
+}
+
+.oc-modif-categories-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.oc-modif-cat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--gray-100);
+  cursor: pointer;
+  transition: background 0.15s;
+  gap: 0.5rem;
+}
+
+.oc-modif-cat-item:hover {
+  background: var(--gray-100);
+}
+
+.oc-modif-cat-item.active {
+  background: var(--primary-light);
+  border-left: 3px solid var(--primary);
+}
+
+.oc-modif-cat-item.active .oc-modif-cat-name {
+  color: var(--primary);
+}
+
+.oc-modif-cat-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--gray-700);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-modif-cat-badge {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.badge-required {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.badge-optional {
+  background: var(--gray-100);
+  color: var(--gray-500);
+}
+
+.oc-modif-cat-actions {
+  display: none;
+  gap: 0.25rem;
+}
+
+.oc-modif-cat-item:hover .oc-modif-cat-actions {
+  display: flex;
+}
+
+/* Editor principal da categoria de modificadores */
+.oc-modif-editor {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.oc-modif-editor-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  color: var(--gray-400);
+  text-align: center;
+  flex: 1;
+}
+
+.oc-modif-editor-empty i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.3;
+}
+
+.oc-modif-editor-section {
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.oc-modif-editor-section:last-child {
+  border-bottom: none;
+}
+
+.oc-modif-section-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.75rem 0;
+}
+
+.oc-modif-name-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.oc-modif-name-input {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--gray-900);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 0.25rem 0;
+  width: 100%;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.oc-modif-name-input:focus {
+  outline: none;
+  border-bottom-color: var(--primary);
+}
+
+.oc-modif-name-counter {
+  font-size: 0.75rem;
+  color: var(--gray-400);
+  text-align: right;
+}
+
+/* Botão Associar/Desassociar */
+.oc-assoc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  position: relative;
+}
+
+.oc-assoc-btn:hover {
+  background: var(--primary-dark);
+}
+
+.oc-assoc-count {
+  background: rgba(255,255,255,0.3);
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* Radio groups */
+.oc-radio-group {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.oc-radio-option {
+  flex: 1;
+  position: relative;
+}
+
+.oc-radio-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.oc-radio-label {
+  display: block;
+  text-align: center;
+  padding: 0.55rem 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gray-500);
+  cursor: pointer;
+  transition: all 0.15s;
+  border-right: 1px solid var(--gray-200);
+}
+
+.oc-radio-option:last-child .oc-radio-label {
+  border-right: none;
+}
+
+.oc-radio-option input[type="radio"]:checked + .oc-radio-label {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Item de modificador dentro da categoria */
+.oc-modif-item-row {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  position: relative;
+}
+
+.oc-modif-item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.oc-modif-item-drag {
+  color: var(--gray-300);
+  cursor: grab;
+  font-size: 0.85rem;
+}
+
+.oc-modif-item-name-input {
+  flex: 1;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  background: #fff;
+  font-family: inherit;
+}
+
+.oc-modif-item-name-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.oc-modif-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.oc-modif-item-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.oc-price-input-wrapper {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fff;
+  width: 100px;
+}
+
+.oc-price-prefix {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gray-500);
+  background: var(--gray-50);
+  border-right: 1px solid var(--gray-200);
+}
+
+.oc-price-input-wrapper input {
+  border: none;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  width: 60px;
+  color: var(--gray-800);
+  font-family: inherit;
+  background: transparent;
+}
+
+.oc-price-input-wrapper input:focus {
+  outline: none;
+}
+
+.oc-item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--gray-300);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gray-500);
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.oc-item-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.oc-item-extra-input {
+  display: none;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.oc-item-extra-input.visible {
+  display: inline-flex;
+}
+
+.oc-item-extra-input input {
+  width: 70px;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+
+.oc-add-item-btn {
+  width: 100%;
+  padding: 0.65rem;
+  border: 1.5px dashed var(--gray-300);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--gray-500);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 0.25rem;
+}
+
+.oc-add-item-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+/* btn-mini-action (pequenos botões de ação) */
+.btn-mini-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--gray-400);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.15s;
+}
+
+.btn-mini-action:hover {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.btn-mini-action.danger:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Seletor de cozinha */
+.oc-kitchen-select {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--gray-700);
+  background: var(--gray-50);
+  font-family: inherit;
+  width: 100%;
+}
+
+.oc-kitchen-select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Top bar de stock */
+.oc-stock-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ============================================================
+   MODAL DE NOVA CATEGORIA (Inline)
+   ============================================================ */
+.oc-newcat-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.oc-newcat-box {
+  background: #fff;
+  border-radius: 14px;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 380px;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+}
+
+.oc-newcat-box h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--gray-900);
+}
+
+.oc-newcat-input {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  margin-bottom: 1rem;
+}
+
+.oc-newcat-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.oc-newcat-btns {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.oc-newcat-btns button {
+  flex: 1;
+  padding: 0.7rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: none;
+}
+
+.oc-newcat-cancel {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.oc-newcat-save {
+  background: var(--primary);
+  color: #fff;
+}
+
+.oc-newcat-save:hover {
+  background: var(--primary-dark);
+}
+
+/* ============================================================
+   RESPONSIVO — MOBILE
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .oc-products-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .oc-categories-sidebar {
+    position: static;
+    height: auto;
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid var(--gray-200);
+  }
+
+  .oc-categories-list {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.3rem 0.5rem;
+    gap: 0;
+    flex: none;
+    scrollbar-width: none;
+  }
+
+  .oc-categories-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .oc-cat-sidebar-item {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.5rem 0.75rem;
+    white-space: nowrap;
+    min-width: fit-content;
+  }
+
+  .oc-cat-sidebar-item.active {
+    border-left: none;
+    border-bottom-color: var(--primary);
+  }
+
+  .oc-cat-sidebar-actions {
+    display: none !important;
+  }
+
+  .oc-sidebar-header {
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+  }
+
+  .oc-sidebar-title {
+    display: none;
+  }
+
+  .oc-btn-new-cat {
+    white-space: nowrap;
+    min-width: fit-content;
+  }
+
+  .oc-cat-search-input {
+    min-width: 150px;
+  }
+
+  .oc-products-main {
+    max-height: none;
+    min-height: 400px;
+  }
+
+  .oc-search-box {
+    min-width: 140px;
+  }
+
+  /* Modificadores layout mobile */
+  .oc-modif-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .oc-modif-sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--gray-200);
+    max-height: 220px;
+  }
+
+  .oc-modif-editor {
+    max-height: none;
+  }
+
+  .oc-modal-layout {
+    max-height: 100dvh;
+    border-radius: 16px 16px 0 0;
+    align-self: flex-end;
+    max-width: 100%;
+  }
+}

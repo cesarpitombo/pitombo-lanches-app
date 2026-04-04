@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS produtos (
   categoria   VARCHAR(60)  NOT NULL DEFAULT 'Lanches',
   imagem_url  TEXT,
   disponivel  BOOLEAN      NOT NULL DEFAULT TRUE,
+  controlar_estoque BOOLEAN DEFAULT FALSE,
+  estoque_atual INTEGER    DEFAULT 0 CHECK (estoque_atual >= 0),
   criado_em   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
@@ -107,6 +109,10 @@ CREATE TABLE IF NOT EXISTS store_settings (
   admin_display_name     VARCHAR(100) DEFAULT 'PITOMBO ADMIN',
   public_display_name    VARCHAR(100) DEFAULT 'Pitombo Lanches',
   domain                 VARCHAR(100) DEFAULT 'pitombo.lanches',
+  social_instagram       VARCHAR(255),
+  social_facebook        VARCHAR(255),
+  store_banner_url       TEXT,
+  operating_hours        VARCHAR(255) DEFAULT 'Seg a Sáb, das 18h às 23h',
   atualizado_em          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -137,3 +143,27 @@ INSERT INTO entregadores (nome, telefone) VALUES
   ('Carlos Silva',  '(11) 91234-5678'),
   ('Ana Souza',     '(11) 99876-5432')
 ON CONFLICT DO NOTHING;
+
+-- ─── Tabela: zonas_entrega ────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS zonas_entrega (
+  id          SERIAL PRIMARY KEY,
+  nome        VARCHAR(100) NOT NULL,
+  descricao   TEXT,
+  taxa        NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (taxa >= 0),
+  ativo       BOOLEAN NOT NULL DEFAULT TRUE,
+  criado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ─── Colunas extras na tabela pedidos (adicionadas progressivamente) ──────────
+ALTER TABLE pedidos
+  ADD COLUMN IF NOT EXISTS endereco        TEXT,
+  ADD COLUMN IF NOT EXISTS forma_pagamento VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS payment_status  VARCHAR(20) DEFAULT 'pendente',
+  ADD COLUMN IF NOT EXISTS payment_method  VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS troco_para      NUMERIC(10,2),
+  ADD COLUMN IF NOT EXISTS valor_troco     NUMERIC(10,2),
+  ADD COLUMN IF NOT EXISTS tipo            VARCHAR(20) DEFAULT 'delivery',
+  ADD COLUMN IF NOT EXISTS taxa_entrega    NUMERIC(10,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS zona_id         INTEGER REFERENCES zonas_entrega(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS zona_nome       VARCHAR(100);
+

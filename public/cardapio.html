@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Cardápio online do Pitombo Lanches — peça agora pelo site!" />
+  <title>Cardápio</title>
+  <script src="/js/theme.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <!-- HEADER COM CARRINHO -->
+  <header class="header">
+    <div class="container header__inner">
+      <div class="header__brand" style="display:flex; align-items:center; gap:0.5rem;">
+        <a href="/" style="display:flex; align-items:center; gap:0.5rem; text-decoration:none;">
+          <img class="header__logo" data-brand="logo" src="" style="display:none; height:40px; border-radius:4px; object-fit:contain;" alt="Logo da loja">
+          <h1 class="header__title" data-brand="name">Pitombo Lanches</h1>
+        </a>
+      </div>
+      <button class="btn-carrinho" id="btnCarrinho" aria-label="Ver carrinho">
+        🛒 <span class="carrinho-badge" id="carrinhoBadge">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- CARDÁPIO -->
+  <main class="container" style="padding-top:2rem; padding-bottom:5rem;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+      <h2 class="section-title" id="cardapioTitulo" style="margin:0;">Cardápio</h2>
+      <button id="btnVoltarCategorias" class="btn btn--ghost" style="display:none; padding:0.5rem 1.2rem; font-size:0.9rem; border-radius:8px;">← Voltar</button>
+    </div>
+
+    <!-- Container de Categorias -->
+    <div class="categorias-grid" id="categoriasGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap:1.2rem; margin-bottom:3rem;">
+      <div class="loading">Carregando cardápio...</div>
+    </div>
+
+    <!-- Grid de produtos -->
+    <div class="produtos-grid" id="produtosLista" style="display:none;"></div>
+  </main>
+
+  <!-- RODAPÉ -->
+  <footer class="footer">
+    <div class="container">
+      <p data-brand="footer">© 2026 Pitombo Lanches · Todos os direitos reservados</p>
+    </div>
+  </footer>
+
+  <!-- MODAL CARRINHO -->
+  <div class="modal-overlay" id="modalCarrinho" hidden>
+    <div class="modal" id="modalConteudo">
+      <h3>🛒 Seu Pedido</h3>
+      <div id="carrinhoItens"></div>
+      <div class="modal__footer" style="margin-top: 1rem;">
+        <p class="modal__total">Total: <strong id="carrinhoTotal"><span class="currency-symbol">R$</span> 0,00</strong></p>
+        <button class="btn btn--primary" id="btnFinalizarPedido">Ir para o Checkout</button>
+        <button class="btn btn--ghost" id="btnFecharModal">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/currency.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>
