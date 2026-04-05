@@ -44,6 +44,7 @@ app.use('/api/upload', uploadsRoutes);
 app.use('/api/ia', iaRoutes);
 
 // ─── Rotas do Frontend ────────────────────────────────────────────────
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/cozinha', (req, res) => res.sendFile(path.join(__dirname, 'public', 'cozinha.html')));
 app.get('/entregador', (req, res) => res.sendFile(path.join(__dirname, 'public', 'entregador.html')));

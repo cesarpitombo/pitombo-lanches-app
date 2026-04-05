@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrar — Pitombo Lanches</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .login-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.35);
+    }
+
+    .login-logo {
+      text-align: center;
+      margin-bottom: 1.8rem;
+    }
+
+    .login-logo img {
+      height: 64px;
+      object-fit: contain;
+      border-radius: 12px;
+    }
+
+    .login-logo .logo-fallback {
+      width: 64px;
+      height: 64px;
+      background: #e8420a;
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .login-logo h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #111;
+      margin-top: 0.5rem;
+    }
+
+    .login-logo p {
+      font-size: 0.9rem;
+      color: #666;
+      margin-top: 0.2rem;
+    }
+
+    .field {
+      margin-bottom: 1.1rem;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 0.4rem;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      border: 1.5px solid #ddd;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color 0.15s;
+      background: #fafafa;
+    }
+
+    .field input:focus {
+      border-color: #e8420a;
+      background: #fff;
+    }
+
+    .field input.input-error {
+      border-color: #dc3545;
+    }
+
+    .btn-login {
+      width: 100%;
+      padding: 0.95rem;
+      background: #e8420a;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #b03208;
+      transition: transform 0.1s, box-shadow 0.1s;
+      margin-top: 0.5rem;
+    }
+
+    .btn-login:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #b03208;
+    }
+
+    .btn-login:disabled {
+      background: #ccc;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    .login-error {
+      background: #fff5f5;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      color: #c62828;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .login-footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      font-size: 0.8rem;
+      color: #999;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.4rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="login-card">
+    <!-- Logo dinâmica carregada via API -->
+    <div class="login-logo">
+      <div id="logoWrapper">
+        <div class="logo-fallback" id="logoFallback">🍔</div>
+      </div>
+      <h1 id="storeName">Pitombo Lanches</h1>
+      <p>Acesso ao painel operacional</p>
+    </div>
+
+    <div class="login-error" id="loginErro"></div>
+
+    <form id="loginForm" autocomplete="on" novalidate>
+      <div class="field">
+        <label for="loginEmail">E-mail</label>
+        <input
+          type="email"
+          id="loginEmail"
+          name="email"
+          placeholder="seu@email.com"
+          autocomplete="email"
+          required>
+      </div>
+
+      <div class="field">
+        <label for="loginSenha">Senha</label>
+        <input
+          type="password"
+          id="loginSenha"
+          name="password"
+          placeholder="Sua senha"
+          autocomplete="current-password"
+          required>
+      </div>
+
+      <button type="submit" class="btn-login" id="btnEntrar">Entrar</button>
+    </form>
+
+    <div class="login-footer">
+      Pitombo PDV &nbsp;·&nbsp; Sistema de Gestão
+    </div>
+  </div>
+
+  <script>
+    // ── Carregar nome/logo da loja ──────────────────────────────────────
+    (async () => {
+      try {
+        const res = await fetch('/api/settings');
+        if (!res.ok) return;
+        const s = await res.json();
+        if (s.store_name) document.getElementById('storeName').textContent = s.store_name;
+        if (s.logo_url) {
+          const img = document.createElement('img');
+          img.src = s.logo_url;
+          img.alt = s.store_name || 'Logo';
+          img.onerror = () => {};
+          document.getElementById('logoFallback').replaceWith(img);
+        }
+      } catch {}
+    })();
+
+    // ── Se já tem token válido, redirecionar direto ─────────────────────
+    (async () => {
+      const token = localStorage.getItem('pitombo_token');
+      if (!token) return;
+      try {
+        const r = await fetch('/api/equipe/me', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (r.ok) {
+          const user = await r.json();
+          const redirectMap = {
+            'Admin': '/admin', 'Manager': '/admin', 'Garçom': '/admin',
+            'Cozinheiro': '/cozinha', 'Entregador': '/entregador'
+          };
+          window.location.href = redirectMap[user.funcao] || '/admin';
+        } else {
+          localStorage.removeItem('pitombo_token');
+        }
+      } catch {}
+    })();
+
+    // ── Submit do formulário ────────────────────────────────────────────
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('loginEmail').value.trim();
+      const senha = document.getElementById('loginSenha').value;
+      const erroEl  = document.getElementById('loginErro');
+      const btnEl   = document.getElementById('btnEntrar');
+
+      erroEl.style.display = 'none';
+      erroEl.textContent = '';
+
+      if (!email || !senha) {
+        erroEl.textContent = 'Preencha e-mail e senha.';
+        erroEl.style.display = 'block';
+        return;
+      }
+
+      btnEl.disabled = true;
+      btnEl.innerHTML = '<span class="spinner"></span> A entrar...';
+
+      try {
+        const res = await fetch('/api/equipe/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, senha })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          erroEl.textContent = data.error || 'Erro ao fazer login.';
+          erroEl.style.display = 'block';
+          btnEl.disabled = false;
+          btnEl.textContent = 'Entrar';
+          return;
+        }
+
+        // Guardar token e dados de sessão
+        localStorage.setItem('pitombo_token',   data.token);
+        localStorage.setItem('pitombo_funcao',  data.funcao);
+        localStorage.setItem('pitombo_nome',    data.nome);
+        localStorage.setItem('pitombo_user_id', String(data.id));
+
+        window.location.href = data.redirect;
+
+      } catch (err) {
+        erroEl.textContent = 'Erro de ligação. Tente novamente.';
+        erroEl.style.display = 'block';
+        btnEl.disabled = false;
+        btnEl.textContent = 'Entrar';
+      }
+    });
+  </script>
+</body>
+</html>

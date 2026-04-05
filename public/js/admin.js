@@ -1,3 +1,25 @@
+// ── Autenticação: verificar token e redirecionar para /login se ausente ──
+(async () => {
+  const token = localStorage.getItem('pitombo_token');
+  if (!token) { window.location.href = '/login'; return; }
+  try {
+    const r = await fetch('/api/equipe/me', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!r.ok) {
+      localStorage.removeItem('pitombo_token');
+      window.location.href = '/login';
+    }
+  } catch {
+    // Erro de rede — não redirecionar (pode ser offline temporário)
+  }
+})();
+
+// Helper: retorna o token armazenado para usar nos headers
+function _authHeader() {
+  return { 'Authorization': 'Bearer ' + (localStorage.getItem('pitombo_token') || '') };
+}
+
 // ── Lista de países com DDI para o seletor de WhatsApp ──
 const COUNTRY_DIAL_CODES = [
   { code:'PT', dial:'+351', name:'🇵🇹 Portugal (+351)' },
@@ -167,6 +189,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const isHidden = submenuConfig.style.display === 'none';
       submenuConfig.style.display = isHidden ? 'flex' : 'none';
       if (cfgArrow) cfgArrow.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+    });
+  }
+
+  // Toggle do submenu Cardápio
+  const btnToggleCardapio = document.getElementById('btnToggleCardapio');
+  const submenuCardapio   = document.getElementById('submenuCardapio');
+  const cardapioArrow     = document.getElementById('cardapioArrow');
+  if (btnToggleCardapio && submenuCardapio) {
+    btnToggleCardapio.addEventListener('click', () => {
+      const isHidden = submenuCardapio.style.display === 'none' || submenuCardapio.style.display === '';
+      submenuCardapio.style.display = isHidden ? 'flex' : 'none';
+      if (cardapioArrow) cardapioArrow.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
     });
   }
 
@@ -1927,13 +1961,28 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 
 window.abrirModalEquipe = function (id = '', nome = '', email = '', funcao = 'Manager', ativo = true) {
-  document.getElementById('equipeId').value = id;
-  document.getElementById('equipeNome').value = nome;
-  document.getElementById('equipeEmail').value = email;
+  document.getElementById('equipeId').value     = id;
+  document.getElementById('equipeNome').value   = nome;
+  document.getElementById('equipeEmail').value  = email;
   document.getElementById('equipeFuncao').value = funcao;
   document.getElementById('equipeAtivo').checked = ativo;
 
-  document.getElementById('modalEquipeTitulo').innerText = id ? 'Editar Usuário' : 'Adicionar Usuário';
+  // Senha: obrigatória na criação, opcional na edição
+  const isEdit = !!id;
+  const senhaInput  = document.getElementById('equipeSenha');
+  const senhaObrig  = document.getElementById('equipeSenhaObrig');
+  const senhaOpcional = document.getElementById('equipeSenhaOpcional');
+  if (senhaInput)    { senhaInput.value = ''; senhaInput.required = !isEdit; }
+  if (senhaObrig)    senhaObrig.style.display    = isEdit ? 'none'   : 'inline';
+  if (senhaOpcional) senhaOpcional.style.display = isEdit ? 'inline' : 'none';
+
+  // Limpar mensagens de erro anteriores
+  const emailErro = document.getElementById('equipeEmailErro');
+  const senhaErro = document.getElementById('equipeSenhaErro');
+  if (emailErro) emailErro.style.display = 'none';
+  if (senhaErro) senhaErro.style.display = 'none';
+
+  document.getElementById('modalEquipeTitulo').innerText = isEdit ? 'Editar Usuário' : 'Adicionar Usuário';
   document.getElementById('modalEquipe').style.display = 'flex';
 };
 
@@ -2014,13 +2063,13 @@ window.alterarStatusEquipe = async function (id, ativo) {
   try {
     const res = await fetch('/api/equipe/' + id, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ..._authHeader() },
       body: JSON.stringify({ ativo })
     });
     if (!res.ok) throw new Error('Falha de rede');
   } catch (e) {
     alert('Erro ao alterar status.');
-    carregarEquipe(); // rollback visual
+    carregarEquipe();
   }
 };
 
@@ -2028,20 +2077,23 @@ window.alterarFuncaoEquipe = async function (id, funcao) {
   try {
     const res = await fetch('/api/equipe/' + id, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ..._authHeader() },
       body: JSON.stringify({ funcao })
     });
     if (!res.ok) throw new Error('Falha de rede');
   } catch (e) {
     alert('Erro ao alterar função.');
-    carregarEquipe(); // rollback visual
+    carregarEquipe();
   }
 };
 
 window.deletarUsuarioEquipe = async function (id) {
   if (!confirm('Tem certeza que deseja remover este usuário da equipe?')) return;
   try {
-    const res = await fetch('/api/equipe/' + id, { method: 'DELETE' });
+    const res = await fetch('/api/equipe/' + id, {
+      method: 'DELETE',
+      headers: { ..._authHeader() }
+    });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erro ao deletar');
     carregarEquipe();
@@ -2054,24 +2106,46 @@ const formEquipe = document.getElementById('formEquipe');
 if (formEquipe) {
   formEquipe.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const id = document.getElementById('equipeId').value;
-    const nome = document.getElementById('equipeNome').value;
-    const email = document.getElementById('equipeEmail').value;
+
+    const id     = document.getElementById('equipeId').value.trim();
+    const nome   = document.getElementById('equipeNome').value.trim();
+    const email  = document.getElementById('equipeEmail').value.trim();
     const funcao = document.getElementById('equipeFuncao').value;
-    const ativo = document.getElementById('equipeAtivo').checked;
+    const ativo  = document.getElementById('equipeAtivo').checked;
+    const senha  = document.getElementById('equipeSenha')?.value || '';
+    const isNew  = !id;
+
+    // ── Validação client-side ──────────────────────────────────────────
+    const emailErro = document.getElementById('equipeEmailErro');
+    const senhaErro = document.getElementById('equipeSenhaErro');
+    if (emailErro) emailErro.style.display = 'none';
+    if (senhaErro) senhaErro.style.display = 'none';
+
+    let hasError = false;
+    if (!email) {
+      if (emailErro) emailErro.style.display = 'block';
+      hasError = true;
+    }
+    if (isNew && (!senha || senha.length < 6)) {
+      if (senhaErro) senhaErro.style.display = 'block';
+      hasError = true;
+    }
+    if (hasError) return;
 
     const btn = document.getElementById('btnSalvarEquipe');
     btn.disabled = true;
     btn.innerText = 'Salvando...';
 
     const payload = { nome, email, funcao, ativo };
-    const url = id ? '/api/equipe/' + id : '/api/equipe';
+    if (senha) payload.senha = senha;
+
+    const url    = id ? '/api/equipe/' + id : '/api/equipe';
     const method = id ? 'PUT' : 'POST';
 
     try {
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ..._authHeader() },
         body: JSON.stringify(payload)
       });
 

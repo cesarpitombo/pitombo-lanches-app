@@ -10,6 +10,7 @@
     "db:test": "node db/testar-conexao.js"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "body-parser": "^1.20.2",
     "dotenv": "^16.6.1",
     "express": "^4.18.2",

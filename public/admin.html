@@ -646,9 +646,27 @@
               </div>
 
               <div>
-                <label style="font-weight:700; font-size:0.9rem; margin-bottom:0.4rem; display:block;">E-mail</label>
-                <input type="email" id="equipeEmail" placeholder="opcional"
+                <label style="font-weight:700; font-size:0.9rem; margin-bottom:0.4rem; display:block;">
+                  E-mail <span style="color:#e8420a">*</span>
+                </label>
+                <input type="email" id="equipeEmail" required placeholder="nome@email.com"
                   style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc; outline:none;">
+                <p id="equipeEmailErro" style="color:#c62828; font-size:0.82rem; margin:0.3rem 0 0; display:none;">
+                  E-mail é obrigatório.
+                </p>
+              </div>
+
+              <div>
+                <label style="font-weight:700; font-size:0.9rem; margin-bottom:0.4rem; display:block;">
+                  Senha
+                  <span id="equipeSenhaObrig" style="color:#e8420a"> *</span>
+                  <span id="equipeSenhaOpcional" style="color:#888; font-weight:400; font-size:0.8rem; display:none;"> (em branco = manter atual)</span>
+                </label>
+                <input type="password" id="equipeSenha" placeholder="Mínimo 6 caracteres"
+                  style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc; outline:none;">
+                <p id="equipeSenhaErro" style="color:#c62828; font-size:0.82rem; margin:0.3rem 0 0; display:none;">
+                  Senha obrigatória (mínimo 6 caracteres).
+                </p>
               </div>
 
               <div>
