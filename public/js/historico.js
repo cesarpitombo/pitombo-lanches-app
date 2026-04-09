@@ -21,7 +21,7 @@ function handlePeriodoChange(e) {
 
 async function fetchPedidos() {
   try {
-    const res = await fetch('/api/pedidos');
+    const res = await apiFetch('/api/pedidos');
     allPedidos = await res.json();
     renderDados();
   } catch (err) {
@@ -204,7 +204,7 @@ let despesasDeHoje = [];
 
 async function fetchDespesasHoje() {
   try {
-    const res = await fetch('/api/despesas');
+    const res = await apiFetch('/api/despesas');
     despesasDeHoje = await res.json();
     renderDespesas();
   } catch (err) {
@@ -253,10 +253,9 @@ window.salvarDespesa = async function() {
   }
   
   try {
-    const res = await fetch('/api/despesas', {
+    const res = await apiFetch('/api/despesas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ descricao: desc, valor })
+        body: { descricao: desc, valor }
     });
     if(res.ok) {
         document.getElementById('descDespesa').value = '';

@@ -12,7 +12,7 @@ window.carregarImpressoras = async function() {
     container.innerHTML = '<div style="text-align:center; padding:3rem; color:#888; grid-column:1/-1;">Localizando máquinas cadastradas... 🔍</div>';
 
     try {
-        const res = await fetch('/api/impressoras');
+        const res = await apiFetch('/api/impressoras');
         if(!res.ok) throw new Error('Falha no Servidor Node');
         const data = await res.json();
         
@@ -90,7 +90,7 @@ window.abrirModalNovaImpressora = function(id='', nome='', ip='', porta=9100, ti
 window.descobrirImpressorasOS = async function() {
     alert('Buscando dispositivos na fila local do sistema.\nIsso acionará o driver do Windows (WMIC)...');
     try {
-        const res = await fetch('/api/impressoras/descobrir', {method:'POST'});
+        const res = await apiFetch('/api/impressoras/descobrir', {method:'POST'});
         const data = await res.json();
         
         if(!data.ok) return alert('Autodiscovery OS: ' + data.error);
@@ -101,17 +101,16 @@ window.descobrirImpressorasOS = async function() {
         // Vamos auto-cadastrar se não existir e recarregar
         let added = 0;
         for (const imp of data.impressoras) {
-            await fetch('/api/impressoras', {
+            await apiFetch('/api/impressoras', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
+                body: {
                     nome: imp.nome,
                     ip: imp.nome, // Fila do OS
                     porta: 0,
                     tipo_conexao: 'windows',
                     setor: 'balcao',
                     padrao: false
-                })
+                }
             });
             added++;
         }
@@ -144,7 +143,7 @@ document.addEventListener('submit', async (e) => {
         const url = id ? `/api/impressoras/${id}` : '/api/impressoras';
 
         try {
-            const r = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            const r = await apiFetch(url, { method, body: payload });
             if(!r.ok) throw new Error('Falha HTTP DB Impressoras');
             
             document.getElementById('modalImpressora').style.display = 'none';
@@ -157,7 +156,7 @@ document.addEventListener('submit', async (e) => {
 
 window.pingarConexao = async function(id) {
     try {
-        const r = await fetch(`/api/impressoras/${id}/testar-conexao`, {method:'POST'});
+        const r = await apiFetch(`/api/impressoras/${id}/testar-conexao`, {method:'POST'});
         const data = await r.json();
         alert(`PING: ${data.status.toUpperCase()}\n\n${data.message}`);
         carregarImpressoras();
@@ -169,7 +168,7 @@ window.pingarConexao = async function(id) {
 window.testarImpressaoFisica = async function(id, nome) {
     if(!confirm(`Você ouvirá o barulho da guilhotina na máquina [${nome}]. Podemos disparar a ordem LPT/TCP?`)) return;
     try {
-        const r = await fetch(`/api/impressoras/${id}/testar-impressao`, {method:'POST'});
+        const r = await apiFetch(`/api/impressoras/${id}/testar-impressao`, {method:'POST'});
         const data = await r.json();
         alert(`RESULTADO VIA HARDWARE:\n\n${data.message}`);
         carregarImpressoras();
@@ -180,6 +179,6 @@ window.testarImpressaoFisica = async function(id, nome) {
 
 window.removerImpressora = async function(id) {
     if(!confirm('Deletar essa máquina dos bindings logísticos? O PDV não enxergará mais a porta.')) return;
-    await fetch(`/api/impressoras/${id}`, {method: 'DELETE'});
+    await apiFetch(`/api/impressoras/${id}`, {method: 'DELETE'});
     carregarImpressoras();
 }

@@ -16,7 +16,7 @@ window.addEventListener('DOMContentLoaded', () => {
 window.carregarCozinhas = async function() {
     console.log('👨‍🍳 Buscando cozinhas...');
     try {
-        const res = await fetch('/api/cozinhas');
+        const res = await apiFetch('/api/cozinhas');
         if (!res.ok) throw new Error('Falha ao carregar cozinhas');
         
         cozinhasAtivas = await res.json();
@@ -66,7 +66,7 @@ window.filtrarPedidosCozinha = async function() {
     if (!grid) return;
 
     try {
-        const res = await fetch('/api/pedidos');
+        const res = await apiFetch('/api/pedidos');
         if (!res.ok) throw new Error('Falha ao buscar pedidos');
         const pedidos = await res.json();
 
@@ -156,10 +156,9 @@ function renderizarListaConfiguracao() {
 window.toggleAutoUpdateCozinha = async function() {
     const check = document.getElementById('switchAutoUpdateCozinha').checked;
     try {
-        await fetch(`/api/cozinhas/${cozinhaIdSelecionada}`, {
+        await apiFetch(`/api/cozinhas/${cozinhaIdSelecionada}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ config_auto_update: check })
+            body: { config_auto_update: check }
         });
         window.carregarCozinhas();
     } catch (err) { alert('Erro ao salvar configuração'); }
@@ -170,10 +169,9 @@ window.abrirPromptCozinha = async function() {
     if (!nome) return;
     
     try {
-        await fetch('/api/cozinhas', {
+        await apiFetch('/api/cozinhas', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nome })
+            body: { nome }
         });
         window.carregarCozinhas();
     } catch (err) { alert('Erro ao criar cozinha'); }
@@ -184,10 +182,9 @@ window.renomearCozinha = async function(id, nomeAtual) {
     if (!novoNome || novoNome === nomeAtual) return;
     
     try {
-        await fetch(`/api/cozinhas/${id}`, {
+        await apiFetch(`/api/cozinhas/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nome: novoNome })
+            body: { nome: novoNome }
         });
         window.carregarCozinhas();
     } catch (err) { alert('Erro ao renomear cozinha'); }
@@ -197,7 +194,7 @@ window.excluirCozinha = async function(id) {
     if (!confirm('Deseja realmente excluir esta cozinha?')) return;
     
     try {
-        const res = await fetch(`/api/cozinhas/${id}`, { method: 'DELETE' });
+        const res = await apiFetch(`/api/cozinhas/${id}`, { method: 'DELETE' });
         if (!res.ok) {
             const data = await res.json();
             throw new Error(data.error || 'Erro ao excluir');

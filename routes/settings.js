@@ -4,6 +4,9 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { query } = require('../db/connection');
+const { requireAuth, requireRole } = require('../middleware/auth');
+
+const ADMIN_MANAGER = ['Admin', 'Manager'];
 
 // --- HELPER FUNCTIONS FOR STORE HOURS ---
 
@@ -222,7 +225,7 @@ const settingsStorage = multer.diskStorage({
 });
 const upload = multer({ storage: settingsStorage });
 
-router.post('/upload-logo', upload.single('logo'), (req, res) => {
+router.post('/upload-logo', requireAuth, requireRole(ADMIN_MANAGER), upload.single('logo'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
   const url = '/uploads/' + req.file.filename;
   res.json({ url });
@@ -246,7 +249,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/settings
-router.post('/', upload.fields([
+router.post('/', requireAuth, requireRole(ADMIN_MANAGER), upload.fields([
   { name: 'logo',        maxCount: 1 },
   { name: 'favicon',     maxCount: 1 },
   { name: 'banner',      maxCount: 1 },

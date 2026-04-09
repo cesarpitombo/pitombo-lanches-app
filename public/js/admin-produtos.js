@@ -10,7 +10,8 @@ const ProdutosManager = {
     currentCategory: 'all',
     searchTerm: '',
     selectedModificadores: [], // Array de objetos de modificadores associados
-    selectedImageFile: null,   // Bugfix: guarda a imagem local para envio só no submit
+    selectedImageFile: null,   // guarda a imagem cortada para envio só no submit
+    _cropperInstance: null,    // instância activa do Cropper.js
     currentProductId: null,
     tempVariantes: [],
 
@@ -39,7 +40,7 @@ const ProdutosManager = {
     async load() {
         console.log('🔄 Carregando produtos...');
         try {
-            const response = await fetch('/api/v2/produtos');
+            const response = await apiFetch('/api/v2/produtos');
             if (!response.ok) throw new Error('Falha na resposta da API');
 
             const data = await response.json();
@@ -150,10 +151,9 @@ const ProdutosManager = {
                     const cards = Array.from(grid.querySelectorAll('.oc-category-card'));
                     const itens = cards.map((el, idx) => ({ id: Number(el.dataset.id), ordem: idx }));
                     try {
-                        const res = await fetch('/api/categorias/reordenar', {
+                        const res = await apiFetch('/api/categorias/reordenar', {
                             method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ itens })
+                            body: { itens }
                         });
                         if (res.ok) console.log('✅ Ordem das categorias atualizada!');
                     } catch (e) { console.error('Erro ao reordenar:', e); }
@@ -171,10 +171,9 @@ const ProdutosManager = {
                     const rows = Array.from(body.querySelectorAll('.oc-product-row'));
                     const itens = rows.map((el, idx) => ({ id: Number(el.dataset.id), ordem: idx }));
                     try {
-                        const res = await fetch('/api/v2/produtos/reordenar', {
+                        const res = await apiFetch('/api/v2/produtos/reordenar', {
                             method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ itens })
+                            body: { itens }
                         });
                         if (res.ok) console.log('✅ Ordem dos produtos atualizada!');
                     } catch (e) { console.error('Erro ao reordenar produtos:', e); }
@@ -458,30 +457,139 @@ const ProdutosManager = {
     closeModal() {
         const modal = document.getElementById('modal-produto-v2');
         if (modal) modal.style.display = 'none';
+        // Garantir que o cropper não fica activo em background
+        if (this._cropperInstance) {
+            this._cropperInstance.destroy();
+            this._cropperInstance = null;
+        }
     },
 
     handleImageUpload(event) {
         event.preventDefault();
         const file = event.target.files[0];
-        if (!file) {
-            this.selectedImageFile = null;
-            return;
+        // Limpar input para permitir seleccionar o mesmo ficheiro novamente
+        event.target.value = '';
+        if (!file) return;
+        this._openCropModal(file);
+    },
+
+    // ── Cropper.js helpers ──────────────────────────────────────────────
+
+    _openCropModal(file) {
+        const modal = document.getElementById('modal-crop-imagem');
+        const img   = document.getElementById('crop-source-img');
+        if (!modal || !img) return;
+
+        // Destruir instância anterior se existir
+        if (this._cropperInstance) {
+            this._cropperInstance.destroy();
+            this._cropperInstance = null;
         }
 
-        // Bugfix: Salvar o arquivo apenas na memória e exibir o preview localmente
-        this.selectedImageFile = file;
-
-        const preview = document.getElementById('product-image-preview-v3');
-        const placeholder = document.getElementById('image-placeholder-v3');
-
-        // Exibir preview de forma instantânea sem chamar o backend
         const reader = new FileReader();
         reader.onload = (e) => {
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-            placeholder.style.display = 'none';
+            img.src = e.target.result;
+            modal.style.display = 'flex';
+
+            // Inicializar Cropper após a imagem carregar
+            img.onload = () => {
+                this._cropperInstance = new Cropper(img, {
+                    aspectRatio: NaN,       // proporção livre
+                    viewMode: 0,            // imagem pode ser movida além do container
+                    autoCropArea: 0.85,     // começa com 85% da área seleccionada
+                    dragMode: 'move',       // por defeito arrasta a imagem
+                    background: false,
+                    responsive: true,
+                    restore: false,
+                    guides: true,
+                    highlight: false,
+                    cropBoxMovable: true,   // crop box pode ser reposicionada
+                    cropBoxResizable: true, // crop box pode ser redimensionada
+                    wheelZoomRatio: 0.1,    // zoom suave com scroll do mouse
+                    zoom(e) {
+                        // Sincronizar slider com o zoom actual
+                        const range = document.getElementById('crop-zoom-range');
+                        if (range) {
+                            const ratio = e.detail.ratio;
+                            const init  = e.detail.oldRatio;
+                            // valor normalizado 0-1 baseado no zoom relativo
+                            const current = parseFloat(range.value) || 0;
+                            const delta   = ratio - init;
+                            range.value = Math.min(1, Math.max(0, current + delta));
+                        }
+                    },
+                });
+            };
         };
         reader.readAsDataURL(file);
+    },
+
+    _cropZoom(delta) {
+        if (this._cropperInstance) this._cropperInstance.zoom(delta);
+    },
+
+    _cropZoomAbs(value) {
+        // value 0-1 → zoom de 0.1× até 6×
+        if (!this._cropperInstance) return;
+        const targetRatio = 0.1 + value * 5.9;
+        const data = this._cropperInstance.getCanvasData();
+        const imgData = this._cropperInstance.getImageData();
+        const currentRatio = data.width / imgData.naturalWidth;
+        if (currentRatio > 0) {
+            this._cropperInstance.zoom(targetRatio - currentRatio);
+        }
+    },
+
+    _cropRotate(deg) {
+        if (this._cropperInstance) this._cropperInstance.rotate(deg);
+    },
+
+    _cropConfirm() {
+        if (!this._cropperInstance) return;
+
+        // Extrair canvas cortado com dimensão máxima de 1600px
+        const canvas = this._cropperInstance.getCroppedCanvas({
+            maxWidth:    1600,
+            maxHeight:   1600,
+            fillColor:   '#fff',
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high',
+        });
+
+        canvas.toBlob((blob) => {
+            if (!blob) { alert('Erro ao processar imagem.'); return; }
+
+            // Converter blob → File para envio no submit
+            const file = new File([blob], 'produto-crop.jpg', { type: 'image/jpeg' });
+            this.selectedImageFile = file;
+
+            // Actualizar preview no modal do produto
+            const preview     = document.getElementById('product-image-preview-v3');
+            const placeholder = document.getElementById('image-placeholder-v3');
+            if (preview) {
+                preview.src = URL.createObjectURL(blob);
+                preview.style.display = 'block';
+            }
+            if (placeholder) placeholder.style.display = 'none';
+
+            this._closeCropModal();
+        }, 'image/jpeg', 0.92);
+    },
+
+    _cropCancel() {
+        this._closeCropModal();
+    },
+
+    _closeCropModal() {
+        const modal = document.getElementById('modal-crop-imagem');
+        if (modal) modal.style.display = 'none';
+        if (this._cropperInstance) {
+            this._cropperInstance.destroy();
+            this._cropperInstance = null;
+        }
+        // Reset slider
+        const range = document.getElementById('crop-zoom-range');
+        if (range) range.value = '0';
     },
 
     toggleStatus() {
@@ -512,10 +620,9 @@ const ProdutosManager = {
         btn.style.opacity = '0.7';
 
         try {
-            const res = await fetch('/api/ia/gerar-descricao', {
+            const res = await apiFetch('/api/ia/gerar-descricao', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nome, ingredientes_atuais })
+                body: { nome, ingredientes_atuais }
             });
             const data = await res.json();
 
@@ -585,7 +692,7 @@ const ProdutosManager = {
             const formData = new FormData();
             formData.append('image', pngBlob, 'produto.png');
 
-            const resp = await fetch('/api/ia/melhorar-imagem', { method: 'POST', body: formData });
+            const resp = await apiFetch('/api/ia/melhorar-imagem', { method: 'POST', body: formData });
             if (!resp.ok) {
                 const err = await resp.json().catch(() => ({ error: resp.statusText }));
                 throw new Error(err.error || 'Erro no servidor.');
@@ -858,10 +965,9 @@ const ProdutosManager = {
 
     async toggleListVisibility(id, setDisponivel) {
         try {
-            const res = await fetch(`/api/v2/produtos/${id}`, {
+            const res = await apiFetch(`/api/v2/produtos/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ disponivel: setDisponivel })
+                body: { disponivel: setDisponivel }
             });
             if (!res.ok) throw new Error('Erro ao alterar status');
             await this.load(); // Refresh grid
@@ -1024,7 +1130,7 @@ const ProdutosManager = {
                 const formData = new FormData();
                 formData.append('image', this.selectedImageFile);
                 try {
-                    const response = await fetch('/api/upload', {
+                    const response = await apiFetch('/api/upload', {
                         method: 'POST',
                         body: formData
                     });
@@ -1098,10 +1204,9 @@ const ProdutosManager = {
         const url = isNew ? '/api/v2/produtos' : `/api/v2/produtos/${data.id}`;
         const method = isNew ? 'POST' : 'PUT';
         try {
-            const response = await fetch(url, {
+            const response = await apiFetch(url, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: data
             });
             if (response.ok) {
                 await this.load();
@@ -1118,7 +1223,7 @@ const ProdutosManager = {
     async delete(id) {
         if (!confirm('Tem certeza que deseja excluir este produto?')) return;
         try {
-            const response = await fetch(`/api/v2/produtos/${id}`, { method: 'DELETE' });
+            const response = await apiFetch(`/api/v2/produtos/${id}`, { method: 'DELETE' });
             if (response.ok) {
                 await this.load();
             }

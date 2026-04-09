@@ -24,7 +24,7 @@ async function carregarZonas() {
   }
 
   try {
-    const res = await fetch('/api/zonas');
+    const res = await apiFetch('/api/zonas');
     if (!res.ok) throw new Error('Falha');
     const zonas = await res.json();
     if (!zonas.length) {
@@ -93,10 +93,9 @@ async function salvarZona(e) {
   const msg = document.getElementById('zonaStatusMsg');
   msg.style.color = '#555'; msg.textContent = 'Salvando...';
   try {
-    const res = await fetch(id ? `/api/zonas/${id}` : '/api/zonas', {
+    const res = await apiFetch(id ? `/api/zonas/${id}` : '/api/zonas', {
       method: id ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: payload
     });
     if (res.ok) {
       msg.style.color = 'green';
@@ -112,7 +111,7 @@ async function salvarZona(e) {
 window.excluirZona = async function(id) {
   if (!confirm('Excluir esta zona de entrega?')) return;
   try {
-    const r = await fetch(`/api/zonas/${id}`, { method: 'DELETE' });
+    const r = await apiFetch(`/api/zonas/${id}`, { method: 'DELETE' });
     if (r.ok) carregarZonas(); else alert('Erro ao excluir zona.');
   } catch(e) { alert('Falha de rede.'); }
 };

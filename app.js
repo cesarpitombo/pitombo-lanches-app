@@ -16,6 +16,7 @@ const modificadoresRoutes = require('./routes/modificadores');
 const produtosRoutes = require('./routes/produtos');
 const uploadsRoutes = require('./routes/uploads');
 const iaRoutes = require('./routes/ia');
+const chatbotRoutes = require('./routes/chatbot');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -42,6 +43,7 @@ app.use('/api/v2/produtos', produtosRoutes);
 app.use('/api/products', produtosRoutes);
 app.use('/api/upload', uploadsRoutes);
 app.use('/api/ia', iaRoutes);
+app.use('/api/chatbot-whatsapp', chatbotRoutes);
 
 // ─── Rotas do Frontend ────────────────────────────────────────────────
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
@@ -52,6 +54,7 @@ app.get('/cardapio', (req, res) => res.sendFile(path.join(__dirname, 'public', '
 app.get('/checkout', (req, res) => res.sendFile(path.join(__dirname, 'public', 'checkout.html')));
 app.get('/sucesso', (req, res) => res.sendFile(path.join(__dirname, 'public', 'sucesso.html')));
 app.get('/links', (req, res) => res.sendFile(path.join(__dirname, 'public', 'links.html')));
+app.get('/admin/chatbot-whatsapp', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/download-print-app', (req, res) => res.download(path.join(__dirname, 'public', 'PitomboPrint_Setup.zip')));
 
 // ─── Erro global ──────────────────────────────────────────────────────

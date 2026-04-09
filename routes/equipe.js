@@ -3,20 +3,10 @@ const router  = express.Router();
 const bcrypt  = require('bcrypt');
 const jwt     = require('jsonwebtoken');
 const { query } = require('../db/connection');
+const { requireAuth, requireRole } = require('../middleware/auth');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'pitombo-secret-key';
-
-// ── Middleware de autenticação (API-only, retorna 401 não redirect) ────────
-function requireAuth(req, res, next) {
-  const token = (req.headers.authorization || '').replace('Bearer ', '').trim();
-  if (!token) return res.status(401).json({ error: 'Não autenticado.' });
-  try {
-    req.user = jwt.verify(token, JWT_SECRET);
-    next();
-  } catch {
-    return res.status(401).json({ error: 'Token inválido ou expirado.' });
-  }
-}
+const ADMIN_MANAGER = ['Admin', 'Manager'];
 
 // ── Auto-migration ────────────────────────────────────────────────────────
 (async () => {
@@ -138,7 +128,7 @@ router.get('/me', requireAuth, (req, res) => {
 });
 
 // ── GET / — lista toda a equipe ───────────────────────────────────────────
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
     const result = await query(
       'SELECT id, nome, email, unidade, funcao, ativo, criado_em, atualizado_em FROM equipe ORDER BY id ASC'
@@ -151,7 +141,7 @@ router.get('/', async (req, res) => {
 });
 
 // ── POST / — criar novo utilizador ───────────────────────────────────────
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
   const { nome, email, funcao, ativo, senha } = req.body;
 
   // Validações obrigatórias
@@ -197,7 +187,7 @@ router.post('/', async (req, res) => {
 });
 
 // ── PUT /:id — editar utilizador ─────────────────────────────────────────
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
   const { id } = req.params;
   const { nome, email, funcao, ativo, senha } = req.body;
 
@@ -245,7 +235,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // ── DELETE /:id ──────────────────────────────────────────────────────────
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
   const { id } = req.params;
   try {
     const currentRes = await query('SELECT funcao FROM equipe WHERE id = $1', [id]);

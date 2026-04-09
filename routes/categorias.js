@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db/connection');
+const { requireAuth, requireRole } = require('../middleware/auth');
+
+const ADMIN_MANAGER = ['Admin', 'Manager'];
 
 // GET /api/categorias - Listar todas as categorias
 router.get('/', async (req, res) => {
@@ -14,7 +17,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/categorias - Criar categoria
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const { nome, ordem, ativo, is_destaque, imagem_url } = req.body;
     if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
     try {
@@ -30,7 +33,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/categorias/reordenar - Atualizar ordem de múltiplas categorias
-router.put('/reordenar', async (req, res) => {
+router.put('/reordenar', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const { itens } = req.body; // Array de { id, ordem }
     if (!itens || !Array.isArray(itens)) return res.status(400).json({ error: 'Array "itens" é obrigatório' });
     try {
@@ -48,7 +51,7 @@ router.put('/reordenar', async (req, res) => {
 });
 
 // PUT /api/categorias/:id - Atualizar categoria
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const id = Number(req.params.id);
     const { nome, ordem, ativo, is_destaque, imagem_url } = req.body;
     try {
@@ -65,7 +68,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/categorias/:id - Excluir categoria
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const id = Number(req.params.id);
     try {
         // Desatrelar produtos antes de excluir

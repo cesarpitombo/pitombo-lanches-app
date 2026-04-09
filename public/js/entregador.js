@@ -1,3 +1,15 @@
+// ── Auth check: só Entregador, Admin e Manager ─────────────────────────────
+(async () => {
+  try {
+    const r = await apiFetch('/api/equipe/me');
+    if (!r.ok) { localStorage.removeItem('pitombo_token'); window.location.href = '/login'; return; }
+    const user = await r.json();
+    if (!['Admin', 'Manager', 'Entregador'].includes(user.funcao)) {
+      window.location.href = '/login';
+    }
+  } catch { window.location.href = '/login'; }
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Painel do Entregador Iniciado');
 
@@ -74,7 +86,9 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="card-body">
           <div class="customer-info">
             <div class="customer-name">${p.cliente}</div>
-            <div class="info-line"><strong>Telefone:</strong> ${p.telefone || 'Não informado'}</div>
+            <div class="info-line"><strong>Telefone:</strong> ${p.telefone
+              ? `<a href="tel:${p.telefone.replace(/\D/g,'')}" style="color:#2563eb;font-weight:700;">${p.telefone}</a>`
+              : '<span style="color:#f87171;">Sem telefone</span>'}</div>
             <div class="info-line"><strong>Endereço:</strong> ${enderecoHtml}</div>
             <div class="info-line"><strong>Horário:</strong> ${timeStr}</div>
             <div class="info-line">
@@ -84,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ${p.payment_method === 'dinheiro' && p.troco_para
               ? `<div class="info-line" style="color:#e8420a;font-weight:bold;font-size:1.1rem;background:rgba(232,66,10,0.1);padding:0.5rem;border-radius:6px;width:fit-content;display:inline-block;">⚠️ Troco para: ${window.formatCurrency(p.troco_para)} <br>(Levar ${window.formatCurrency(p.valor_troco || 0)})</div>`
               : ''}
-            ${p.observacoes ? `<div class="info-line"><strong>Obs:</strong> ${p.observacoes}</div>` : ''}
+            ${p.observacoes ? `<div style="background:#fffbeb;border-left:3px solid #f59e0b;padding:0.5rem 0.7rem;border-radius:4px;font-size:0.88rem;color:#92400e;margin:0.4rem 0;"><strong>⚠️ Obs:</strong> ${p.observacoes}</div>` : ''}
             ${buildActionsHtml(p)}
           </div>
           <div class="items-section">
@@ -105,9 +119,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // ─── Aba "Em Entrega" ──────────────────────────────────────
   async function carregarEntregas() {
     try {
-      const res     = await fetch('/api/pedidos');
+      const res     = await apiFetch('/api/pedidos');
       const pedidos = await res.json();
-      const ativas  = pedidos.filter(p => ['pronto', 'em_entrega'].includes(p.status));
+      // FILTRO CRITICO: apenas pedidos DELIVERY chegam ao entregador
+      // Mesa e Balcao finalizam diretamente sem passar pelo entregador
+      const ativas  = pedidos.filter(p =>
+        p.tipo === 'delivery' && ['pronto', 'em_entrega'].includes(p.status)
+      );
 
       if (ativas.length === 0) {
         lista.innerHTML = '<div class="loading">Nenhuma entrega pendente no momento. 🛵💨</div>';
@@ -128,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function renderHistorico() {
     listaHist.innerHTML = '<div class="loading">Carregando histórico...</div>';
     try {
-      const res        = await fetch('/api/pedidos');
+      const res        = await apiFetch('/api/pedidos');
       const pedidos    = await res.json();
       const entregues  = pedidos.filter(p => p.status === 'entregue');
 
@@ -146,10 +164,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // ─── Alterar status ───────────────────────────────────────
   window.alterarStatus = async function(id, novoStatus) {
     try {
-      const res = await fetch(`/api/pedidos/${id}/status`, {
+      const res = await apiFetch(`/api/pedidos/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: novoStatus, origem: 'entregador' })
+        body: { status: novoStatus, origem: 'entregador' }
       });
       if (res.ok) {
         carregarEntregas();

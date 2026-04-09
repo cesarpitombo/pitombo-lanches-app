@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const OpenAI = require('openai');
 const multer = require('multer');
+const { requireAuth, requireRole } = require('../middleware/auth');
+
+const ADMIN_MANAGER = ['Admin', 'Manager'];
 
 const uploadMem = multer({
     storage: multer.memoryStorage(),
@@ -14,7 +17,7 @@ const openai = new OpenAI({
 });
 
 // POST /api/ia/gerar-descricao
-router.post('/gerar-descricao', async (req, res) => {
+router.post('/gerar-descricao', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const { nome, categoria, ingredientes_atuais } = req.body;
 
     if (!nome) {
@@ -65,7 +68,7 @@ Retorne APENAS o texto da descrição para eu colar direto no cardápio, sem asp
 });
 
 // POST /api/ia/melhorar-imagem
-router.post('/melhorar-imagem', uploadMem.single('image'), async (req, res) => {
+router.post('/melhorar-imagem', requireAuth, requireRole(ADMIN_MANAGER), uploadMem.single('image'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Nenhuma imagem enviada.' });
 
     try {

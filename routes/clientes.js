@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db/connection');
+const { requireAuth, requireRole } = require('../middleware/auth');
+
+const ADMIN_MANAGER = ['Admin', 'Manager'];
 
 // Auto-migration: Criar tabela de clientes se não existir
 (async () => {
@@ -26,7 +29,7 @@ const { query } = require('../db/connection');
 })();
 
 // GET - Listar todos os clientes (com busca e filtros simples)
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
     const { busca, status } = req.query;
     let sql = 'SELECT * FROM clientes';
@@ -58,7 +61,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST - Criar novo cliente
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
   try {
     const { nome, telefone, observacoes } = req.body;
     
@@ -82,7 +85,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT - Atualizar cliente
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     try {
       const { id } = req.params;
       const { nome, telefone, observacoes } = req.body;
@@ -103,7 +106,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE - Remover cliente
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     try {
         const { id } = req.params;
         const { rows } = await query('DELETE FROM clientes WHERE id = $1 RETURNING *', [id]);

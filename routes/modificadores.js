@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db/connection');
+const { requireAuth, requireRole } = require('../middleware/auth');
+
+const ADMIN_MANAGER = ['Admin', 'Manager'];
 
 // --- MODIFICADOR CATEGORIAS ---
 
@@ -36,7 +39,7 @@ router.get('/categorias', async (req, res) => {
 });
 
 // POST /api/modificadores/categorias - Criar categoria de modificadores
-router.post('/categorias', async (req, res) => {
+router.post('/categorias', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const { nome, obrigatorio, selecao_unica, min_escolhas, max_escolhas, ordem, ativo } = req.body;
     if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
     try {
@@ -52,7 +55,7 @@ router.post('/categorias', async (req, res) => {
 });
 
 // PUT /api/modificadores/categorias/reordenar
-router.put('/categorias/reordenar', async (req, res) => {
+router.put('/categorias/reordenar', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const { itens } = req.body;
     if (!itens || !Array.isArray(itens)) return res.status(400).json({ error: 'Array "itens" é obrigatório' });
     try {
@@ -70,7 +73,7 @@ router.put('/categorias/reordenar', async (req, res) => {
 });
 
 // PUT /api/modificadores/categorias/:id - Atualizar categoria de modificadores
-router.put('/categorias/:id', async (req, res) => {
+router.put('/categorias/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const id = Number(req.params.id);
     const { nome, obrigatorio, selecao_unica, min_escolhas, max_escolhas, ordem, ativo } = req.body;
     try {
@@ -87,7 +90,7 @@ router.put('/categorias/:id', async (req, res) => {
 });
 
 // DELETE /api/modificadores/categorias/:id - Excluir categoria de modificadores
-router.delete('/categorias/:id', async (req, res) => {
+router.delete('/categorias/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const id = Number(req.params.id);
     try {
         const { rows } = await query('DELETE FROM modificador_categorias WHERE id = $1 RETURNING *', [id]);
@@ -102,7 +105,7 @@ router.delete('/categorias/:id', async (req, res) => {
 // --- MODIFICADOR ITENS ---
 
 // POST /api/modificadores/itens - Criar item de modificador
-router.post('/itens', async (req, res) => {
+router.post('/itens', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const { categoria_id, nome, preco, custo, sku, quantidade_maxima, ativo, ordem } = req.body;
     if (!categoria_id || !nome) return res.status(400).json({ error: 'Categoria e Nome são obrigatórios' });
     try {
@@ -118,7 +121,7 @@ router.post('/itens', async (req, res) => {
 });
 
 // PUT /api/modificadores/itens/reordenar
-router.put('/itens/reordenar', async (req, res) => {
+router.put('/itens/reordenar', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const { itens } = req.body;
     if (!itens || !Array.isArray(itens)) return res.status(400).json({ error: 'Array "itens" é obrigatório' });
     try {
@@ -136,7 +139,7 @@ router.put('/itens/reordenar', async (req, res) => {
 });
 
 // PUT /api/modificadores/itens/:id - Atualizar item de modificador
-router.put('/itens/:id', async (req, res) => {
+router.put('/itens/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const id = Number(req.params.id);
     const { nome, preco, custo, sku, quantidade_maxima, ativo, ordem } = req.body;
     try {
@@ -153,7 +156,7 @@ router.put('/itens/:id', async (req, res) => {
 });
 
 // DELETE /api/modificadores/itens/:id - Excluir item de modificador
-router.delete('/itens/:id', async (req, res) => {
+router.delete('/itens/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const id = Number(req.params.id);
     try {
         const { rows } = await query('DELETE FROM modificador_itens WHERE id = $1 RETURNING *', [id]);
@@ -186,7 +189,7 @@ router.get('/produto/:id', async (req, res) => {
 });
 
 // POST /api/modificadores/produto/:id - Associar categoria de modificador a um produto
-router.post('/produto/:id', async (req, res) => {
+router.post('/produto/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const produtoId = Number(req.params.id);
     const { categoria_id } = req.body;
     try {
@@ -202,7 +205,7 @@ router.post('/produto/:id', async (req, res) => {
 });
 
 // DELETE /api/modificadores/produto/:id/:categoria_id - Desassociar categoria de modificador de um produto
-router.delete('/produto/:id/:categoria_id', async (req, res) => {
+router.delete('/produto/:id/:categoria_id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const produtoId = Number(req.params.id);
     const categeoriaId = Number(req.params.categoria_id);
     try {
@@ -235,7 +238,7 @@ router.get('/categoria/:id', async (req, res) => {
 });
 
 // POST /api/modificadores/categoria/:id - Associar modificador a uma categoria
-router.post('/categoria/:id', async (req, res) => {
+router.post('/categoria/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const categoriaId = Number(req.params.id);
     const { modificador_categoria_id } = req.body;
     try {
@@ -251,7 +254,7 @@ router.post('/categoria/:id', async (req, res) => {
 });
 
 // DELETE /api/modificadores/categoria/:id/:modificador_categoria_id - Desassociar
-router.delete('/categoria/:id/:modificador_categoria_id', async (req, res) => {
+router.delete('/categoria/:id/:modificador_categoria_id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const categoriaId = Number(req.params.id);
     const modificadorCategoriaId = Number(req.params.modificador_categoria_id);
     try {
@@ -281,7 +284,7 @@ router.get('/categorias_associadas/:modificador_categoria_id', async (req, res) 
 });
 
 // POST /api/modificadores/associar_em_massa - Sincroniza todas as contas
-router.post('/associar_em_massa', async (req, res) => {
+router.post('/associar_em_massa', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const { modificador_categoria_id, categorias_ids } = req.body;
     try {
         await query('DELETE FROM categoria_modificadores WHERE modificador_categoria_id = $1', [modificador_categoria_id]);

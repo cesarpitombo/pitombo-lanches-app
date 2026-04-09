@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin - Gerenciador</title>
   <script src="/js/theme.js"></script>
+  <script src="/js/auth-helper.js"></script>
   <link rel="stylesheet" href="/css/admin.css">
   <link rel="stylesheet" href="/css/admin-produtos.css">
   <link rel="stylesheet" href="/css/admin-clientes.css">
@@ -15,6 +16,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 
   <style>
     /* Estilos para o novo Editor de Produto Profesional */
@@ -275,6 +278,10 @@
           <li><button class="menu-item" data-target="cfg-cozinhas"
               style="padding:0.8rem 1rem; border-radius:6px; color:#aaa; font-size:0.95rem; width:100%; text-align:left; border:none; background:transparent; cursor:pointer;"><span
                 style="margin-right:0.6rem; font-size:1.2rem;">👨‍🍳</span> Cozinhas</button></li>
+          <li><button class="menu-item" data-target="chatbot-whatsapp" id="menuChatbotWhatsapp"
+              style="padding:0.8rem 1rem; border-radius:6px; color:#aaa; font-size:0.95rem; width:100%; text-align:left; border:none; background:transparent; cursor:pointer; display:flex; align-items:center; gap:0.6rem;">
+              <span style="font-size:1.2rem;">💬</span> Chatbot do WhatsApp
+            </button></li>
         </ul>
       </nav>
       <div class="sidebar-footer"
@@ -326,7 +333,7 @@
                 </div>
                 <div style="overflow:hidden;">
                   <div id="profileDropName" style="font-weight:800; color:#fff; font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Pitombo Lanches</div>
-                  <div style="font-size:0.75rem; color:rgba(255,255,255,0.85); margin-top:2px;">✨ Pitombo PDV</div>
+                  <div id="profileDropUserInfo" style="font-size:0.75rem; color:rgba(255,255,255,0.85); margin-top:2px;">✨ Pitombo PDV</div>
                 </div>
               </div>
 
@@ -369,119 +376,109 @@
 
           <!-- DASHBOARD INDICADORES -->
           <div class="admin-kpis"
-            style="display:grid; grid-template-columns:repeat(4, 1fr); gap:1rem; margin-bottom:1.5rem;">
-            <div style="background:#fff; padding:1.2rem; border-radius:8px; border:1px solid #eee;">
-              <div style="font-size:0.85rem; color:#666; font-weight:600; text-transform:uppercase; margin-bottom:0.3rem; display:flex; align-items:center; justify-content:space-between;">
-                <span>Total do Dia (Pago)</span>
-                <button onclick="toggleFaturamento()" id="btnToggleFat" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0;line-height:1;color:#aaa;" title="Mostrar/ocultar valor">👁</button>
+            style="display:grid; grid-template-columns:repeat(6, 1fr); gap:0.75rem; margin-bottom:1.25rem;">
+            <div class="kpi-card">
+              <div class="kpi-label">
+                <span>Faturamento (Pago)</span>
+                <button onclick="toggleFaturamento()" id="btnToggleFat" class="kpi-eye" title="Mostrar/ocultar valor">👁</button>
               </div>
-              <div id="dash-faturamento" style="font-size:1.6rem; font-weight:800; color:var(--success)">R$ 0,00</div>
+              <div id="dash-faturamento" class="kpi-value kpi-green">R$ 0,00</div>
             </div>
-            <div style="background:#fff; padding:1.2rem; border-radius:8px; border:1px solid #eee;">
-              <div
-                style="font-size:0.85rem; color:#666; font-weight:600; text-transform:uppercase; margin-bottom:0.3rem">
-                Pedidos Hoje</div>
-              <div id="dash-hoje" style="font-size:1.6rem; font-weight:800; color:var(--text)">0</div>
+            <div class="kpi-card">
+              <div class="kpi-label">Pedidos Hoje</div>
+              <div id="dash-hoje" class="kpi-value">0</div>
             </div>
-            <div style="background:#fff; padding:1.2rem; border-radius:8px; border:1px solid #eee;">
-              <div
-                style="font-size:0.85rem; color:#666; font-weight:600; text-transform:uppercase; margin-bottom:0.3rem">
-                Ativos na Loja</div>
-              <div id="dash-ativos" style="font-size:1.6rem; font-weight:800; color:var(--primary)">0</div>
+            <div class="kpi-card">
+              <div class="kpi-label">Ticket Médio</div>
+              <div id="dash-ticket-medio" class="kpi-value kpi-blue">R$ 0,00</div>
             </div>
-            <div
-              style="background:#fff; padding:1.2rem; border-radius:8px; border:1px solid #eee; border-left:4px solid var(--danger);">
-              <div
-                style="font-size:0.85rem; color:#666; font-weight:600; text-transform:uppercase; margin-bottom:0.3rem">
-                Atrasados (>20m)</div>
-              <div id="dash-atrasados" style="font-size:1.6rem; font-weight:800; color:var(--danger)">0</div>
+            <div class="kpi-card">
+              <div class="kpi-label">Última Hora</div>
+              <div id="dash-por-hora" class="kpi-value kpi-blue">0 <span style="font-size:0.8rem;font-weight:500;color:#6b7280;">pedidos</span></div>
             </div>
-          </div>
-
-          <div class="section-header" style="margin-bottom:1rem;">
-            <h2 style="font-weight:900; font-size:1.8rem; letter-spacing:-1px;">Fila Operacional</h2>
-            <div style="display:flex; gap:0.5rem; align-items:center;">
-              <button id="btnModoRapido" class="btn"
-                style="background:#111; color:white; border:none; padding:0.6rem 1.2rem; border-radius:8px; font-weight:900; cursor:pointer; text-transform:uppercase; box-shadow:0 4px 0 #000; font-size:1rem;"
-                title="Ocultar distrações visuais e manter foco central">🔥 Modo Pressão</button>
-              <div class="view-toggles" style="background:#eee; padding:0.2rem; border-radius:6px; display:flex;">
-                <button id="btnViewCards" class="view-btn active"
-                  style="padding:0.4rem 1rem; border:none; background:#fff; border-radius:4px; font-weight:bold; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.1)">🗂️
-                  Cards</button>
-                <button id="btnViewList" class="view-btn"
-                  style="padding:0.4rem 1rem; border:none; background:transparent; border-radius:4px; font-weight:bold; cursor:pointer; color:#555">📋
-                  Lista</button>
-              </div>
-              <button id="btnAtualizarPedidos" class="btn btn-secondary"
-                style="font-weight:900; padding:0.6rem 1rem; border-radius:8px;">Atualizar Lista</button>
+            <div class="kpi-card">
+              <div class="kpi-label">Ativos na Loja</div>
+              <div id="dash-ativos" class="kpi-value kpi-primary">0</div>
+            </div>
+            <div class="kpi-card kpi-card--danger">
+              <div class="kpi-label">Atrasados (&gt;20m)</div>
+              <div id="dash-atrasados" class="kpi-value kpi-danger">0</div>
             </div>
           </div>
 
-          <!-- Abas de tipo -->
-          <div class="olaclick-type-tabs"
-            style="display:flex; border-bottom:2px solid #e5e7eb; margin-bottom:1rem; gap:0.3rem; flex-wrap:nowrap; overflow-x:auto;">
-            <button class="type-tab active" data-type="todos"
-              style="padding:0.65rem 1.2rem; border:none; background:#1f2937; border-radius:6px 6px 0 0; cursor:pointer; font-weight:700; color:#fff; font-size:0.9rem; margin-bottom:-2px; flex-shrink:0;">
-              Todos <span id="cnt-type-todos"
-                style="background:rgba(255,255,255,0.25); padding:1px 7px; border-radius:10px; font-size:0.75rem; margin-left:6px;">0</span>
-            </button>
-            <button class="type-tab" data-type="balcao"
-              style="padding:0.65rem 1.2rem; border:none; background:transparent; cursor:pointer; color:#6b7280; font-weight:700; font-size:0.9rem; flex-shrink:0;">
-              Balcão <span id="cnt-type-balcao"
-                style="background:#e5e7eb; padding:1px 7px; border-radius:10px; font-size:0.75rem; margin-left:6px; color:#374151;">0</span>
-            </button>
-            <button class="type-tab" data-type="delivery"
-              style="padding:0.65rem 1.2rem; border:none; background:transparent; cursor:pointer; color:#6b7280; font-weight:700; font-size:0.9rem; flex-shrink:0;">
-              Delivery <span id="cnt-type-delivery"
-                style="background:#e5e7eb; padding:1px 7px; border-radius:10px; font-size:0.75rem; margin-left:6px; color:#374151;">0</span>
-            </button>
+          <!-- Toast de ações de teclado -->
+          <div id="ola-toast" class="ola-toast" style="display:none;"></div>
+          <!-- Hints de atalhos (visível só em Modo Pico) -->
+          <div class="ola-shortcuts-bar">
+            <span><span class="ola-key">A</span> Aceitar</span>
+            <span><span class="ola-key">R</span> Rejeitar</span>
+            <span><span class="ola-key">P</span> Pagar</span>
+            <span><span class="ola-key">F</span> Avançar</span>
+            <span><span class="ola-key">ESC</span> Fechar</span>
           </div>
 
-          <!-- Filtros de status + busca -->
-          <div style="margin-bottom:1rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.6rem;">
-            <div id="statusFilterContainer" style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
-              <button class="status-filter active" data-status="operacional"
-                style="border:none; background:#1f2937; color:#fff; padding:0.45rem 1rem; border-radius:20px; font-weight:700; cursor:pointer; font-size:0.82rem;">
-                Ativos
+          <!-- TOPO: Type tabs + controles -->
+          <div class="ola-topbar">
+            <div class="ola-type-tabs">
+              <button class="ola-type-tab type-tab active" data-type="todos">
+                Todos <span id="cnt-type-todos" class="ola-tab-badge">0</span>
               </button>
-              <button class="status-filter" data-status="atrasados"
-                style="border:none; background:#f3f4f6; color:#374151; padding:0.45rem 1rem; border-radius:20px; font-weight:700; cursor:pointer; font-size:0.82rem;">
-                🚨 Atrasados <span id="cnt-status-atrasados"
-                  style="background:#dc3545; color:#fff; padding:1px 6px; border-radius:10px; font-size:0.72rem; margin-left:4px;">0</span>
+              <button class="ola-type-tab type-tab" data-type="balcao">
+                🏪 Balcão <span id="cnt-type-balcao" class="ola-tab-badge">0</span>
               </button>
-              <a href="/historico.html" style="border:none; background:#f3f4f6; color:#374151; padding:0.45rem 1rem; border-radius:20px; font-weight:700; cursor:pointer; font-size:0.82rem; text-decoration:none; display:inline-flex; align-items:center; gap:0.4rem;">
-                📋 Histórico
-              </a>
+              <button class="ola-type-tab type-tab" data-type="delivery">
+                🛵 Delivery <span id="cnt-type-delivery" class="ola-tab-badge">0</span>
+              </button>
+              <button class="ola-type-tab type-tab" data-type="mesa">
+                🍽️ Mesas <span id="cnt-type-mesa" class="ola-tab-badge">0</span>
+              </button>
+            </div>
+            <div class="ola-topbar-controls">
+              <button id="btnAtualizarPedidos" class="ola-icon-btn" title="Atualizar lista">⟳</button>
+              <button id="btnModoRapido" class="ola-icon-btn" title="Modo Pressão — oculta distrações">🔥</button>
+            </div>
+          </div>
+
+          <!-- Filtros secundários + busca -->
+          <div class="ola-filterbar">
+            <div id="statusFilterContainer" class="ola-status-filters">
+              <button class="status-filter ola-filter-pill active" data-status="operacional">✓ Tudo</button>
+              <button class="status-filter ola-filter-pill" data-status="pendente">
+                Pendente <span id="cnt-status-pendente" class="ola-pill-badge">0</span>
+              </button>
+              <button class="status-filter ola-filter-pill" data-status="em_curso">
+                Em curso <span id="cnt-status-em_curso" class="ola-pill-badge">0</span>
+              </button>
+              <button class="status-filter ola-filter-pill" data-status="atrasados">
+                🚨 Atrasados <span id="cnt-status-atrasados" class="ola-pill-badge red">0</span>
+              </button>
+              <a href="/historico.html" class="ola-filter-pill ola-filter-link">📋 Histórico</a>
               <!-- badges ocultos usados pelo JS -->
               <span id="cnt-status-concluidos" style="display:none;">0</span>
-              <span id="cnt-status-pendente" style="display:none;">0</span>
-              <span id="cnt-status-em_curso" style="display:none;">0</span>
+              <span id="cnt-status-todos" style="display:none;">0</span>
             </div>
-            <input type="text" id="inputBusca" placeholder="🔍 Cliente / pedido..."
-              style="padding:0.5rem 1rem; border-radius:20px; border:1px solid #d1d5db; font-size:0.88rem; width:220px; outline:none; background:#f9fafb;"
-              onfocus="this.style.borderColor='#e8420a'; this.style.background='#fff'"
-              onblur="this.style.borderColor='#d1d5db'; this.style.background='#f9fafb'">
+            <input type="text" id="inputBusca" class="ola-search"
+              placeholder="🔍 Buscar cliente, pedido..."
+              autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
           </div>
 
           <!-- SPLIT LAYOUT: Lista + Painel Detalhes -->
           <div id="pedidos-split-layout">
             <div id="pedidos-col-lista">
 
-              <!-- VIEW KANBAN CARDS -->
-              <div class="orders-kanban" id="listaPedidos" style="display:none;">
-                <div class="loading">Carregando pedidos...</div>
-              </div>
+              <!-- VIEW KANBAN CARDS (oculto) -->
+              <div class="orders-kanban" id="listaPedidos" style="display:none;"></div>
 
               <!-- VIEW LISTA TABELA (Padrão) -->
               <div class="table-responsive" id="viewListaPedidos"
-                style="background:#fff; border:1px solid #eee; border-radius:8px;">
+                style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden;">
                 <table class="data-table" style="margin-bottom:0">
-                  <thead>
+                  <thead class="ola-thead">
                     <tr>
-                      <th class="th-pedido">Pedido</th>
-                      <th class="th-valor">Valor</th>
-                      <th class="th-cliente">Cliente / Entrega</th>
-                      <th class="th-acoes">Ações</th>
+                      <th class="th-pedido">DATA</th>
+                      <th class="th-estado">ESTADO</th>
+                      <th class="th-valor">TOTAL</th>
+                      <th class="th-cliente">CLIENTE</th>
                     </tr>
                   </thead>
                   <tbody id="listaPedidosTabela">
@@ -496,12 +493,18 @@
 
             <!-- PAINEL DETALHES LATERAL -->
             <div id="painel-detalhe-lateral" class="detalhe-fechado">
-              <div class="pdc-header">
-                <span id="pdc-titulo">Pedido #—</span>
-                <button onclick="fecharDetalhes()" class="pdc-close">✕</button>
+              <div class="ola-pdc-header">
+                <div class="ola-pdc-header-left">
+                  <span id="pdc-titulo" class="ola-pdc-id">#—</span>
+                  <span id="pdc-tipo-badge" class="ola-pdc-tipo-badge"></span>
+                  <span id="pdc-status-badge" class="ola-pdc-status-badge"></span>
+                </div>
+                <button onclick="fecharDetalhes()" class="ola-pdc-close">✕</button>
               </div>
-              <div id="pdc-conteudo"></div>
-              <div id="pdc-acoes"></div>
+              <div id="pdc-subheader" class="ola-pdc-subheader"></div>
+              <div id="pdc-conteudo" class="ola-pdc-body"></div>
+              <div id="pdc-financeiro" class="ola-pdc-financeiro"></div>
+              <div id="pdc-acoes" class="ola-pdc-acoes"></div>
             </div>
 
           </div><!-- /pedidos-split-layout -->
@@ -563,31 +566,31 @@
                     <tr style="border-bottom:1px solid #eee;">
                       <td style="padding:12px; text-align:left; font-weight:600; color:#333;">Garçom ℹ️</td>
                       <td style="color:#4caf50; font-weight:bold;">✓</td>
-                      <td style="color:#eee;">✓</td>
                       <td style="color:#4caf50; font-weight:bold;">✓</td>
-                      <td style="color:#eee;">✓</td>
-                      <td style="color:#eee;">✓</td>
-                      <td style="color:#eee;">✓</td>
-                      <td style="color:#eee;">✓</td>
+                      <td style="color:#4caf50; font-weight:bold;">✓</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
                     </tr>
                     <tr style="border-bottom:1px solid #eee;">
                       <td style="padding:12px; text-align:left; font-weight:600; color:#333;">Cozinheiro ℹ️</td>
-                      <td style="color:#eee;">✓</td>
-                      <td style="color:#eee;">✓</td>
-                      <td style="color:#eee;">✓</td>
-                      <td style="color:#eee;">✓</td>
-                      <td style="color:#eee;">✓</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
                       <td style="color:#4caf50; font-weight:bold;">✓</td>
-                      <td style="color:#eee;">✓</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
                     </tr>
                     <tr>
                       <td style="padding:12px; text-align:left; font-weight:600; color:#333;">Entregador ℹ️</td>
-                      <td style="color:#eee;">✓</td>
-                      <td style="color:#eee;">✓</td>
-                      <td style="color:#eee;">✓</td>
-                      <td style="color:#eee;">✓</td>
-                      <td style="color:#eee;">✓</td>
-                      <td style="color:#eee;">✓</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
+                      <td style="color:#e53935; font-weight:bold;">✗</td>
                       <td style="color:#4caf50; font-weight:bold;">✓</td>
                     </tr>
                   </tbody>
@@ -2453,6 +2456,14 @@
 
         </section>
 
+        <!-- TAB CHATBOT WHATSAPP -->
+        <section id="chatbot-whatsapp" class="tab-content" style="padding:0; overflow-y:auto;">
+          <!-- Preenchido dinamicamente pelo ChatbotManager -->
+          <div style="display:flex; align-items:center; justify-content:center; height:200px; color:#999;">
+            <span>Carregando Chatbot...</span>
+          </div>
+        </section>
+
       </main>
     </div> <!-- main-wrapper -->
   </div> <!-- app-layout -->
@@ -2476,102 +2487,10 @@
     </div>
   </div>
 
-  <!-- MODAL PDV NOVO PEDIDO MANUAL -->
-  <div class="modal-overlay" id="modalPdv"
-    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:2000; align-items:center; justify-content:center;">
-    <div class="modal-content"
-      style="background:#fff; width:90%; max-width:800px; border-radius:12px; padding:2rem; max-height:95vh; overflow-y:auto; box-shadow:0 10px 40px rgba(0,0,0,0.3);">
-      <div
-        style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; border-bottom:1px solid #eee; padding-bottom:1rem;">
-        <h3 style="margin:0; color:#111; font-size:1.5rem;">Criar Novo Pedido Manual (PDV)</h3>
-        <button onclick="document.getElementById('modalPdv').style.display='none'"
-          style="background:none; border:none; font-size:2rem; cursor:pointer; color:#555; line-height:1;">&times;</button>
-      </div>
-
-      <form id="formPdv" style="display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
-        <div>
-          <div style="margin-bottom:1rem;">
-            <label style="display:block; font-weight:bold; margin-bottom:0.4rem; font-size:0.9rem;">Tipo de
-              Pedido</label>
-            <select id="pdvTipo"
-              style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc; font-size:1rem;"
-              onchange="togglePdvEnd(this.value)">
-              <option value="delivery">Delivery 🛵</option>
-              <option value="balcao">Retirada no Balcão 🏪</option>
-              <option value="mesa">Mesa no Salão 🍽️</option>
-            </select>
-          </div>
-          <div style="margin-bottom:1rem; display:none;" id="pdvMesaBox">
-            <label style="display:block; font-weight:bold; margin-bottom:0.4rem; font-size:0.9rem;">Número da Mesa
-              *</label>
-            <input type="number" id="pdvMesaNum" min="1"
-              style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc; font-size:1rem;">
-          </div>
-          <div style="margin-bottom:1rem;">
-            <label style="display:block; font-weight:bold; margin-bottom:0.4rem; font-size:0.9rem;">Nome do Cliente
-              *</label>
-            <input type="text" id="pdvNome" required
-              style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc; font-size:1rem;">
-          </div>
-          <div style="margin-bottom:1rem; position:relative;">
-            <label style="display:block; font-weight:bold; margin-bottom:0.4rem; font-size:0.9rem;">Telefone /
-              WhatsApp</label>
-            <input type="text" id="pdvFone" placeholder="(00) 00000-0000"
-              style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc; font-size:1rem;">
-            <div id="pdvSugestaoBox"
-              style="display:none; margin-top:0.5rem; background:#e3f2fd; border:1px solid #90caf9; padding:0.8rem; border-radius:6px; font-size:0.85rem; color:#0d47a1;">
-              <!-- Conteudo injetado via JS -->
-            </div>
-          </div>
-          <div style="margin-bottom:1rem;" id="pdvEndBox">
-            <label style="display:block; font-weight:bold; margin-bottom:0.4rem; font-size:0.9rem;">Endereço Completo
-              *</label>
-            <textarea id="pdvEnd" required placeholder="Rua, Número, Bairro, Complemento" rows="3"
-              style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc; font-size:1rem; resize:vertical;"></textarea>
-          </div>
-        </div>
-
-        <div style="background:#fafafa; border:1px solid #eee; padding:1.5rem; border-radius:8px;">
-          <h4 style="margin-bottom:1rem; border-bottom:1px solid #ddd; padding-bottom:0.5rem;">Itens da Venda</h4>
-
-          <!-- Seletor de produto -->
-          <div style="margin-bottom:0.8rem;">
-            <label style="display:block; font-weight:bold; margin-bottom:0.4rem; font-size:0.9rem;">Produto</label>
-            <select id="pdvProdutoSelect" style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc; font-size:1rem;">
-              <option value="">-- Escolha um Produto --</option>
-            </select>
-          </div>
-          <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-            <input type="number" id="pdvProdutoQtd" value="1" min="1"
-              style="width:80px; padding:0.8rem; border-radius:6px; border:1px solid #ccc; font-size:1rem; text-align:center;">
-            <button type="button" onclick="addPdvItem()"
-              style="flex:1; background:#111; color:#fff; border:none; padding:0.8rem; border-radius:6px; font-weight:bold; cursor:pointer; font-size:0.95rem;">+ Adicionar</button>
-          </div>
-
-          <!-- Lista de itens adicionados -->
-          <ul id="pdvItensLista" style="list-style:none; padding:0; margin:0 0 1rem; min-height:60px; border:1px dashed #ddd; border-radius:6px; padding:0.5rem;"></ul>
-
-          <!-- Método de pagamento -->
-          <div style="margin-bottom:1rem;">
-            <label style="display:block; font-weight:bold; margin-bottom:0.4rem; font-size:0.9rem;">Método de Pagto.</label>
-            <select id="pdvPagto" style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc; font-size:1rem;">
-              <option value="dinheiro">Dinheiro</option>
-              <option value="cartao">Cartão</option>
-              <option value="mbway/pix">PIX / MBWay</option>
-            </select>
-          </div>
-
-          <div style="display:flex; justify-content:space-between; font-size:1.3rem; font-weight:800; border-top:2px dashed #ddd; padding-top:1rem; margin-bottom:2rem;">
-            <span>Total:</span>
-            <span id="pdvTotalLabel" style="color:var(--primary);"><span class="currency-symbol">R$</span> 0,00</span>
-          </div>
-
-          <button type="submit" id="btnSalvarPdv" class="btn btn--primary"
-            style="width:100%; padding:1rem; font-size:1.1rem; border-radius:6px; box-shadow:0 4px 15px rgba(232, 66, 10, 0.3);">🟢
-            Confirmar Venda PDV</button>
-        </div>
-      </form>
-    </div>
+  <!-- MODAL PDV — estrutura gerenciada por PdvManager (admin-pdv.js) -->
+  <div id="modalPdv"
+    style="display:none; position:fixed; inset:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+    <!-- Conteúdo renderizado dinamicamente por PdvManager.open() -->
   </div>
 
   <!-- Modal de Edição de Horários Semanais (OlaClick Style) -->
@@ -2964,7 +2883,6 @@
 
   <script src="/js/currency.js"></script>
   <script src="/js/admin-zonas.js"></script>
-  <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
   <script src="/js/admin.js"></script>
   <script src="/js/admin-impressoras.js"></script>
   <script src="/js/admin-clientes.js"></script>
@@ -2974,20 +2892,35 @@
   <script src="/js/admin-modificadores.js"></script>
   <script src="/js/admin-cozinha-vinculo.js"></script>
   <script src="/js/admin-produtos.js"></script>
-</body>
-  </div>
+  <script src="/js/admin-chatbot.js"></script>
+  <script src="/js/admin-pdv.js"></script>
 
-  <script src="/js/currency.js"></script>
-  <script src="/js/admin-zonas.js"></script>
-  <script src="/js/admin.js"></script>
-  <script src="/js/admin-impressoras.js"></script>
-  <script src="/js/admin-clientes.js"></script>
-  <script src="/js/admin-cozinhas.js"></script>
-  <script src="/js/admin-cardapio.js"></script>
-  <script src="/js/admin-categorias.js"></script>
-  <script src="/js/admin-modificadores.js"></script>
-  <script src="/js/admin-cozinha-vinculo.js"></script>
-  <script src="/js/admin-produtos.js"></script>
+  <!-- ── Modal de Crop de Imagem ─────────────────────────────────────── -->
+  <div id="modal-crop-imagem" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:10000; align-items:center; justify-content:center; flex-direction:column;">
+    <div style="background:#1c1e21; border-radius:20px; overflow:hidden; width:min(96vw,920px); box-shadow:0 30px 80px rgba(0,0,0,0.5); display:flex; flex-direction:column;">
+      <div style="padding:1.1rem 1.5rem; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08);">
+        <div>
+          <span style="color:#fff; font-size:1.05rem; font-weight:800;">✂️ Enquadrar imagem</span>
+          <span style="color:#888; font-size:0.8rem; margin-left:0.8rem;">Arraste, faça zoom e ajuste o corte</span>
+        </div>
+        <button onclick="ProdutosManager._cropCancel()" style="background:rgba(255,255,255,0.08); border:none; color:#fff; width:34px; height:34px; border-radius:50%; cursor:pointer; font-size:1.1rem; display:flex; align-items:center; justify-content:center; line-height:1;">&#x2715;</button>
+      </div>
+      <div style="background:#111; max-height:72vh; overflow:hidden;">
+        <img id="crop-source-img" style="display:block; max-width:100%; max-height:72vh; margin:0 auto;">
+      </div>
+      <div style="padding:0.85rem 1.5rem; display:flex; align-items:center; gap:0.8rem; border-top:1px solid rgba(255,255,255,0.08);">
+        <span style="color:#888; font-size:0.8rem; white-space:nowrap; min-width:36px;">Zoom</span>
+        <button onclick="ProdutosManager._cropZoom(-0.1)" style="background:rgba(255,255,255,0.1); border:none; color:#fff; width:32px; height:32px; border-radius:8px; cursor:pointer; font-size:1.1rem; font-weight:700; flex-shrink:0;">&#x2212;</button>
+        <input id="crop-zoom-range" type="range" min="0" max="1" step="0.01" value="0" oninput="ProdutosManager._cropZoomAbs(parseFloat(this.value))" style="flex:1; accent-color:#e8420a; cursor:pointer;">
+        <button onclick="ProdutosManager._cropZoom(0.1)" style="background:rgba(255,255,255,0.1); border:none; color:#fff; width:32px; height:32px; border-radius:8px; cursor:pointer; font-size:1.1rem; font-weight:700; flex-shrink:0;">+</button>
+        <button onclick="ProdutosManager._cropRotate(-90)" title="Rodar 90" style="background:rgba(255,255,255,0.1); border:none; color:#ddd; width:32px; height:32px; border-radius:8px; cursor:pointer; font-size:1rem; flex-shrink:0;">&#x21BA;</button>
+      </div>
+      <div style="padding:0.85rem 1.5rem; display:flex; gap:0.8rem; justify-content:flex-end; border-top:1px solid rgba(255,255,255,0.08);">
+        <button onclick="ProdutosManager._cropCancel()" style="background:rgba(255,255,255,0.08); border:none; color:#ccc; padding:0.7rem 1.4rem; border-radius:10px; cursor:pointer; font-weight:700; font-size:0.9rem;">Cancelar</button>
+        <button onclick="ProdutosManager._cropConfirm()" style="background:#e8420a; border:none; color:#fff; padding:0.7rem 1.8rem; border-radius:10px; cursor:pointer; font-weight:800; font-size:0.9rem;">Usar esta imagem</button>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>

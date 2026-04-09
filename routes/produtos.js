@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { query, getClient } = require('../db/connection');
+const { requireAuth, requireRole } = require('../middleware/auth');
+
+const ADMIN_MANAGER = ['Admin', 'Manager'];
 
 // Auxiliares de mapeamento para padrão do usuário (Inglês)
 const mapToEnglish = (p) => ({
@@ -159,7 +162,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/produtos ou /api/products - Criar produto
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const isEnglish = req.baseUrl.includes('products');
     let body = req.body;
     
@@ -250,7 +253,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/produtos/reordenar - Atualizar ordem de múltiplos produtos
-router.put('/reordenar', async (req, res) => {
+router.put('/reordenar', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const { itens } = req.body; // Array de { id, ordem }
     if (!itens || !Array.isArray(itens)) return res.status(400).json({ error: 'Array "itens" é obrigatório' });
     try {
@@ -268,7 +271,7 @@ router.put('/reordenar', async (req, res) => {
 });
 
 // PUT /api/produtos/:id ou /api/products/:id - Atualizar produto
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const id = Number(req.params.id);
     const isEnglish = req.baseUrl.includes('products');
     let body = req.body;
@@ -364,7 +367,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/produtos/:id ou /api/products/:id - Excluir produto
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const id = Number(req.params.id);
     const isEnglish = req.baseUrl.includes('products');
     try {
@@ -380,7 +383,7 @@ router.delete('/:id', async (req, res) => {
 // --- VARIANTES ---
 
 // POST /api/produtos/:id/variantes - Adicionar variante
-router.post('/:id/variantes', async (req, res) => {
+router.post('/:id/variantes', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const produtoId = Number(req.params.id);
     const { nome, preco, custo, desconto, sku, ativo } = req.body;
     try {
@@ -396,7 +399,7 @@ router.post('/:id/variantes', async (req, res) => {
 });
 
 // PUT /api/produtos/variantes/:id - Atualizar variante
-router.put('/variantes/:id', async (req, res) => {
+router.put('/variantes/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const id = Number(req.params.id);
     const { nome, preco, custo, desconto, sku, ativo } = req.body;
     try {
@@ -413,7 +416,7 @@ router.put('/variantes/:id', async (req, res) => {
 });
 
 // DELETE /api/produtos/variantes/:id - Excluir variante
-router.delete('/variantes/:id', async (req, res) => {
+router.delete('/variantes/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     const id = Number(req.params.id);
     try {
         const { rows } = await query('DELETE FROM produto_variantes WHERE id = $1 RETURNING *', [id]);

@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function carregarCaixa() {
     try {
-      const res = await fetch('/api/pedidos');
+      const res = await apiFetch('/api/pedidos');
       const pedidos = await res.json();
       
       // Filtra apenas do dia atual

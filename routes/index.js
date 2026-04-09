@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { query, getClient } = require('../db/connection');
+const { requireAuth, requireRole } = require('../middleware/auth');
+
+const ADMIN_MANAGER = ['Admin', 'Manager'];
 
 // ─── Auto-migrate: zonas_entrega + pedidos columns ────────────────────────────
 (async () => {
@@ -147,7 +150,7 @@ router.post('/pedidos', async (req, res) => {
   }
 });
 
-// Buscar um pedido específico — GET /api/pedidos/:id
+// Buscar um pedido específico — GET /api/pedidos/:id (público: clientes acompanham pelo ID)
 router.get('/pedidos/:id', async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -182,7 +185,7 @@ router.get('/pedidos/:id', async (req, res) => {
 });
 
 // Listar pedidos — GET /api/pedidos (usado pelo admin/cozinha)
-router.get('/pedidos', async (req, res) => {
+router.get('/pedidos', requireAuth, async (req, res) => {
   try {
     const sql = `
       SELECT p.*,
@@ -215,7 +218,7 @@ router.get('/pedidos', async (req, res) => {
 });
 
 // Atualizar entregador — PATCH /api/pedidos/:id/entregador
-router.patch('/pedidos/:id/entregador', async (req, res) => {
+router.patch('/pedidos/:id/entregador', requireAuth, async (req, res) => {
   const id = Number(req.params.id);
   const { entregador_id } = req.body;
   try {
@@ -229,7 +232,7 @@ router.patch('/pedidos/:id/entregador', async (req, res) => {
 });
 
 // Buscar historico do cliente — GET /api/clientes/:telefone/ultimo
-router.get('/clientes/:telefone/ultimo', async (req, res) => {
+router.get('/clientes/:telefone/ultimo', requireAuth, async (req, res) => {
   try {
     const tel = req.params.telefone.replace(/\D/g, '');
     if (!tel || tel.length < 8) return res.status(400).json({ error: 'Telefone Inválido' });
@@ -265,27 +268,34 @@ router.get('/clientes/:telefone/ultimo', async (req, res) => {
 });
 
 // Atualizar status — PATCH /api/pedidos/:id/status (usado pelo admin/cozinha/entregador)
-router.patch('/pedidos/:id/status', async (req, res) => {
+router.patch('/pedidos/:id/status', requireAuth, async (req, res) => {
   const id = Number(req.params.id);
-  const { status, origem } = req.body;
+  const { status } = req.body;
 
   const statusValidos = ['recebido', 'pendente_aprovacao', 'em_preparo', 'pronto', 'em_entrega', 'entregue', 'cancelado', 'rejeitado'];
   if (!statusValidos.includes(status)) {
     return res.status(400).json({ error: `Status inválido. Use: ${statusValidos.join(', ')}` });
   }
 
-  // Regras de Segurança Operacional
-  if (origem === 'cozinha' && !['em_preparo', 'pronto'].includes(status)) {
-    return res.status(403).json({ error: 'Acesso negado: Cozinha apenas prepara e finaliza.' });
-  }
-  if (origem === 'entregador' && !['em_entrega', 'entregue'].includes(status)) {
-    return res.status(403).json({ error: 'Acesso negado: Entregador apenas despacha e entrega.' });
+  // Regras de acesso por função (baseadas no JWT, não em parâmetro manipulável)
+  const STATUS_POR_FUNCAO = {
+    'Admin':      null,  // null = sem restrição
+    'Manager':    null,
+    'Garçom':     null,  // Garçom gere o PDV, pode alterar qualquer status
+    'Cozinheiro': ['em_preparo', 'pronto'],
+    'Entregador': ['em_entrega', 'entregue'],
+  };
+  const permitidos = STATUS_POR_FUNCAO[req.user.funcao];
+  if (permitidos !== null && !permitidos.includes(status)) {
+    return res.status(403).json({
+      error: `Função "${req.user.funcao}" não pode definir o status "${status}".`
+    });
   }
 
   try {
     // Buscar status atual antes de atualizar para bloquear transições inválidas.
     // Impede que um clique residual em botão stale ressuscite um pedido já finalizado.
-    const { rows: atual } = await query('SELECT status FROM pedidos WHERE id = $1', [id]);
+    const { rows: atual } = await query('SELECT status, tipo FROM pedidos WHERE id = $1', [id]);
     if (atual.length === 0) {
       return res.status(404).json({ error: 'Pedido não encontrado.' });
     }
@@ -297,6 +307,15 @@ router.patch('/pedidos/:id/status', async (req, res) => {
       });
     }
 
+    // GUARD POR TIPO: somente pedidos delivery podem ir para "em_entrega"
+    // Mesa e Balcão vao direto de "pronto" para "entregue" (sem entregador)
+    if (status === 'em_entrega' && atual[0].tipo !== 'delivery') {
+      console.warn(`[TIPO-GUARD] Pedido #${id} é do tipo "${atual[0].tipo}" — bloquear transicão para em_entrega`);
+      return res.status(403).json({
+        error: `Pedido do tipo "${atual[0].tipo}" não pode ir para "em_entrega". Apenas pedidos delivery seguem esse fluxo.`
+      });
+    }
+
     const text = 'UPDATE pedidos SET status = $1 WHERE id = $2 RETURNING *';
     const { rows } = await query(text, [status, id]);
 
@@ -305,14 +324,22 @@ router.patch('/pedidos/:id/status', async (req, res) => {
     }
 
     res.json(rows[0]);
+
+    // Notificar cliente via WhatsApp (assíncrono, não bloqueia a resposta)
+    try {
+      const { notificarStatusPedido } = require('../services/whatsappBot');
+      notificarStatusPedido(rows[0], status).catch(() => {}); // silencia erros
+    } catch (_) {}
+
   } catch (err) {
     console.error('Erro ao atualizar status do pedido:', err.message);
     res.status(500).json({ error: 'Erro ao atualizar status do pedido' });
+
   }
 });
 
 // Atualizar pagamento — PATCH /api/pedidos/:id/pagamento
-router.patch('/pedidos/:id/pagamento', async (req, res) => {
+router.patch('/pedidos/:id/pagamento', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
   const id = Number(req.params.id);
   const { payment_status } = req.body;
 
@@ -341,7 +368,7 @@ router.patch('/pedidos/:id/pagamento', async (req, res) => {
 });
 
 // Atualizar estoque do produto — PATCH /api/produtos/:id/estoque
-router.patch('/produtos/:id/estoque', async (req, res) => {
+router.patch('/produtos/:id/estoque', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
   const id = Number(req.params.id);
   const { controlar_estoque, estoque_atual } = req.body;
 
@@ -360,8 +387,8 @@ router.patch('/produtos/:id/estoque', async (req, res) => {
 
 // ─── ZONAS DE ENTREGA ─────────────────────────────────────────────────────────
 
-// GET /api/zonas — listar todas
-router.get('/zonas', async (req, res) => {
+// GET /api/zonas — listar todas (admin)
+router.get('/zonas', requireAuth, async (req, res) => {
   try {
     const { rows } = await query('SELECT * FROM zonas_entrega ORDER BY nome ASC');
     res.json(rows);
@@ -383,7 +410,7 @@ router.get('/zonas/ativas', async (req, res) => {
 });
 
 // POST /api/zonas — criar
-router.post('/zonas', async (req, res) => {
+router.post('/zonas', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
   const { nome, descricao, taxa, ativo } = req.body;
   if (!nome) return res.status(400).json({ error: 'Nome da zona é obrigatório.' });
   try {
@@ -399,7 +426,7 @@ router.post('/zonas', async (req, res) => {
 });
 
 // PUT /api/zonas/:id — atualizar
-router.put('/zonas/:id', async (req, res) => {
+router.put('/zonas/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
   const id = Number(req.params.id);
   const { nome, descricao, taxa, ativo } = req.body;
   if (!nome) return res.status(400).json({ error: 'Nome da zona é obrigatório.' });
@@ -417,7 +444,7 @@ router.put('/zonas/:id', async (req, res) => {
 });
 
 // DELETE /api/zonas/:id — excluir
-router.delete('/zonas/:id', async (req, res) => {
+router.delete('/zonas/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
   const id = Number(req.params.id);
   try {
     // Desreferencia pedidos antes de deletar

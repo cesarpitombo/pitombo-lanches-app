@@ -13,7 +13,7 @@ const CozinhaVinculoManager = {
 
     async load() {
         try {
-            const res = await fetch('/api/cozinhas');
+            const res = await apiFetch('/api/cozinhas');
             this.cozinhas = await res.json();
             this.updateSelects();
         } catch (err) {

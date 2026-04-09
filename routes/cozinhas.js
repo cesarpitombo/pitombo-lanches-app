@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db/connection');
+const { requireAuth, requireRole } = require('../middleware/auth');
+
+const ADMIN_MANAGER = ['Admin', 'Manager'];
 
 // Auto-migration: Criar tabela de cozinhas se não existir
 (async () => {
@@ -29,7 +32,7 @@ const { query } = require('../db/connection');
 })();
 
 // GET - Listar todas as cozinhas
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
     try {
         const { rows } = await query('SELECT * FROM cozinhas ORDER BY is_principal DESC, id ASC');
         res.json(rows);
@@ -39,7 +42,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST - Criar nova cozinha
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     try {
         const { nome } = req.body;
         const { rows } = await query(
@@ -53,7 +56,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT - Atualizar cozinha (Nome ou Configs)
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     try {
         const { id } = req.params;
         const { nome, config_auto_update } = req.body;
@@ -84,7 +87,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE - Remover cozinha (Não permite remover a principal)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
     try {
         const { id } = req.params;
         const { rows: check } = await query('SELECT is_principal FROM cozinhas WHERE id = $1', [id]);

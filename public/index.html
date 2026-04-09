@@ -6,6 +6,7 @@
   <meta name="description" content="Cardápio online — peça agora pelo site!" />
   <title>Carregando...</title>
   <script src="/js/theme.js"></script>
+  <script src="/js/auth-helper.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
@@ -176,7 +177,7 @@
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       try {
-        const res = await fetch('/api/settings');
+        const res = await apiFetch('/api/settings');
         if (!res.ok) return;
         const s = await res.json();
 

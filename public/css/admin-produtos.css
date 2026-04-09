@@ -683,11 +683,12 @@
   background: var(--primary);
 }
 
-/* Imagem do editor restrita */
+/* Imagem do editor — proporção 4:3 para cardápio */
 .oc-img-container {
   width: 100%;
-  max-width: 150px;
-  height: 150px;
+  max-width: 280px;
+  aspect-ratio: 4 / 3;
+  height: auto;
   background: var(--gray-100);
   border-radius: 12px;
   position: relative;

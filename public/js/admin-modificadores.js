@@ -17,7 +17,7 @@ const ModificadoresManager = {
 
     async load() {
         try {
-            const response = await fetch('/api/modificadores/categorias');
+            const response = await apiFetch('/api/modificadores/categorias');
             if (!response.ok) throw new Error('Falha ao carregar categorias');
             this.categorias = await response.json();
             this.renderSidebar();
@@ -89,10 +89,9 @@ const ModificadoresManager = {
                     const cards = Array.from(container.querySelectorAll('.oc-modif-cat-item'));
                     const itens = cards.map((el, idx) => ({ id: Number(el.dataset.id), ordem: idx }));
                     try {
-                        await fetch('/api/modificadores/categorias/reordenar', {
+                        await apiFetch('/api/modificadores/categorias/reordenar', {
                             method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ itens })
+                            body: { itens }
                         });
                     } catch(e) { console.error('Erro reordenar categorias:', e); }
                 }
@@ -198,7 +197,7 @@ const ModificadoresManager = {
         `;
 
         // Buscar contagem de associações
-        fetch(`/api/modificadores/categorias_associadas/${cat.id}`)
+        apiFetch(`/api/modificadores/categorias_associadas/${cat.id}`)
             .then(r => r.json())
             .then(arr => {
                 const el = document.getElementById(`assoc-count-${cat.id}`);
@@ -216,10 +215,9 @@ const ModificadoresManager = {
                         const rows = Array.from(containerItems.querySelectorAll('.oc-modif-item-row'));
                         const itens = rows.map((el, idx) => ({ id: Number(el.dataset.itemId), ordem: idx }));
                         try {
-                            await fetch('/api/modificadores/itens/reordenar', {
+                            await apiFetch('/api/modificadores/itens/reordenar', {
                                 method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ itens })
+                                body: { itens }
                             });
                         } catch(e) { console.error('Erro reordenar itens:', e); }
                     }
@@ -324,10 +322,9 @@ const ModificadoresManager = {
         try {
             const method = data.id ? 'PUT' : 'POST';
             const url = data.id ? `/api/modificadores/categorias/${data.id}` : '/api/modificadores/categorias';
-            const res = await fetch(url, {
+            const res = await apiFetch(url, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: data
             });
             if (res.ok) {
                 const saved = await res.json();
@@ -341,7 +338,7 @@ const ModificadoresManager = {
     async deleteCategory(id) {
         if (!confirm('Excluir este grupo? Isso removerá todos os itens vinculados.')) return;
         try {
-            const res = await fetch(`/api/modificadores/categorias/${id}`, { method: 'DELETE' });
+            const res = await apiFetch(`/api/modificadores/categorias/${id}`, { method: 'DELETE' });
             if (res.ok) {
                 if (this.currentModifId === id) this.currentModifId = null;
                 await this.load();
@@ -362,10 +359,9 @@ const ModificadoresManager = {
         try {
             const method = data.id ? 'PUT' : 'POST';
             const url = data.id ? `/api/modificadores/itens/${data.id}` : '/api/modificadores/itens';
-            const res = await fetch(url, {
+            const res = await apiFetch(url, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: data
             });
             if (res.ok) {
                 await this.load();
@@ -378,7 +374,7 @@ const ModificadoresManager = {
     async deleteItem(id) {
         if (!confirm('Excluir esta opção?')) return;
         try {
-            const res = await fetch(`/api/modificadores/itens/${id}`, { method: 'DELETE' });
+            const res = await apiFetch(`/api/modificadores/itens/${id}`, { method: 'DELETE' });
             if (res.ok) await this.load();
         } catch (err) { console.error('Erro ao excluir item:', err); }
     },
@@ -475,8 +471,8 @@ const ModificadoresManager = {
         modal.style.display = 'flex';
 
         Promise.all([
-            fetch('/api/categorias').then(r => r.json()),
-            fetch(`/api/modificadores/categorias_associadas/${modificadorCategoriaId}`).then(r => r.json())
+            apiFetch('/api/categorias').then(r => r.json()),
+            apiFetch(`/api/modificadores/categorias_associadas/${modificadorCategoriaId}`).then(r => r.json())
         ]).then(([categorias, associadas]) => {
             if (categorias.length === 0) {
                 listaContainer.innerHTML = '<div style="padding:1rem; color:#6b7280;">Nenhuma categoria de produto cadastrada.</div>';
@@ -512,13 +508,12 @@ const ModificadoresManager = {
             const selectedCatIds = Array.from(checkboxes).filter(cb => cb.checked).map(cb => Number(cb.value));
 
             try {
-                const response = await fetch('/api/modificadores/associar_em_massa', {
+                const response = await apiFetch('/api/modificadores/associar_em_massa', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                    body: {
                         modificador_categoria_id: this.currentModificadorParaAssociar,
                         categorias_ids: selectedCatIds
-                    })
+                    }
                 });
                 if (response.ok) {
                     modal.style.display = 'none';

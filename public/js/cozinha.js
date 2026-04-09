@@ -1,3 +1,15 @@
+// ── Auth check: só Cozinheiro, Admin e Manager ─────────────────────────────
+(async () => {
+  try {
+    const r = await apiFetch('/api/equipe/me');
+    if (!r.ok) { localStorage.removeItem('pitombo_token'); window.location.href = '/login'; return; }
+    const user = await r.json();
+    if (!['Admin', 'Manager', 'Cozinheiro'].includes(user.funcao)) {
+      window.location.href = '/login';
+    }
+  } catch { window.location.href = '/login'; }
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Cozinha Iniciada');
 
@@ -56,11 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       let queueBeforeMinutes = 20; // default
       try {
-        const sRes = await fetch('/api/settings');
+        const sRes = await apiFetch('/api/settings');
         if (sRes.ok) { const s = await sRes.json(); queueBeforeMinutes = parseInt(s.scheduling_queue_before) || 20; }
       } catch (_) { }
 
-      const res = await fetch('/api/pedidos');
+      const res = await apiFetch('/api/pedidos');
       const pedidos = await res.json();
 
       const queueBeforeMs = queueBeforeMinutes * 60 * 1000;
@@ -130,6 +142,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
           const cardClassAdd = isAtrasado ? 'card-atrasado' : '';
 
+          // Badge visual por tipo de pedido
+          const tipoBadgeConfig = {
+            mesa:     { emoji: '🍽️', label: 'MESA',    bg: '#16a34a', color: '#fff' },
+            delivery: { emoji: '🛵', label: 'DELIVERY', bg: '#2563eb', color: '#fff' },
+            balcao:   { emoji: '🧍', label: 'BALCÃO',  bg: '#ca8a04', color: '#fff' },
+          };
+          const tb = tipoBadgeConfig[p.tipo] || { emoji: '⚪', label: p.tipo || '?', bg: '#6b7280', color: '#fff' };
+          // Faixa de tipo: ocupa toda a largura do topo do card — impossível de ignorar
+          const mesaNumero = p.tipo === 'mesa' && p.endereco
+            ? `<span style="font-size:1.1rem;font-weight:900;margin-left:0.6rem;opacity:0.9;">${p.endereco}</span>`
+            : '';
+          const tipoBannerHtml = `
+            <div style="background:${tb.bg};color:${tb.color};padding:0.45rem 1rem;display:flex;align-items:center;gap:0.4rem;font-size:1rem;font-weight:900;letter-spacing:0.5px;border-radius:0 0 0 0;">
+              <span>${tb.emoji}</span><span>${tb.label}</span>${mesaNumero}
+            </div>`;
+
           let itemsHtml = '<ul class="item-list">';
           p.itens.forEach(i => {
             itemsHtml += `<li><span class="qtd">${i.quantidade}x</span> ${i.nome_produto}</li>`;
@@ -152,6 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           return `
             <div class="order-card status-${p.status} ${cardClassAdd}">
+              ${tipoBannerHtml}
               <div class="order-header">
                 <span class="order-id" style="font-size:1.3rem">#${p.id}</span>
                 <span class="order-time" style="font-weight:700; color:#fff; font-size:1.1rem">${timeStr} ${tempoElapsed}</span>
@@ -186,10 +215,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.alterarStatus = async function (id, novoStatus) {
     try {
-      const res = await fetch(`/api/pedidos/${id}/status`, {
+      const res = await apiFetch(`/api/pedidos/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: novoStatus, origem: 'cozinha' })
+        body: { status: novoStatus, origem: 'cozinha' }
       });
 
       if (res.ok) {

@@ -1,19 +1,85 @@
-// ── Autenticação: verificar token e redirecionar para /login se ausente ──
+// TEMP: auth desabilitada para testes — reativar: remover o bloco abaixo e descomentar o original
+window._currentUser = { id: 0, funcao: 'Admin', nome: 'Teste (bypass)' }; // bypass total
+// Sincronizar UI após DOM pronto (settings load vai chamar _syncUserProfileUI de novo)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _syncUserProfileUI);
+} else {
+  _syncUserProfileUI();
+}
+
+/* ORIGINAL — descomentar para reativar:
 (async () => {
-  const token = localStorage.getItem('pitombo_token');
-  if (!token) { window.location.href = '/login'; return; }
   try {
-    const r = await fetch('/api/equipe/me', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-    if (!r.ok) {
-      localStorage.removeItem('pitombo_token');
-      window.location.href = '/login';
+    const r = await apiFetch('/api/equipe/me');
+    if (!r.ok) { localStorage.removeItem('pitombo_token'); window.location.href = '/login'; return; }
+    const user = await r.json();
+
+    // Funções que não pertencem ao painel admin são redirecionadas
+    if (user.funcao === 'Cozinheiro') { window.location.href = '/cozinha'; return; }
+    if (user.funcao === 'Entregador') { window.location.href = '/entregador'; return; }
+
+    // Guardar user no estado global para uso no controlo de secções
+    window._currentUser = user;
+
+    // Aplicar restrições de sidebar assim que o DOM estiver pronto
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        _aplicarPermissoesSidebar(user.funcao);
+        _syncUserProfileUI();
+      });
+    } else {
+      _aplicarPermissoesSidebar(user.funcao);
+      _syncUserProfileUI();
     }
   } catch {
     // Erro de rede — não redirecionar (pode ser offline temporário)
   }
 })();
+*/
+
+// ── Mapa de secções permitidas por função ─────────────────────────────────
+// null = sem restrição; Set(...) = apenas estas secções permitidas
+const ALLOWED_SECTIONS = {
+  'Admin':      null,
+  'Manager':    null,
+  'Garçom':     new Set(['pedidos', 'produtos']),
+  'Cozinheiro': new Set([]),
+  'Entregador': new Set([]),
+};
+
+function _aplicarPermissoesSidebar(funcao) {
+  const allowed = ALLOWED_SECTIONS[funcao];
+  if (allowed === null) return; // Admin/Manager: acesso total
+
+  // Ocultar botões de secção não permitida
+  document.querySelectorAll('.menu-item[data-target]').forEach(btn => {
+    if (!allowed.has(btn.dataset.target)) {
+      const li = btn.closest('li');
+      if (li) li.style.display = 'none'; else btn.style.display = 'none';
+    }
+  });
+
+  // Ocultar accordion Configurações se nenhum filho for permitido
+  const submenuConfig   = document.getElementById('submenuConfig');
+  const btnToggleConfig = document.getElementById('btnToggleConfig');
+  if (submenuConfig && btnToggleConfig) {
+    const temFilhoVisivel = [...submenuConfig.querySelectorAll('.menu-item[data-target]')]
+      .some(b => allowed.has(b.dataset.target));
+    if (!temFilhoVisivel) {
+      const li = btnToggleConfig.closest('li');
+      if (li) li.style.display = 'none'; else btnToggleConfig.style.display = 'none';
+    }
+  }
+
+  // Ocultar links de página (Histórico, Cozinha) para funções sem permissão
+  document.querySelectorAll('.menu-link').forEach(a => {
+    const href = a.getAttribute('href') || '';
+    if (href.includes('historico') || href.includes('cozinha') || href.includes('entregador')) {
+      const li = a.closest('li');
+      if (li) li.style.display = 'none'; else a.style.display = 'none';
+    }
+  });
+}
 
 // Helper: retorna o token armazenado para usar nos headers
 function _authHeader() {
@@ -69,6 +135,18 @@ function _buildStoreWaNum(s) {
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Admin Dashboard Iniciado');
+
+  // Change 1: limpar estado persistido de versões anteriores
+  const APP_STATE_VERSION = 2;
+  try {
+    const saved = parseInt(localStorage.getItem('pitombo_admin_state_v') || '0');
+    if (saved < APP_STATE_VERSION) {
+      localStorage.removeItem('pitombo_admin_filter');
+      localStorage.removeItem('pitombo_admin_type');
+      localStorage.setItem('pitombo_admin_state_v', String(APP_STATE_VERSION));
+      console.log('[ADMIN] State migrated to v' + APP_STATE_VERSION);
+    }
+  } catch(e) {}
 
   // Popula o seletor de país do WhatsApp
   const waSel = document.getElementById('cfgWaCountrySelect');
@@ -140,13 +218,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   menuItems.forEach(btn => {
     btn.addEventListener('click', () => {
-      menuItems.forEach(b => b.classList.remove('active'));
-      tabContents.forEach(c => c.classList.remove('active'));
+      // Verificar permissão antes de activar a secção
+      const cu = window._currentUser;
+      if (cu && ALLOWED_SECTIONS[cu.funcao] !== null && !ALLOWED_SECTIONS[cu.funcao].has(btn.dataset.target)) {
+        return; // Bloqueia — o botão não devia estar visível
+      }
 
-      btn.classList.add('active');
-      document.getElementById(btn.dataset.target).classList.add('active');
-
-      if (pageTitle) pageTitle.textContent = btn.innerText.replace(/📦|🍔/g, '').trim();
+      // FIX: guard contra tab-content inexistente no DOM (ex: 'produtos' pode ser gerenciado por ProdutosManager sem section própria)
+      const targetEl = btn.dataset.target ? document.getElementById(btn.dataset.target) : null;
+      if (!targetEl) {
+        console.warn('[Nav] tab-content não encontrado para target:', btn.dataset.target);
+        // Ainda processar callbacks de managers específicos mesmo sem section
+      } else {
+        menuItems.forEach(b => b.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        targetEl.classList.add('active');
+        if (pageTitle) pageTitle.textContent = btn.innerText.replace(/📦|🍔/g, '').trim();
+      }
 
       if (btn.dataset.target === 'produtos') {
         if (typeof ProdutosManager !== 'undefined') {
@@ -176,6 +265,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       } else if (btn.dataset.target === 'zonas') {
         carregarZonas();
+      } else if (btn.dataset.target === 'chatbot-whatsapp') {
+        if (typeof ChatbotManager !== 'undefined') {
+          ChatbotManager.init();
+        } else {
+          console.error('ChatbotManager não carregado.');
+        }
       }
     });
   });
@@ -208,6 +303,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const handleHash = () => {
     const hash = window.location.hash.substring(1);
     if (!hash) return;
+
+    // Bloquear navegação para secção não autorizada via URL
+    const cu = window._currentUser;
+    if (cu) {
+      const allowedSet = ALLOWED_SECTIONS[cu.funcao];
+      if (allowedSet !== null && !allowedSet.has(hash)) {
+        window.location.hash = 'pedidos';
+        return;
+      }
+    }
 
     const targetItem = document.querySelector(`.menu-item[data-target="${hash}"]`);
     if (targetItem) {
@@ -285,6 +390,40 @@ document.addEventListener('DOMContentLoaded', () => {
     'rejeitado': { label: 'Rejeitado', class: 'status-rejeitado' }
   };
 
+  // Funcao dinamica de acoes por tipo de pedido
+  // Mesa e Balcao: pronto -> entregue (sem passar por em_entrega)
+  // Delivery:      pronto -> em_entrega -> entregue
+  window.getAcoesPorTipo = function(status, tipo) {
+    const mapDelivery = {
+      'pendente_aprovacao': ['em_preparo', 'rejeitado'],
+      'recebido':           ['em_preparo', 'cancelado'],
+      'em_preparo':         ['pronto', 'cancelado'],
+      'pronto':             ['em_entrega', 'cancelado'],
+      'em_entrega':         ['entregue', 'cancelado'],
+      'entregue':           []
+    };
+    const mapMesaBalcao = {
+      'pendente_aprovacao': ['em_preparo', 'rejeitado'],
+      'recebido':           ['em_preparo', 'cancelado'],
+      'em_preparo':         ['pronto', 'cancelado'],
+      'pronto':             ['entregue', 'cancelado'],
+      'em_entrega':         ['entregue', 'cancelado'],
+      'entregue':           []
+    };
+    return ((tipo === 'delivery') ? mapDelivery : mapMesaBalcao)[status] || [];
+  };
+
+  // Label de status contextualizado por tipo
+  window.getStatusLabelPorTipo = function(status, tipo) {
+    if (status === 'pronto') {
+      if (tipo === 'mesa')   return '\uD83C\uDF7D\uFE0F Pronto p/ Servir';
+      if (tipo === 'balcao') return '\uD83C\uDFE0 Aguardando Retirada';
+      return '\uD83D\uDCE6 Pronto';
+    }
+    return (window.statusMap[status] || {}).label || status;
+  };
+
+  // acoesMap estatico mantido para retrocompatibilidade
   window.acoesMap = {
     'pendente_aprovacao': ['em_preparo', 'rejeitado'],
     'recebido': ['em_preparo', 'cancelado'],
@@ -299,62 +438,109 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentStatusFilter = 'operacional';
   let searchTerm = '';
 
-  // Busca e Filtros
+  // Busca e Filtros — sempre começa limpo (evita autofill do browser)
   const inputBusca = document.getElementById('inputBusca');
   if (inputBusca) {
+    inputBusca.value = '';
+    searchTerm = '';
     inputBusca.addEventListener('input', (e) => {
       searchTerm = e.target.value.toLowerCase();
       renderPedidos();
     });
   }
 
+
   document.querySelectorAll('.type-tab').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      document.querySelectorAll('.type-tab').forEach(b => {
-        b.classList.remove('active');
-        b.style.border = '1px solid transparent';
-        b.style.background = 'transparent';
-        b.style.color = '#666';
-        b.style.borderBottom = 'none';
-      });
-      const target = e.currentTarget;
-      target.classList.add('active');
-      target.style.border = 'none';
-      target.style.background = '#eee';
-      target.style.color = '#333';
-      target.style.borderBottom = 'none';
-
-      currentTypeFilter = target.dataset.type;
+      document.querySelectorAll('.type-tab').forEach(b => b.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      currentTypeFilter = e.currentTarget.dataset.type;
       renderPedidos();
     });
   });
 
   document.querySelectorAll('.status-filter').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      document.querySelectorAll('.status-filter').forEach(b => {
-        b.classList.remove('active');
-        b.style.border = '1px solid #ddd';
-        b.style.background = '#fff';
-        b.style.color = '#555';
-        const badge = b.querySelector('span');
-        if (badge) {
-          if (b.dataset.status === 'pendente') { badge.style.background = '#ffd54f'; badge.style.color = '#000'; }
-          else if (b.dataset.status === 'em_curso') { badge.style.background = '#4caf50'; badge.style.color = '#fff'; }
-          else if (b.dataset.status === 'atrasados') { badge.style.background = '#dc3545'; badge.style.color = '#fff'; }
-          else { badge.style.background = '#eee'; badge.style.color = '#555'; }
-        }
-      });
-      const target = e.currentTarget;
-      target.classList.add('active');
-      target.style.border = '2px solid #333';
-      target.style.background = '#333';
-      target.style.color = '#fff';
-      const badgeT = target.querySelector('span');
-      if (badgeT) { badgeT.style.background = '#555'; badgeT.style.color = '#fff'; }
-
-      currentStatusFilter = target.dataset.status;
+      document.querySelectorAll('.status-filter').forEach(b => b.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      currentStatusFilter = e.currentTarget.dataset.status;
       renderPedidos();
     });
+  });
+
+  // ============================================================
+  // TOAST — feedback visual rápido
+  // ============================================================
+  let _toastTimer = null;
+  function showToast(msg, duration = 2200) {
+    const el = document.getElementById('ola-toast');
+    if (!el) return;
+    clearTimeout(_toastTimer);
+    el.textContent = msg;
+    el.style.display = 'block';
+    _toastTimer = setTimeout(() => { el.style.display = 'none'; }, duration);
+  }
+  window.showToast = showToast;
+
+  // ============================================================
+  // ATALHOS DE TECLADO — A/R/P/F + ESC
+  // ============================================================
+  window._pedidoSelecionado = null;
+
+  document.addEventListener('keydown', function (e) {
+    // Ignorar quando digitando em inputs
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    const id = window._pedidoSelecionado;
+    const p = id ? (window.pedidosAtuais || []).find(x => x.id === id) : null;
+
+    switch (e.key.toUpperCase()) {
+      case 'ESCAPE':
+        if (id) { fecharDetalhes(); showToast('Painel fechado'); }
+        break;
+      case 'A': // Aceitar
+        if (p && p.status === 'pendente_aprovacao') {
+          e.preventDefault();
+          alterarStatus(id, 'em_preparo');
+          showToast(`✔ Pedido #${id} aceito`);
+        }
+        break;
+      case 'R': // Rejeitar
+        if (p && !['entregue', 'cancelado', 'rejeitado'].includes(p.status)) {
+          e.preventDefault();
+          if (confirm(`Rejeitar pedido #${id}?`)) {
+            alterarStatus(id, 'rejeitado');
+            showToast(`✕ Pedido #${id} rejeitado`);
+          }
+        }
+        break;
+      case 'P': // PRONTO
+        if (p && p.status === 'em_preparo') {
+          e.preventDefault();
+          alterarStatus(id, 'pronto');
+          showToast(`🥘 Pedido #${id} está pronto!`);
+        }
+        break;
+      case 'F': // FINALIZAR / ENTREGAR
+        if (p) {
+          e.preventDefault();
+          // Acoes dinamicas por tipo (mesa/balcao nao passam por em_entrega)
+          const nexts = window.getAcoesPorTipo(p.status, p.tipo);
+          if (nexts.includes('entregue')) {
+            alterarStatus(id, 'entregue');
+            const msgFim = p.tipo === 'mesa' ? 'Servido' : 'Entregue ao cliente';
+            showToast(`✓ #${id}: ${msgFim}`);
+          } else if (nexts.length > 0) {
+            const next = nexts.find(s => s !== 'cancelado' && s !== 'rejeitado') || nexts[0];
+            alterarStatus(id, next);
+            const lbl = window.getStatusLabelPorTipo(next, p.tipo);
+            showToast(`▶ Pedido #${id} → ${lbl}`);
+          }
+        }
+        break;
+      default: break;
+    }
   });
 
   // Controle de alertas sonoros
@@ -424,14 +610,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Flag global: bloqueia polling automático enquanto uma ação está em andamento
+  window._pedidoAtualizando = false;
+
   async function carregarPedidos() {
+    // FIX: se uma ação (aceitar/rejeitar/etc) está em andamento, não sobrescrever a lista
+    if (window._pedidoAtualizando) {
+      console.log('[carregarPedidos] bloqueado — ação em andamento');
+      return;
+    }
+
     const lista = document.getElementById('listaPedidos');
-    lista.innerHTML = '<div class="loading">Carregando pedidos...</div>';
+    // Só mostrar "loading" na primeira carga — atualizações periódicas são silenciosas
+    if (!window.pedidosAtuais || window.pedidosAtuais.length === 0) {
+      lista.innerHTML = '<div class="loading">Carregando pedidos...</div>';
+    }
 
     try {
-      const res = await fetch('/api/pedidos');
+      const res = await apiFetch('/api/pedidos');
+      console.log('[carregarPedidos] HTTP', res.status);
+      if (!res.ok) {
+        console.error('[carregarPedidos] erro ao buscar pedidos — lista mantida');
+        return; // Não apagar lista existente em caso de falha
+      }
       const pedidos = await res.json();
-      window.pedidosAtuais = pedidos;
+      console.log('[carregarPedidos] recebidos:', pedidos.length, 'pedidos');
+      // Só sobrescrever se a resposta for um array válido
+      if (Array.isArray(pedidos)) {
+        window.pedidosAtuais = pedidos;
+      } else {
+        console.warn('[carregarPedidos] resposta inesperada:', pedidos);
+        return;
+      }
 
       let temNovo = false;
       let temAtraso = false;
@@ -461,11 +671,24 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       primeiraCarga = false;
 
+      console.log(`[ADMIN_POLL] renderPedidos() — selectedId=${window._pedidoSelecionado || 'none'}`);
       renderPedidos();
 
+      // Sincronização leve do painel: atualiza apenas o conteúdo interno sem fechar/abrir
+      // NÃO chama abrirDetalhes() aqui — isso causaria DOM thrashing e race conditions
+      if (window._pedidoSelecionado) {
+        const still = (window.pedidosAtuais || []).find(x => x.id === window._pedidoSelecionado);
+        if (!still) {
+          console.log(`[ADMIN_POLL] pedido #${window._pedidoSelecionado} não encontrado — fechando painel`);
+          fecharDetalhes();
+        }
+        // Se still existe, o PIN acima garantiu que ele está na lista; painel fica como está
+      }
+
     } catch (err) {
-      console.error(err);
-      lista.innerHTML = '<div class="loading" style="color:red">Erro ao carregar pedidos.</div>';
+      // Change 7: null-guard para lista + log melhorado
+      console.error('[ADMIN_POLL] erro em carregarPedidos:', err);
+      if (lista) lista.innerHTML = '<div class="loading" style="color:red">Erro ao carregar pedidos.</div>';
     }
   }
 
@@ -475,23 +698,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Contadores Operacionais e KPIs
     const counts = {
-      type: { todos: 0, balcao: 0, delivery: 0 },
+      type: { todos: 0, balcao: 0, delivery: 0, mesa: 0 },
       status: { todos: 0, pendente: 0, em_curso: 0, atrasados: 0, concluidos: 0 }
     };
     let fatHoje = 0;
+    let pedidosPagosCount = 0;
 
     // isFinished: pedido que saiu da fila operacional
     const isFinished = p => ['entregue', 'cancelado', 'rejeitado'].includes(p.status);
 
     pedidos.forEach(p => {
       const active = !isFinished(p);
-      const isAtrasado = active && Math.floor((new Date() - new Date(p.criado_em)) / 60000) >= 20;
+      const diffM = Math.floor((new Date() - new Date(p.criado_em)) / 60000);
+      const isAtrasado = active && diffM >= 20;
 
       // Badges de tipo — contar apenas pedidos ainda ativos
       if (active) {
         counts.type.todos++;
         if (p.tipo === 'balcao') counts.type.balcao++;
         if (p.tipo === 'delivery') counts.type.delivery++;
+        if (p.tipo === 'mesa') counts.type.mesa++;
       }
 
       if (currentTypeFilter === 'todos' || currentTypeFilter === p.tipo) {
@@ -504,6 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (p.payment_status === 'pago') {
         fatHoje += Number(p.total) || 0;
+        pedidosPagosCount++;
       }
     });
 
@@ -511,6 +738,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('cnt-type-todos')) document.getElementById('cnt-type-todos').textContent = counts.type.todos;
     if (document.getElementById('cnt-type-balcao')) document.getElementById('cnt-type-balcao').textContent = counts.type.balcao;
     if (document.getElementById('cnt-type-delivery')) document.getElementById('cnt-type-delivery').textContent = counts.type.delivery;
+    if (document.getElementById('cnt-type-mesa')) document.getElementById('cnt-type-mesa').textContent = counts.type.mesa;
 
     if (document.getElementById('cnt-status-todos')) document.getElementById('cnt-status-todos').textContent = counts.status.todos;
     if (document.getElementById('cnt-status-pendente')) document.getElementById('cnt-status-pendente').textContent = counts.status.pendente;
@@ -533,6 +761,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (elAtivos) elAtivos.textContent = counts.type.todos;
     if (elAtrasados) elAtrasados.textContent = counts.status.atrasados;
 
+    // Métricas avançadas
+    const ticketMedio = pedidosPagosCount > 0 ? fatHoje / pedidosPagosCount : 0;
+    const elTicket = document.getElementById('dash-ticket-medio');
+    if (elTicket) {
+      const tv = window.formatCurrency(ticketMedio);
+      elTicket.setAttribute('data-real', tv);
+      if (elTicket.getAttribute('data-hidden') !== 'true') elTicket.textContent = tv;
+    }
+    const umaHoraAtras = new Date(Date.now() - 3600000);
+    const pedidosUltimaHora = pedidos.filter(p => new Date(p.criado_em) >= umaHoraAtras).length;
+    const elPorHora = document.getElementById('dash-por-hora');
+    if (elPorHora) elPorHora.innerHTML = `${pedidosUltimaHora} <span style="font-size:0.8rem;font-weight:500;color:#6b7280;">pedidos</span>`;
+
     // Filtros
     let filtered = pedidos.filter(p => {
       if (currentTypeFilter !== 'todos' && p.tipo !== currentTypeFilter) return false;
@@ -552,10 +793,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const nome = p.cliente.toLowerCase();
         const tel = p.telefone ? p.telefone.replace(/\D/g, '') : '';
         const idStr = p.id.toString();
-        return nome.includes(searchTerm) || tel.includes(searchTerm) || idStr.includes(searchTerm);
+        const end = p.endereco ? p.endereco.toLowerCase() : '';
+        const tipoL = window.getStatusLabelPorTipo(p.status, p.tipo).toLowerCase();
+        const items = (p.itens || []).map(i => i.nome_produto.toLowerCase()).join(' ');
+        
+        return nome.includes(searchTerm) || 
+               tel.includes(searchTerm) || 
+               idStr.includes(searchTerm) || 
+               end.includes(searchTerm) ||
+               p.tipo.includes(searchTerm) ||
+               tipoL.includes(searchTerm) ||
+               items.includes(searchTerm);
       }
       return true;
     });
+
+    // PIN: se há pedido selecionado no painel, garante que ele sempre aparece na lista
+    // mesmo que o filtro ativo não o incluiria (ex: status mudou enquanto painel estava aberto)
+    if (window._pedidoSelecionado) {
+      const jaEsta = filtered.some(p => p.id === window._pedidoSelecionado);
+      if (!jaEsta) {
+        const pinnedPedido = pedidos.find(p => p.id === window._pedidoSelecionado);
+        if (pinnedPedido) {
+          console.log(`[ADMIN_RENDER] pedido #${window._pedidoSelecionado} fixado na lista (filtro ativo: ${currentStatusFilter})`);
+          filtered = [pinnedPedido, ...filtered];
+        }
+      }
+    }
+    // Change 8: log APÓS PIN para que filtered.length inclua o pedido fixado
+    console.log(`[ADMIN_RENDER] start — filter=${currentStatusFilter} type=${currentTypeFilter} selected=${window._pedidoSelecionado || 'none'} total=${pedidos.length} filtered=${filtered.length}`);
 
     if (filtered.length === 0) {
       const emptyMsg = currentStatusFilter === 'atrasados'
@@ -566,7 +832,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <div style="font-size:1.1rem;font-weight:700;color:#555;">${emptyMsg}</div>
         <div style="font-size:0.88rem;margin-top:0.4rem;">A fila está vazia por agora.</div>
       </div>`;
-      lista.innerHTML = emptyHtml;
+      // BUGFIX: resetar hash — sem isso, o próximo render com dados reais seria ignorado
+      // porque o hash antigo (de quando havia pedidos) ainda estaria em cache
+      window._lastPedidosHash = null;
+      if (lista) lista.innerHTML = emptyHtml;
       const tbl = document.getElementById('listaPedidosTabela');
       if (tbl) tbl.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:2.5rem;color:#aaa;">${emptyMsg}</td></tr>`;
       return;
@@ -618,7 +887,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    lista.innerHTML = filtered.map(p => {
+    if (lista) lista.innerHTML = filtered.map(p => {
       const isActive = !isFinished(p);
       const diffMinutes = Math.floor((new Date() - new Date(p.criado_em)) / 60000);
       const isAtrasado = isActive && diffMinutes >= 20;
@@ -676,19 +945,27 @@ document.addEventListener('DOMContentLoaded', () => {
       // Botão Principal Dominante (Único)
       let botoesHtml = '';
       if (p.status === 'pendente_aprovacao') {
+        // FIX: alterarStatus agora abre o painel internamente, stopPropagation ainda necessário
+        // para não disparar abrirDetalhes via onclick da div pai (que chamaria antes que alterarStatus abra)
         botoesHtml = `
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.8rem; width:100%; margin-top:0.5rem;">
-            <button class="btn-action" style="background:#198754; color:white; border:none; padding:0.8rem; border-radius:6px; font-weight:800; cursor:pointer; font-size:0.9rem; transition:0.2s; box-shadow:0 3px 6px rgba(25,135,84,0.3);" onclick="alterarStatus(${p.id}, 'em_preparo')">✔ ACEITAR PEDIDO</button>
-            <button class="btn-action" style="background:#dc3545; color:white; border:none; padding:0.8rem; border-radius:6px; font-weight:800; cursor:pointer; font-size:0.9rem; transition:0.2s; box-shadow:0 3px 6px rgba(220,53,69,0.3);" onclick="alterarStatus(${p.id}, 'rejeitado')">✖ REJEITAR</button>
+            <button class="btn-action" style="background:#198754; color:white; border:none; padding:0.8rem; border-radius:6px; font-weight:800; cursor:pointer; font-size:0.9rem; transition:0.2s; box-shadow:0 3px 6px rgba(25,135,84,0.3);" onclick="event.stopPropagation(); console.log('[BUG-FIX] clique detectado Aceitar card #${p.id}'); alterarStatus(${p.id}, 'em_preparo')">✔ ACEITAR PEDIDO</button>
+            <button class="btn-action" style="background:#dc3545; color:white; border:none; padding:0.8rem; border-radius:6px; font-weight:800; cursor:pointer; font-size:0.9rem; transition:0.2s; box-shadow:0 3px 6px rgba(220,53,69,0.3);" onclick="event.stopPropagation(); alterarStatus(${p.id}, 'rejeitado')">✖ REJEITAR</button>
           </div>`;
       } else if (p.status === 'recebido') {
-        botoesHtml = `<button class="btn-action btn-em_preparo" onclick="alterarStatus(${p.id}, 'em_preparo')">ENVIAR PARA PREPARO</button>`;
+        botoesHtml = `<button class="btn-action btn-em_preparo" onclick="event.stopPropagation(); alterarStatus(${p.id}, 'em_preparo')">ENVIAR PARA PREPARO</button>`;
       } else if (p.status === 'em_preparo') {
-        botoesHtml = `<button class="btn-action btn-pronto" style="font-weight:800;" onclick="alterarStatus(${p.id}, 'pronto')">MARCAR COMO PRONTO</button>`;
+        botoesHtml = `<button class="btn-action btn-pronto" style="font-weight:800;" onclick="event.stopPropagation(); alterarStatus(${p.id}, 'pronto')">MARCAR COMO PRONTO</button>`;
       } else if (p.status === 'pronto') {
-        botoesHtml = `<button class="btn-action btn-em_entrega" onclick="alterarStatus(${p.id}, 'em_entrega')">SAIU P/ ENTREGA</button>`;
+        // Fluxo por tipo: delivery->em_entrega; mesa/balcao->entregue direto
+        if (p.tipo === 'delivery') {
+          botoesHtml = `<button class="btn-action btn-em_entrega" onclick="event.stopPropagation(); alterarStatus(${p.id}, 'em_entrega')">🛵 SAIU P/ ENTREGA</button>`;
+        } else {
+          const lblFim = p.tipo === 'mesa' ? '🍽️ SERVIR À MESA' : '🏪 ENTREGUE AO CLIENTE';
+          botoesHtml = `<button class="btn-action btn-entregue" style="background:#198754;" onclick="event.stopPropagation(); alterarStatus(${p.id}, 'entregue')">${lblFim}</button>`;
+        }
       } else if (p.status === 'em_entrega') {
-        botoesHtml = `<button class="btn-action btn-entregue" onclick="alterarStatus(${p.id}, 'entregue')">CONFIRMAR RECEBIMENTO</button>`;
+        botoesHtml = `<button class="btn-action btn-entregue" onclick="event.stopPropagation(); alterarStatus(${p.id}, 'entregue')">CONFIRMAR RECEBIMENTO</button>`;
       }
 
       const pMethod = p.payment_method ? p.payment_method.toUpperCase() : 'DINHEIRO';
@@ -701,7 +978,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span style="color: white; background: ${pColor}; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.75rem; margin-left:0.5rem; text-transform:uppercase">${pStatusStr}</span>
         `;
       if (p.payment_status !== 'pago') {
-        financialInfo += ` <button onclick="marcarPago(${p.id})" style="background:#198754;color:white;border:none;border-radius:4px;padding:0.2rem 0.6rem;font-size:0.75rem;cursor:pointer;margin-left:0.5rem;font-weight:bold;">✔ Marcar Pago</button>`;
+        financialInfo += ` <button onclick="event.stopPropagation(); marcarPago(${p.id})" style="background:#198754;color:white;border:none;border-radius:4px;padding:0.2rem 0.6rem;font-size:0.75rem;cursor:pointer;margin-left:0.5rem;font-weight:bold;">✔ Marcar Pago</button>`;
       }
       if (p.payment_method === 'dinheiro' && p.troco_para) {
         financialInfo += `<br><span style="color:#e8420a; display:inline-block; margin-top:0.4rem; font-weight:bold;">Troco para: ${window.formatCurrency(p.troco_para)} (Levar ${window.formatCurrency(p.valor_troco || 0)})</span>`;
@@ -720,7 +997,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (count === 1) crmBadge = '<span style="background:#e8f5e9; color:#2e7d32; font-size:0.7rem; padding:0.15rem 0.4rem; border-radius:4px; margin-left:0.5rem; font-weight:800; border:1px solid #a5d6a7;">🌱 NOVO</span>';
 
       return `
-          <div class="order-card status-${p.status} ${cardClassAdd}" style="position:relative; ${cardStyleAdd}">
+          <div class="order-card status-${p.status} ${cardClassAdd}" style="position:relative; cursor:pointer; ${cardStyleAdd}" onclick="abrirDetalhes(${p.id})">
             ${prioridadeHtml}
             <div class="order-header">
               <span class="order-id">#${p.id}</span>
@@ -737,7 +1014,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   <span style="font-size:0.8rem; background:#eee; padding:0.1rem 0.4rem; border-radius:4px;">${tipoBadge}</span>
                   ${inlineBtnWhats}
                   ${inlineBtnMapa}
-                  <button class="btn-icon btn-detalhes" onclick="abrirDetalhes(${p.id})" title="Detalhes Completos">🔍</button>
+                  <button class="btn-icon btn-detalhes" onclick="event.stopPropagation(); abrirDetalhes(${p.id})" title="Detalhes Completos">🔍</button>
                 </div>
               </div>
               ${agrupamentoHtml}
@@ -756,94 +1033,128 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }).join('');
 
-    // Renderiza Lista (Table) — layout master-detail compacto
+    // Renderiza Lista (Table) — layout OlaClick
     const tblBody = document.getElementById('listaPedidosTabela');
     if (tblBody) {
+      // Diff rendering: skip full re-render if nothing changed
+      const newHash = filtered.map(p =>
+        `${p.id}:${p.status}:${p.payment_status}:${p.entregador_id || 0}:${p.total}`
+      ).join('|');
+      if (newHash === window._lastPedidosHash && tblBody.children.length > 0) {
+        return; // nada mudou — evitar re-render desnecessário
+      }
+      window._lastPedidosHash = newHash;
+
+      // Smart grouping: identificar entregas na mesma rua
+      const streetGroups = {};
+      filtered.forEach(p => {
+        if (p.tipo === 'delivery' && !isFinished(p) && p.endereco) {
+          const streetKey = p.endereco.split(',')[0].trim().toLowerCase();
+          streetGroups[streetKey] = (streetGroups[streetKey] || 0) + 1;
+        }
+      });
+      const sameStreetIds = {};
+      filtered.forEach(p => {
+        if (p.tipo === 'delivery' && !isFinished(p) && p.endereco) {
+          const k = p.endereco.split(',')[0].trim().toLowerCase();
+          if (streetGroups[k] >= 2) sameStreetIds[p.id] = streetGroups[k];
+        }
+      });
+
       tblBody.innerHTML = filtered.map(p => {
         const isActive = !isFinished(p);
         const diffMinutes = Math.floor((new Date() - new Date(p.criado_em)) / 60000);
-        const isAtrasado = isActive && diffMinutes >= 20;
 
         const timeStr = new Date(p.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        const isBalcao = p.tipo === 'balcao';
-        const isMesa = p.tipo === 'mesa';
-        const tipoBadge = isBalcao ? '🏪 Balcão' : (isMesa ? '🍽️ Mesa' : '🛵 Delivery');
-        const stInfo = window.statusMap[p.status] || { label: p.status, class: '' };
+        const dateStr = new Date(p.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        const tipoLabel = p.tipo === 'balcao' ? 'Balcão' : p.tipo === 'mesa' ? 'Mesa' : 'Delivery';
+        const tipoClass = p.tipo === 'balcao' ? 'balcao' : p.tipo === 'mesa' ? 'mesa' : '';
+        const stLabel = window.getStatusLabelPorTipo(p.status, p.tipo);
+        const pgPago = (p.payment_status || '') === 'pago';
+        const pgBadge = pgPago
+          ? `<span class="ola-pagamento-badge pago">✓ Pago</span>`
+          : `<span class="ola-pagamento-badge nao_pago">Não pago</span>`;
 
-        const pMethod = p.payment_method ? p.payment_method : 'Dinheiro';
-        const pStatusStr = p.payment_status || 'pendente';
-        const pgPago = pStatusStr === 'pago';
+        // 4-tier priority system
+        let prioCls = '';
+        let timerCls = 'ok';
+        let timerPrefix = '⏱ ';
+        if (isActive) {
+          if (diffMinutes >= 30)      { prioCls = 'prio-critico'; timerCls = 'critico'; timerPrefix = '🔴 '; }
+          else if (diffMinutes >= 20) { prioCls = 'prio-alerta';  timerCls = 'alerta';  timerPrefix = '⚠️ '; }
+          else if (diffMinutes >= 10) { prioCls = 'prio-atencao'; timerCls = 'atencao'; timerPrefix = '🟡 '; }
+        }
+        const timerHtml = isActive
+          ? `<span class="ola-timer ${timerCls}">${timerPrefix}${diffMinutes}m</span>` : '';
 
+        // CRM badge
         const count = parseInt(p.cliente_pedidos_count) || 1;
         let crmBadge = '';
-        if (count >= 10) crmBadge = ' <span style="background:linear-gradient(45deg,#ffd700,#f79d00);color:#000;font-size:0.6rem;padding:1px 5px;border-radius:4px;">🏆</span>';
-        else if (count >= 3) crmBadge = ' <span style="background:#e3f2fd;color:#1565c0;font-size:0.6rem;padding:1px 5px;border-radius:4px;">🔄</span>';
-        else if (count === 1) crmBadge = ' <span style="background:#e8f5e9;color:#2e7d32;font-size:0.6rem;padding:1px 5px;border-radius:4px;">🌱</span>';
+        if (count >= 10) crmBadge = '<span class="ola-crm-badge" title="Top cliente">🏆</span>';
+        else if (count >= 3) crmBadge = '<span class="ola-crm-badge" title="Frequente">🔄</span>';
+        else if (count === 1) crmBadge = '<span class="ola-crm-badge" title="Novo">🌱</span>';
 
-        const isPrioridade = p.id === idPrioritario;
-        const timerLabel = isAtrasado ? `<span class="pi-timer">⚠️ ${diffMinutes}m</span>` : (isActive ? `<span class="pi-timer" style="color:#888;">${diffMinutes}m</span>` : '');
+        // Smart grouping badge
+        const grupoBadge = sameStreetIds[p.id]
+          ? `<span class="ola-grupo-badge" title="${sameStreetIds[p.id]} pedidos na mesma rua — agrupar entrega">🚀 Agrupar</span>`
+          : '';
 
-        // Botões de ação inline (stopPropagation para não abrir painel)
+        // Entregador
+        const entregadorHtml = p.entregador
+          ? `<span class="ola-entregador-badge">🛵 ${p.entregador}</span>`
+          : (p.tipo === 'delivery' && isActive
+              ? `<button class="btn-row" onclick="event.stopPropagation(); escolherEntregador(${p.id})">Escolher entregador ›</button>`
+              : '');
+
+        // Action buttons
         let btnAcoes = '';
-
         if (p.status === 'pendente_aprovacao') {
-          // Pedido aguardando aprovação: apenas ACEITAR e REJEITAR
-          btnAcoes = `
-            <button class="btn-row btn-row-aceitar" onclick="alterarStatus(${p.id},'em_preparo');event.stopPropagation();" title="Aceitar pedido">✔ Aceitar</button>
-            <button class="btn-row btn-row-rejeitar" onclick="alterarStatus(${p.id},'rejeitado');event.stopPropagation();" title="Rejeitar pedido">✕ Rejeitar</button>`;
-        } else {
-          btnAcoes = `<button class="btn-row btn-row-detalhes" onclick="abrirDetalhes(${p.id});event.stopPropagation();" title="Ver detalhes">🔍</button>`;
-
-          if (isActive) {
-            if (!pgPago) {
-              btnAcoes += ` <button class="btn-row btn-row-pagar" onclick="marcarPago(${p.id});event.stopPropagation();" title="Marcar pago">$ Pagar</button>`;
-            }
-            if (p.tipo === 'delivery') {
-              btnAcoes += ` <button class="btn-row btn-row-entregador" onclick="escolherEntregador(${p.id});event.stopPropagation();" title="Atribuir Entregador">🛵</button>`;
-            }
-          }
-
-          const proxStatus = window.acoesMap[p.status] || [];
+          // FIX: não usar stopPropagation — alterarStatus agora abre o painel internamente
+          btnAcoes = `<button class="btn-row btn-row-aceitar" onclick="event.stopPropagation(); console.log('[BUG-FIX] clique detectado no botão Aceitar #${p.id}'); alterarStatus(${p.id},'em_preparo')">✔ Aceitar</button>
+                      <button class="btn-row btn-row-rejeitar" onclick="event.stopPropagation(); alterarStatus(${p.id},'rejeitado')">✕ Rejeitar</button>`;
+        } else if (isActive) {
+          // Acoes dinamicas por tipo: mesa/balcao -> entregue direto, sem em_entrega
+          const proxStatus = window.getAcoesPorTipo(p.status, p.tipo);
           proxStatus.forEach(st => {
             if (st === 'cancelado') {
-              btnAcoes += ` <button class="btn-row btn-row-cancelar" onclick="alterarStatus(${p.id},'${st}');event.stopPropagation();" title="Cancelar">✕</button>`;
+              btnAcoes += `<button class="btn-row btn-row-cancelar" onclick="event.stopPropagation(); alterarStatus(${p.id},'${st}')" title="Cancelar">✕</button>`;
             } else if (st === 'entregue') {
-              btnAcoes += ` <button class="btn-row btn-row-entregue" onclick="alterarStatus(${p.id},'${st}');event.stopPropagation();" title="Finalizar">✓ Finalizar</button>`;
-            } else if (st === 'rejeitado') {
-              btnAcoes += ` <button class="btn-row btn-row-rejeitar" onclick="alterarStatus(${p.id},'${st}');event.stopPropagation();" title="Rejeitar">✕ Rejeitar</button>`;
+              const lblFin = p.tipo === 'mesa' ? '✓ Servir' : (p.tipo === 'balcao' ? '✓ Retirado' : '✓ Finalizar');
+              btnAcoes += `<button class="btn-row btn-row-entregue" onclick="event.stopPropagation(); alterarStatus(${p.id},'${st}')">${lblFin}</button>`;
             } else {
-              const label = window.statusMap[st] ? window.statusMap[st].label : st;
-              btnAcoes += ` <button class="btn-row btn-row-avancar" onclick="alterarStatus(${p.id},'${st}');event.stopPropagation();" title="Avançar status">▶ ${label}</button>`;
+              const lbl = window.getStatusLabelPorTipo(st, p.tipo);
+              btnAcoes += `<button class="btn-row btn-row-avancar" onclick="event.stopPropagation(); alterarStatus(${p.id},'${st}')">▶ ${lbl}</button>`;
             }
           });
+          if (!pgPago) btnAcoes += `<button class="btn-row btn-row-pagar" onclick="event.stopPropagation(); marcarPago(${p.id})">$ Pagar</button>`;
         }
 
-        const enderecoStr = p.endereco ? p.endereco.substring(0, 60) + (p.endereco.length > 60 ? '…' : '') : '';
+        const enderecoStr = p.endereco ? p.endereco.substring(0, 65) + (p.endereco.length > 65 ? '…' : '') : '';
 
         return `
-          <tr class="pedido-row status-${p.status}${isPrioridade ? ' row-prioritario' : ''}"
-              data-id="${p.id}"
-              onclick="abrirDetalhes(${p.id})"
-              style="${isAtrasado ? 'background:rgba(220,53,69,0.04);' : ''}${isPrioridade ? 'background:rgba(220,53,69,0.07);' : ''}">
-            <td class="td-pedido">
-              <div class="pi-id">#${p.id}${isPrioridade ? ' 🔥' : ''}</div>
-              <div class="pi-tipo">${tipoBadge}</div>
-              <div class="pi-status"><span class="status-badge status-${p.status}">${stInfo.label}</span></div>
-              ${timerLabel}
-              <div class="pi-data">${timeStr}</div>
+          <tr class="ola-pedido-row pedido-row status-${p.status} ${prioCls}"
+              data-id="${p.id}" onclick="abrirDetalhes(${p.id})">
+            <td class="ola-td-data">
+              <span class="ola-id">#${p.id}</span>
+              <span class="ola-tipo-chip ${tipoClass}">${tipoLabel}</span>
+              ${timerHtml}
+              <span class="ola-date">${dateStr} ${timeStr}</span>
             </td>
-            <td class="td-valor">
-              <div class="pv-total">${window.formatCurrency(p.total)}</div>
-              <div><span class="pv-pgbadge ${pgPago ? 'pago' : 'nao-pago'}">${pgPago ? 'Pago' : 'Não pago'}</span></div>
-              <div class="pv-method">💳 ${pMethod}</div>
+            <td class="ola-td-estado">
+              <span class="ola-status-badge ola-st-${p.status}">${stLabel}</span>
             </td>
-            <td class="td-cliente">
-              <div class="pc-nome">${p.cliente}${crmBadge}</div>
-              ${p.telefone ? `<div class="pc-tel">📞 ${p.telefone}</div>` : ''}
-              ${enderecoStr ? `<div class="pc-addr">📍 ${enderecoStr}</div>` : ''}
-              ${p.entregador ? `<div class="pc-entregador">🛵 ${p.entregador}</div>` : ''}
+            <td class="ola-td-valor">
+              <span class="ola-valor">${window.formatCurrency(p.total)}</span>
+              <span class="ola-method">${p.payment_method || 'Dinheiro'}</span>
+              ${pgBadge}
             </td>
-            <td class="td-acoes">${btnAcoes}</td>
+            <td class="ola-td-cliente">
+              <span class="ola-cli-nome">${p.cliente}${crmBadge}${grupoBadge}</span>
+              ${p.telefone ? `<a href="tel:${p.telefone.replace(/\D/g,'')}" class="ola-cli-tel-link" onclick="event.stopPropagation()">📞 ${p.telefone}</a>` : ''}
+              ${enderecoStr ? `<div class="ola-cli-addr">📍 ${enderecoStr}</div>` : ''}
+              ${entregadorHtml}
+              <div class="ola-row-btns">${btnAcoes}</div>
+            </td>
           </tr>
         `;
       }).join('');
@@ -854,162 +1165,283 @@ document.addEventListener('DOMContentLoaded', () => {
   window.alterarStatus = async function (id, novoStatus) {
     const TERMINAL = ['entregue', 'cancelado', 'rejeitado'];
 
-    // Guarda de estado local: botão residual em painel ainda aberto
-    // Se já sabemos que o pedido é terminal, fechar o painel e abortar silenciosamente.
+    console.log(`[BUG-FIX] alterarStatus chamado — id:${id}, novoStatus:${novoStatus}`);
+
+    // Guarda de estado local: pedido já terminal — fechar painel silenciosamente
     const pedidoAtual = (window.pedidosAtuais || []).find(x => x.id === id);
     if (pedidoAtual && TERMINAL.includes(pedidoAtual.status)) {
+      console.log(`[BUG-FIX] pedido #${id} já é terminal (${pedidoAtual.status}), ignorando`);
       fecharDetalhes();
       return;
     }
 
+    // BLOQUEIO: finalizar sem pagamento definido
+    if (novoStatus === 'entregue' && pedidoAtual && pedidoAtual.payment_status === 'pendente') {
+      const ok = confirm(
+        `⚠️ Pedido #${id} ainda não tem pagamento definido.\n\nFinalizar mesmo assim marcará como "Não pago".\n\nDeseja continuar?`
+      );
+      if (!ok) return;
+    }
+
+    // BLOQUEIO: delivery sem telefone (aviso, não bloqueia)
+    if (novoStatus === 'em_preparo' && pedidoAtual && pedidoAtual.tipo === 'delivery' && !pedidoAtual.telefone) {
+      showToast('⚠️ Pedido sem telefone — contato com cliente não será possível');
+    }
+
+    // FIX: bloquear polling automático durante a ação para evitar race condition
+    // _pedidoAtualizando permanece true até carregarPedidos() terminar (não antes)
+    window._pedidoAtualizando = true;
+
     try {
-      const res = await fetch(`/api/pedidos/${id}/status`, {
+      console.log('[alterarStatus] enviando PATCH /api/pedidos/' + id + '/status com status:', novoStatus);
+      const res = await apiFetch(`/api/pedidos/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: novoStatus, origem: 'admin' })
+        body: { status: novoStatus },
       });
+      console.log('[alterarStatus] resposta HTTP:', res.status, '| ok:', res.ok);
 
       if (res.ok) {
-        // Se a ação resultou em estado terminal, fechar o painel imediatamente
-        // para que nenhum botão residual fique ativo.
-        if (TERMINAL.includes(novoStatus)) {
-          fecharDetalhes();
+        const dados = await res.json().catch(() => ({}));
+        console.log('[alterarStatus] sucesso — dados retornados:', dados);
+        
+        // Toast de feedback baseado no novo status
+        const lblStatus = window.getStatusLabelPorTipo(novoStatus, (pedidoAtual ? pedidoAtual.tipo : 'delivery'));
+        if (novoStatus === 'entregue') showToast(`✅ Pedido #${id} finalizado com sucesso!`);
+        else showToast(`⚡ Status #${id} alterado para: ${lblStatus}`);
+
+        // FIX 1: Atualizar o item localmente com STATUS DO SERVIDOR (não só o novoStatus)
+        const statusFinal = (dados && dados.status) ? dados.status : novoStatus;
+        const idx = (window.pedidosAtuais || []).findIndex(x => x.id === id);
+        if (idx !== -1) {
+          window.pedidosAtuais[idx] = { ...window.pedidosAtuais[idx], status: statusFinal };
         }
-        carregarPedidos();
+        window._lastPedidosHash = null; // forçar re-render imediato
+
+        // FIX 2: Ajustar filtro ANTES do renderPedidos para que a lista mostre corretamente
+        // em uma única passagem (evita double-render e flicker)
+        if (!TERMINAL.includes(statusFinal) &&
+            (currentStatusFilter === 'pendente' || currentStatusFilter === 'em_curso')) {
+          console.log(`[BUG-FIX] filtro '${currentStatusFilter}' → 'operacional' para manter pedido visível`);
+          currentStatusFilter = 'operacional';
+          document.querySelectorAll('.status-filter').forEach(b => b.classList.remove('active'));
+          const btn = document.querySelector('.status-filter[data-status="operacional"]');
+          if (btn) btn.classList.add('active');
+        }
+
+        // Re-renderizar com dados locais atualizados
+        renderPedidos();
+
+        // Se a ação resultou em estado terminal, fechar o painel
+        if (TERMINAL.includes(statusFinal)) {
+          console.log(`[BUG-FIX] status terminal — fechando painel`);
+          fecharDetalhes();
+        } else {
+          // FIX 3: Abrir o painel lateral com os dados do pedido atualizado
+          // (era o bug central: alterarStatus nunca abria o painel)
+          console.log(`[BUG-FIX] abrindo painel lateral para pedido #${id}`);
+          abrirDetalhes(id);
+        }
+
+        // FIX 4: manter _pedidoAtualizando=true até carregarPedidos() terminar
+        // (evita que o setInterval de 10s dispare durante a requisição)
+        await carregarPedidos();
+        window._pedidoAtualizando = false;
+        console.log(`[BUG-FIX] _pedidoAtualizando liberado após carregarPedidos`);
+
+        // FIX 5: Re-abrir painel com dados frescos do servidor (garante que labels/botões estão corretos)
+        // Só re-abre se ainda não for terminal (pode ter sido atualizado no servidor)
+        if (!TERMINAL.includes(statusFinal)) {
+          const pedidoFresco = (window.pedidosAtuais || []).find(x => x.id === id);
+          if (pedidoFresco && !TERMINAL.includes(pedidoFresco.status)) {
+            console.log(`[BUG-FIX] re-abrindo painel com dados frescos do servidor para #${id}`);
+            abrirDetalhes(id);
+          }
+        }
+
       } else {
         const erro = await res.json().catch(() => ({}));
+        console.error('[alterarStatus] erro servidor:', res.status, erro);
         // 409 = transição inválida (pedido já estava finalizado no servidor)
         if (res.status === 409) {
           fecharDetalhes();
-          carregarPedidos();
+          await carregarPedidos();
+          window._pedidoAtualizando = false;
         } else {
+          window._pedidoAtualizando = false;
           alert(erro.error || 'Erro ao atualizar status');
         }
       }
     } catch (err) {
-      console.error(err);
+      console.error('[alterarStatus] erro de rede:', err);
+      window._pedidoAtualizando = false;
       alert('Erro de conexão ao atualizar status');
     }
   };
 
   window.abrirDetalhes = function (id) {
-    const p = window.pedidosAtuais.find(x => x.id === id);
-    if (!p) return;
+    // Change 3: logs de diagnóstico
+    console.log(`[ADMIN_CLICK] abrirDetalhes(${id}) — filtro=${currentStatusFilter} type=${currentTypeFilter}`);
+    const p = (window.pedidosAtuais || []).find(x => x.id === id);
+    if (!p) { console.warn('[abrirDetalhes] pedido', id, 'não encontrado'); return; }
 
-    // Highlight da linha selecionada
-    document.querySelectorAll('.pedido-row').forEach(r => r.classList.remove('row-selecionado'));
-    const row = document.querySelector(`.pedido-row[data-id="${id}"]`);
-    if (row) row.classList.add('row-selecionado');
+    window._pedidoSelecionado = id; // Rastreia para atalhos de teclado
+    console.log(`[ADMIN_SELECTED_ID] _pedidoSelecionado = ${id}`);
 
-    // Título do painel
-    document.getElementById('pdc-titulo').textContent = `Pedido #${p.id}`;
-
-    // Itens
-    let itensHtml = '<ul class="item-list" style="padding-left:1.2rem; margin:0.4rem 0;">';
-    p.itens.forEach(i => {
-      itensHtml += `<li><strong>${i.quantidade}x</strong> ${i.nome_produto} — ${window.formatCurrency(i.preco_unitario)}</li>`;
-    });
-    itensHtml += '</ul>';
-
-    // Links de contato
-    let btnWhats = '';
-    if (p.telefone) {
-      const rawPhone = p.telefone.replace(/\D/g, '');
-      const waPhone = rawPhone.length >= 10 && !rawPhone.startsWith('55') ? '55' + rawPhone : rawPhone;
-      const msg = encodeURIComponent('Olá, aqui é da Pitombo Lanches.');
-      btnWhats = `<a href="https://wa.me/${waPhone}?text=${msg}" target="_blank" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.7rem;background:#25D366;color:#fff;text-decoration:none;border-radius:5px;font-weight:600;font-size:0.8rem;margin-top:0.4rem;">💬 WhatsApp</a>`;
-    }
-    let btnMapa = '';
-    if (p.endereco) {
-      btnMapa = `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.endereco)}" target="_blank" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.7rem;background:#1a73e8;color:#fff;text-decoration:none;border-radius:5px;font-weight:600;font-size:0.8rem;margin-top:0.4rem;margin-left:0.4rem;">🗺️ Maps</a>`;
+    // Change 2: scope querySelector à tabela visível — ignora hidden cards de #listaPedidos
+    const tbl = document.getElementById('listaPedidosTabela');
+    if (tbl) {
+      tbl.querySelectorAll('.pedido-row').forEach(r => r.classList.remove('row-selecionado'));
+      const row = tbl.querySelector(`.pedido-row[data-id="${id}"]`);
+      if (row) row.classList.add('row-selecionado');
     }
 
-    const stInfo = window.statusMap[p.status] || { label: p.status };
-
-    // Conteúdo do painel
-    document.getElementById('pdc-conteudo').innerHTML = `
-    <div class="pdc-section">
-      <h4>Cliente</h4>
-      <p><strong>${p.cliente}</strong></p>
-      ${p.telefone ? `<p>📞 ${p.telefone}</p>` : ''}
-      ${p.endereco ? `<p style="color:#555;font-size:0.85rem;">📍 ${p.endereco}</p>` : ''}
-      <div>${btnWhats}${btnMapa}</div>
-    </div>
-    <div class="pdc-section">
-      <h4>Pedido</h4>
-      <p><strong>Status:</strong> <span class="status-badge status-${p.status}">${stInfo.label}</span></p>
-      <p><strong>Tipo:</strong> ${p.tipo || 'delivery'}</p>
-      <p><strong>Data:</strong> ${new Date(p.criado_em).toLocaleString('pt-BR')}</p>
-      <p><strong>Pagamento:</strong> ${p.payment_method || 'Dinheiro'} — <span style="font-weight:700;color:${p.payment_status === 'pago' ? '#198754' : '#c0392b'}">${p.payment_status === 'pago' ? 'Pago' : 'Não pago'}</span></p>
-      ${p.payment_method === 'dinheiro' && p.troco_para ? `<p style="color:#e8420a;font-weight:700;">Troco para: ${window.formatCurrency(p.troco_para)}</p>` : ''}
-      ${p.observacoes ? `<div style="background:#fff3cd;border-left:3px solid #ffc107;padding:0.5rem;border-radius:4px;margin-top:0.5rem;font-size:0.85rem;color:#856404;"><strong>Obs:</strong> ${p.observacoes}</div>` : ''}
-    </div>
-    <div class="pdc-section">
-      <h4>Itens</h4>
-      ${itensHtml}
-      <div class="pdc-valor-total">Total: ${window.formatCurrency(p.total)}</div>
-    </div>
-  `;
-
-    // Botões de ação no painel
     const isActive = !['entregue', 'cancelado', 'rejeitado'].includes(p.status);
     const pgPago = p.payment_status === 'pago';
-    let acoesHtml = '';
+    const diffMinutes = Math.floor((new Date() - new Date(p.criado_em)) / 60000);
+    const count = parseInt(p.cliente_pedidos_count) || 1;
 
-    if (isActive) {
-      if (!pgPago) {
-        acoesHtml += `<button class="btn-pdc btn-pdc-pagar" onclick="marcarPago(${p.id})">$ Marcar como Pago</button>`;
-      }
-      // Escolher entregador — select inline (sem prompt bloqueado)
-      if (p.tipo !== 'balcao' && p.tipo !== 'mesa') {
-        const entregadores = window.entregadoresCache || [];
-        const opts = entregadores.map(e =>
-          `<option value="${e.id}" ${p.entregador_id == e.id ? 'selected' : ''}>${e.nome}</option>`
-        ).join('');
-        acoesHtml += `
+    // --- Header ---
+    document.getElementById('pdc-titulo').textContent = `#${p.id}`;
+    const tipoBadgeEl = document.getElementById('pdc-tipo-badge');
+    tipoBadgeEl.textContent = p.tipo === 'delivery' ? '🛵 Delivery' : p.tipo === 'mesa' ? '🍽️ Mesa' : '🏪 Balcão';
+    tipoBadgeEl.className = 'ola-pdc-tipo-badge';
+    const stBadgeEl = document.getElementById('pdc-status-badge');
+    stBadgeEl.textContent = window.getStatusLabelPorTipo(p.status, p.tipo);
+    stBadgeEl.className = `ola-pdc-status-badge ola-st-${p.status}`;
+
+    // --- Sub-header ---
+    const timerBadgeColor = diffMinutes >= 30 ? '#fee2e2;color:#dc2626'
+      : diffMinutes >= 20 ? '#ffedd5;color:#ea580c'
+      : diffMinutes >= 10 ? '#fef3c7;color:#92400e'
+      : '#f3f4f6;color:#6b7280';
+    document.getElementById('pdc-subheader').innerHTML =
+      `<span>📅 ${new Date(p.criado_em).toLocaleString('pt-BR')}</span>` +
+      `<span style="margin-left:auto;background:${timerBadgeColor};padding:1px 9px;border-radius:10px;font-weight:800;font-size:0.75rem;">⏱ ${diffMinutes}min</span>`;
+
+    // --- Corpo: cliente + endereço + entregador ---
+    const rawPhone = p.telefone ? p.telefone.replace(/\D/g, '') : '';
+    const waPhone = rawPhone && rawPhone.length >= 10 && !rawPhone.startsWith('55') ? '55' + rawPhone : rawPhone;
+    const waBtn = waPhone
+      ? `<button class="ola-wa-btn" onclick="window.open('https://wa.me/${waPhone}','_blank')" title="WhatsApp">💬</button>`
+      : '';
+    const mapBtn = p.endereco
+      ? `<button class="ola-map-btn" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.endereco)}','_blank')" title="Ver no mapa">🗺️</button>`
+      : '';
+
+    const crmLabel = count >= 10
+      ? '<span class="ola-pdc-crm" style="background:#fef3c7;color:#92400e;">🏆 Top</span>'
+      : count >= 3
+        ? '<span class="ola-pdc-crm" style="background:#dbeafe;color:#1d4ed8;">🔄 Frequente</span>'
+        : '<span class="ola-pdc-crm" style="background:#dcfce7;color:#166534;">🌱 Novo</span>';
+
+    // Entregador / choose
+    const entregadores = window.entregadoresCache || [];
+    const opts = entregadores.map(e =>
+      `<option value="${e.id}" ${p.entregador_id == e.id ? 'selected' : ''}>${e.nome}</option>`
+    ).join('');
+    let entregadorSection = '';
+    if (p.entregador) {
+      entregadorSection = `<span class="ola-entregador-badge">Entregador: ${p.entregador}</span>`;
+    } else if (p.tipo === 'delivery' && isActive) {
+      entregadorSection = `
         <div class="pdc-entregador-row">
           <select id="sel-entregador-${p.id}" class="pdc-select-entregador">
-            <option value="">— Sem entregador —</option>
-            ${opts}
+            <option value="">— Sem entregador —</option>${opts}
           </select>
-          <button class="btn-pdc btn-pdc-entregador" style="margin-top:0.3rem;" onclick="salvarEntregador(${p.id})">🛵 Salvar entregador</button>
+          <button class="ola-pdc-btn ola-pdc-btn-pagar" style="margin-top:0.4rem;font-size:0.8rem;" onclick="salvarEntregador(${p.id})">🛵 Salvar</button>
         </div>`;
-      }
+    } else {
+      entregadorSection = '<span style="color:#9ca3af;font-size:0.82rem;">—</span>';
     }
 
+    document.getElementById('pdc-conteudo').innerHTML = `
+      <div class="ola-pdc-section">
+        <span class="ola-pdc-icon">👤</span>
+        <div class="ola-pdc-section-content">
+          <div class="ola-pdc-value">${p.cliente}${crmLabel}${waBtn}</div>
+          ${p.telefone ? `<a href="tel:${rawPhone}" class="ola-pdc-sub" style="color:#2563eb;text-decoration:none;font-weight:600;">${p.telefone}</a>` : ''}
+        </div>
+      </div>
+      ${p.tipo === 'mesa' ? `
+      <div class="ola-pdc-section" style="background:#f0fdf4;">
+        <span class="ola-pdc-icon">🍽️</span>
+        <div class="ola-pdc-section-content">
+          <div class="ola-pdc-value" style="font-size:1.1rem;color:#15803d;font-weight:900;">${p.endereco || 'Mesa'}</div>
+        </div>
+      </div>` : (p.endereco ? `
+      <div class="ola-pdc-section">
+        <span class="ola-pdc-icon">📍</span>
+        <div class="ola-pdc-section-content">
+          <div class="ola-pdc-value" style="font-size:0.85rem;font-weight:600;">${p.endereco}</div>
+          ${p.zona_nome ? `<div class="ola-pdc-sub">${p.zona_nome}</div>` : ''}
+        </div>
+        ${mapBtn}
+      </div>` : '')}
+      <div class="ola-pdc-section">
+        <span class="ola-pdc-icon">🛵</span>
+        <div class="ola-pdc-section-content">${entregadorSection}</div>
+      </div>
+      <div class="ola-pdc-produtos-header">
+        <span class="ola-pdc-produtos-title">Produtos</span>
+      </div>
+      ${(p.itens || []).map(i => `
+        <div class="ola-pdc-item">
+          <span class="ola-qty-badge">${i.quantidade}</span>
+          <span class="ola-pdc-item-name">${i.nome_produto}${i.observacoes ? `<span class="ola-pdc-item-obs">↳ ${i.observacoes}</span>` : ''}</span>
+          <span class="ola-pdc-item-price">${window.formatCurrency(i.preco_unitario * i.quantidade)}</span>
+        </div>`).join('')}
+      ${p.observacoes ? `<div style="background:#fffbeb;border-left:3px solid #f59e0b;padding:0.5rem;border-radius:4px;font-size:0.82rem;color:#92400e;margin-top:0.6rem;"><strong>Obs:</strong> ${p.observacoes}</div>` : ''}
+    `;
+
+    // --- Rodapé financeiro ---
+    const subtotal = (p.itens || []).reduce((s, i) => s + (i.preco_unitario * i.quantidade), 0);
+    document.getElementById('pdc-financeiro').innerHTML = `
+      <div class="ola-pdc-fin-row"><span>Subtotal</span><span>${window.formatCurrency(subtotal)}</span></div>
+      ${p.taxa_entrega > 0 ? `<div class="ola-pdc-fin-row"><span>Entrega</span><span>${window.formatCurrency(p.taxa_entrega)}</span></div>` : ''}
+      <div class="ola-pdc-fin-row total"><span>Total</span><span>${window.formatCurrency(p.total)}</span></div>
+      <div style="margin-top:0.6rem;">
+        <span class="ola-pdc-pgstatus ${pgPago ? 'pago' : 'nao_pago'}">${pgPago ? '✓ Pago' : 'Não pago'}</span>
+      </div>
+      <div class="ola-pdc-method">💳 ${p.payment_method || 'Dinheiro'}${p.troco_para ? ` · Troco para ${window.formatCurrency(p.troco_para)}` : ''}</div>
+    `;
+
+    // --- Botões de ação ---
+    let acoesHtml = '';
     if (p.status === 'entregue') {
-      const pgPagoFinal = p.payment_status === 'pago';
-      if (!pgPagoFinal) {
+      if (!pgPago) {
         acoesHtml = `
-          <div style="font-size:0.82rem;color:#666;margin-bottom:0.5rem;">Acerto de caixa — pedido entregue:</div>
-          <button class="btn-pdc btn-pdc-aceitar" onclick="marcarPago(${p.id})">✅ Finalizar como Pago</button>
-          <button class="btn-pdc btn-pdc-cancelar" onclick="finalizarNaoPago(${p.id})">📝 Finalizar como Não Pago</button>`;
+          <button class="ola-pdc-btn ola-pdc-btn-finalizar" style="flex:1;" onclick="marcarPago(${p.id})">✅ Finalizar como Pago</button>
+          <button class="ola-pdc-btn ola-pdc-btn-rejeitar" style="flex:1;" onclick="finalizarNaoPago(${p.id})">📝 Não pago</button>`;
       } else {
-        acoesHtml = `<div style="color:#198754;font-weight:700;padding:0.5rem 0;">✅ Pedido finalizado e pago.</div>`;
+        acoesHtml = `<div style="color:#15803d;font-weight:700;padding:0.5rem;font-size:0.9rem;">✅ Pedido finalizado e pago.</div>`;
       }
     } else if (p.status === 'pendente_aprovacao') {
       acoesHtml = `
-        <button class="btn-pdc btn-pdc-aceitar" onclick="alterarStatus(${p.id},'em_preparo')">✔ ACEITAR PEDIDO</button>
-        <button class="btn-pdc btn-pdc-rejeitar" onclick="alterarStatus(${p.id},'rejeitado')">✕ REJEITAR PEDIDO</button>`;
-    } else {
-      const proxStatus = window.acoesMap[p.status] || [];
+        <button class="ola-pdc-btn ola-pdc-btn-aceitar" onclick="alterarStatus(${p.id},'em_preparo')">✔ Aceitar</button>
+        <button class="ola-pdc-btn ola-pdc-btn-rejeitar" onclick="alterarStatus(${p.id},'rejeitado')">✕ Rejeitar</button>`;
+    } else if (isActive) {
+      // Acoes dinamicas por tipo no painel lateral
+      const proxStatus = window.getAcoesPorTipo(p.status, p.tipo);
       proxStatus.forEach(st => {
         if (st === 'cancelado') {
-          acoesHtml += `<button class="btn-pdc btn-pdc-cancelar" onclick="alterarStatus(${p.id},'${st}')">✕ Cancelar Pedido</button>`;
+          acoesHtml += `<button class="ola-pdc-btn ola-pdc-btn-rejeitar" onclick="alterarStatus(${p.id},'${st}')">✕ Cancelar</button>`;
         } else if (st === 'entregue') {
-          acoesHtml += `<button class="btn-pdc btn-pdc-entregue" onclick="alterarStatus(${p.id},'${st}')">✓ Confirmar Entrega</button>`;
-        } else if (st === 'rejeitado') {
-          acoesHtml += `<button class="btn-pdc btn-pdc-rejeitar" onclick="alterarStatus(${p.id},'${st}')">✕ Rejeitar Pedido</button>`;
+          const lblFin = p.tipo === 'mesa' ? '✓ Servir à Mesa' : (p.tipo === 'balcao' ? '✓ Entregue ao Cliente' : '✓ Finalizar');
+          acoesHtml += `<button class="ola-pdc-btn ola-pdc-btn-finalizar" onclick="alterarStatus(${p.id},'${st}')">${lblFin}</button>`;
         } else {
-          const label = window.statusMap[st] ? window.statusMap[st].label : st;
-          acoesHtml += `<button class="btn-pdc btn-pdc-avancar" onclick="alterarStatus(${p.id},'${st}')">▶ ${label}</button>`;
+          const lbl = window.getStatusLabelPorTipo(st, p.tipo);
+          acoesHtml += `<button class="ola-pdc-btn ola-pdc-btn-pagar" onclick="alterarStatus(${p.id},'${st}')">▶ ${lbl}</button>`;
         }
       });
+      if (!pgPago) {
+        acoesHtml = `<button class="ola-pdc-btn ola-pdc-btn-status" onclick="marcarPago(${p.id})">$ Pagar</button>` + acoesHtml;
+      }
     }
     document.getElementById('pdc-acoes').innerHTML = acoesHtml;
 
     // Abrir painel
     const painel = document.getElementById('painel-detalhe-lateral');
+    console.log(`[ADMIN_OPEN_PANEL] abrindo painel para #${id} tipo=${p.tipo} status=${p.status}`);
     painel.classList.remove('detalhe-fechado');
     painel.classList.add('detalhe-aberto');
   };
@@ -1020,6 +1452,7 @@ document.addEventListener('DOMContentLoaded', () => {
       painel.classList.remove('detalhe-aberto');
       painel.classList.add('detalhe-fechado');
     }
+    window._pedidoSelecionado = null;
     document.querySelectorAll('.pedido-row').forEach(r => r.classList.remove('row-selecionado'));
     // compatibilidade com modo cards (modal)
     const modal = document.getElementById('modalDetalhes');
@@ -1028,12 +1461,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.marcarPago = async function (id) {
     try {
-      const res = await fetch(`/api/pedidos/${id}/pagamento`, {
+      const res = await apiFetch(`/api/pedidos/${id}/pagamento`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payment_status: 'pago' })
+        body: { payment_status: 'pago' },
       });
       if (res.ok) {
+        showToast(`💰 Pagamento do pedido #${id} confirmado!`);
         if (typeof fecharDetalhes === 'function') fecharDetalhes();
         carregarPedidos();
       } else {
@@ -1047,10 +1480,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.finalizarNaoPago = async function (id) {
     try {
-      const res = await fetch(`/api/pedidos/${id}/pagamento`, {
+      const res = await apiFetch(`/api/pedidos/${id}/pagamento`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payment_status: 'nao_pago' })
+        body: { payment_status: 'nao_pago' },
       });
       if (res.ok) {
         carregarPedidos();
@@ -1066,7 +1498,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.escolherEntregador = async function (id) {
     try {
-      const res = await fetch('/api/equipe');
+      const res = await apiFetch('/api/equipe');
       const equipe = await res.json();
       const entregadores = equipe.filter(u => u.funcao === 'Entregador' && u.ativo);
 
@@ -1146,7 +1578,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const val = e.target.value.replace(/\D/g, '');
       if (val.length >= 8) {
         try {
-          const res = await fetch('/api/clientes/' + val + '/ultimo');
+          const res = await apiFetch('/api/clientes/' + val + '/ultimo');
           if (res.ok) {
             const data = await res.json();
             loadedUltimoPedido = data;
@@ -1186,178 +1618,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  async function carregarCardapioGeral() {
-    try {
-      const res = await fetch('/api/produtos');
-      window.cardapioGlobal = await res.json();
 
-      const sel = document.getElementById('pdvProdutoSelect');
-      if (sel) {
-        sel.innerHTML = '<option value="">-- Escolha um Produto --</option>' + window.cardapioGlobal.map(p =>
-          `<option value="${p.id}" data-preco="${p.preco}">${p.nome} (${window.formatCurrency(p.preco)})</option>`
-        ).join('');
-      }
-    } catch (err) {
-      console.error('Erro ao carregar cardapio PDV', err);
-    }
-  }
+  // ========== PDV MANUAL — delegado para admin-pdv.js (PdvManager) ==========
+  // O botão btnAppNovoPedido agora é tratado pelo PdvManager no admin-pdv.js.
+  // As funções aqui eram: carregarCardapioGeral, addPdvItem, removerPdvItem,
+  // renderPdvItens — todas movidas para admin-pdv.js para separar UI de lógica.
 
-  if (btnAppNovoPedido) {
-    btnAppNovoPedido.addEventListener('click', () => {
-      // Limpar form
-      document.getElementById('formPdv').reset();
-      window.pdvItens = [];
-      renderPdvItens();
-      togglePdvEnd('delivery');
+  // Retrocompatibilidade: caso algum código inline ainda chame estas funções
+  window.addPdvItem    = () => console.warn('[PDV] Usar PdvManager');
+  window.removerPdvItem = () => console.warn('[PDV] Usar PdvManager');
+  window.togglePdvEnd  = (tipo) => { if (window.PdvManager) PdvManager._applyTipo(tipo); };
 
-      modalPdv.style.display = 'flex';
-
-      // Carregar produtos se vazio
-      if (window.cardapioGlobal.length === 0) carregarCardapioGeral();
-    });
-  }
-
-  window.togglePdvEnd = function (tipo) {
-    const endBox = document.getElementById('pdvEndBox');
-    const endInput = document.getElementById('pdvEnd');
-    const mesaBox = document.getElementById('pdvMesaBox');
-    const mesaInput = document.getElementById('pdvMesaNum');
-
-    if (tipo === 'balcao') {
-      endBox.style.display = 'none';
-      mesaBox.style.display = 'none';
-      endInput.removeAttribute('required');
-      endInput.value = 'Retirada no Balcão';
-      mesaInput.removeAttribute('required');
-    } else if (tipo === 'mesa') {
-      endBox.style.display = 'none';
-      mesaBox.style.display = 'block';
-      endInput.removeAttribute('required');
-      endInput.value = 'Mesa';
-      mesaInput.setAttribute('required', 'required');
-    } else {
-      endBox.style.display = 'block';
-      mesaBox.style.display = 'none';
-      endInput.setAttribute('required', 'required');
-      endInput.value = '';
-      mesaInput.removeAttribute('required');
-      mesaInput.value = '';
-    }
-  }
-
-  window.addPdvItem = function () {
-    const sel = document.getElementById('pdvProdutoSelect');
-    const qtdNode = document.getElementById('pdvProdutoQtd');
-
-    if (!sel.value) return alert('Selecione um produto.');
-    const q = parseInt(qtdNode.value);
-    if (q < 1) return alert('Quantidade invalida');
-
-    const opt = sel.options[sel.selectedIndex];
-    const preco = parseFloat(opt.dataset.preco);
-    const nomeOriginal = opt.text.split(' (R$')[0]; // Quick hack
-
-    window.pdvItens.push({
-      id: parseInt(sel.value),
-      nome: nomeOriginal,
-      quantidade: q,
-      preco: preco
-    });
-
-    sel.value = "";
-    qtdNode.value = "1";
-    renderPdvItens();
-  }
-
-  window.removerPdvItem = function (index) {
-    window.pdvItens.splice(index, 1);
-    renderPdvItens();
-  }
-
-  function renderPdvItens() {
-    const lista = document.getElementById('pdvItensLista');
-    let total = 0;
-
-    if (window.pdvItens.length === 0) {
-      lista.innerHTML = '<li style="color:#999; text-align:center; padding:1rem 0;">Nenhum item adicionado ainda.</li>';
-    } else {
-      lista.innerHTML = window.pdvItens.map((item, idx) => {
-        const sub = item.quantidade * item.preco;
-        total += sub;
-        return `
-          <li style="display:flex; justify-content:space-between; margin-bottom:0.5rem; padding-bottom:0.5rem; border-bottom:1px dashed #ddd;">
-            <span><strong>${item.quantidade}x</strong> ${item.nome}</span>
-            <span>${window.formatCurrency(sub)} <button type="button" onclick="removerPdvItem(${idx})" style="color:red; background:none; border:none; cursor:pointer;" title="Remover">❌</button></span>
-          </li>
-        `;
-      }).join('');
-    }
-
-    document.getElementById('pdvTotalLabel').textContent = `${window.formatCurrency(total)}`;
-  }
-
-  const formPdv = document.getElementById('formPdv');
-  if (formPdv) {
-    formPdv.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      if (window.pdvItens.length === 0) return alert('Adicione pelo menos um item à venda.');
-
-      const btnSalvar = document.getElementById('btnSalvarPdv');
-      btnSalvar.disabled = true;
-      btnSalvar.textContent = 'Aguarde...';
-
-      const total = window.pdvItens.reduce((acc, i) => acc + (i.quantidade * i.preco), 0);
-
-      let finalEndereco = document.getElementById('pdvEnd').value.trim() || 'Balcão';
-      const tipo = document.getElementById('pdvTipo').value;
-      if (tipo === 'mesa') {
-        const mesaNum = document.getElementById('pdvMesaNum').value.trim();
-        finalEndereco = 'Mesa ' + mesaNum;
-      }
-
-      const payload = {
-        tipo: tipo,
-        cliente: document.getElementById('pdvNome').value.trim(),
-        telefone: document.getElementById('pdvFone').value.trim(),
-        endereco: finalEndereco,
-        forma_pagamento: document.getElementById('pdvPagto').value,
-        itens: window.pdvItens,
-        total: total,
-        observacoes: 'Pedido inserido via PDV Admin',
-        troco_para: null // PDV assume recebido no caixa se dinheiro ou pendente para maquina se cartao. Simplificado no caixa.
-      };
-
-      try {
-        const res = await fetch('/api/pedidos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-          modalPdv.style.display = 'none';
-          carregarPedidos();
-          // Marcar como pago se for din/cartao e for balcao?
-          // Simplificado: apenas cria o pedido com pendente e o admin clica "Marcar Pago".
-        } else {
-          const b = await res.json();
-          alert('Erro: ' + b.error);
-        }
-      } catch (err) {
-        console.error(err);
-        alert('Falha de rede.');
-      } finally {
-        btnSalvar.disabled = false;
-        btnSalvar.textContent = '🟢 Confirmar Venda PDV';
-      }
-    });
-  }
 
   // ========== CONFIGURAÇÕES DA LOJA (WHITE LABEL) ==========
   window.carregarConfiguracoesAdmin = async function () {
     try {
-      const res = await fetch('/api/settings');
+      const res = await apiFetch('/api/settings');
       if (!res.ok) return;
       const data = await res.json();
 
@@ -1567,6 +1843,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (dropNameEl) dropNameEl.textContent = data.store_name || profileName;
       _updateProfileAvatar(data.logo_url || '');
 
+      // Sincronizar UI com utilizador real — sobrescreve display_name das settings pelo nome do utilizador logado
+      _syncUserProfileUI();
+
     } catch (err) {
       console.error('Erro ao ler configs:', err);
     }
@@ -1734,10 +2013,9 @@ document.addEventListener('DOMContentLoaded', () => {
           btnSaveModal.textContent = 'Salvando...';
           btnSaveModal.disabled = true;
 
-          const res = await fetch('/api/settings', {
+          const res = await apiFetch('/api/settings', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ weekly_hours: weeklyHours })
+            body: { weekly_hours: weeklyHours }
           });
 
           if (res.ok) {
@@ -1793,7 +2071,7 @@ document.addEventListener('DOMContentLoaded', () => {
       formData.set('weekly_hours', JSON.stringify(weeklyHours));
 
       try {
-        const res = await fetch('/api/settings', {
+        const res = await apiFetch('/api/settings', {
           method: 'POST',
           body: formData
         });
@@ -1819,6 +2097,20 @@ document.addEventListener('DOMContentLoaded', () => {
   carregarPedidos();
   setInterval(carregarPedidos, 10000);
 
+  // Atualizar timers e tiers de prioridade a cada 60s (mesmo sem mudança no servidor)
+  // Change 6: bloquear se ação em andamento para evitar race condition
+  setInterval(() => {
+    if (window._pedidoAtualizando) {
+      console.log('[ADMIN_POLL] 60s timer bloqueado — ação em andamento');
+      return;
+    }
+    window._lastPedidosHash = null; // força re-render dos timers
+    renderPedidos();
+  }, 60000);
+
+  // Carregar configurações da loja no arranque (popula header do dropdown imediatamente)
+  carregarConfiguracoesAdmin();
+
   // ========== GERADOR DE PDF DO CARDÁPIO ==========
   const btnGerarPdf = document.getElementById('btnGerarPdfCardapio');
   if (btnGerarPdf) {
@@ -1826,10 +2118,10 @@ document.addEventListener('DOMContentLoaded', () => {
       btnGerarPdf.disabled = true;
       btnGerarPdf.innerText = '⏳ Gerando...';
       try {
-        const resSet = await fetch('/api/settings');
+        const resSet = await apiFetch('/api/settings');
         const settings = resSet.ok ? await resSet.json() : {};
 
-        const resProd = await fetch('/api/produtos');
+        const resProd = await apiFetch('/api/produtos');
         const produtos = resProd.ok ? await resProd.json() : [];
         if (produtos.length === 0) {
           alert('Nenhum produto cadastrado para gerar cardápio.');
@@ -1998,7 +2290,7 @@ window.carregarEquipe = async function () {
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#888;">Carregando equipe...</td></tr>';
 
   try {
-    const res = await fetch('/api/equipe');
+    const res = await apiFetch('/api/equipe');
     if (!res.ok) throw new Error('Falha ao buscar time');
     const equipe = await res.json();
 
@@ -2042,7 +2334,7 @@ window.carregarEquipe = async function () {
             </td>
             <td style="padding:12px 10px; text-align:center;">
                ${isAdminRaiz
-          ? '<a href="#" style="color:#1976d2; text-decoration:underline; font-size:0.85rem;">Gerenciar meu perfil</a>'
+          ? `<a href="#" onclick="abrirModalEquipe(${user.id}, '${user.nome}', '${user.email || ''}', '${user.funcao}', ${user.ativo}); return false;" style="color:#1976d2; text-decoration:underline; font-size:0.85rem;" title="Editar meu perfil">✏️ Gerenciar meu perfil</a>`
           : `
                   <button onclick="abrirModalEquipe(${user.id}, '${user.nome}', '${user.email || ''}', '${user.funcao}', ${user.ativo})" style="background:transparent; border:none; color:#1976d2; cursor:pointer; font-size:1.2rem; margin-right:8px;" title="Editar">✏️</button>
                   <button onclick="deletarUsuarioEquipe(${user.id})" style="background:transparent; border:none; color:#dc3545; cursor:pointer; font-size:1.2rem;" title="Remover">🗑️</button>
@@ -2061,10 +2353,9 @@ window.carregarEquipe = async function () {
 
 window.alterarStatusEquipe = async function (id, ativo) {
   try {
-    const res = await fetch('/api/equipe/' + id, {
+    const res = await apiFetch('/api/equipe/' + id, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', ..._authHeader() },
-      body: JSON.stringify({ ativo })
+      body: { ativo }
     });
     if (!res.ok) throw new Error('Falha de rede');
   } catch (e) {
@@ -2075,10 +2366,9 @@ window.alterarStatusEquipe = async function (id, ativo) {
 
 window.alterarFuncaoEquipe = async function (id, funcao) {
   try {
-    const res = await fetch('/api/equipe/' + id, {
+    const res = await apiFetch('/api/equipe/' + id, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', ..._authHeader() },
-      body: JSON.stringify({ funcao })
+      body: { funcao }
     });
     if (!res.ok) throw new Error('Falha de rede');
   } catch (e) {
@@ -2090,9 +2380,8 @@ window.alterarFuncaoEquipe = async function (id, funcao) {
 window.deletarUsuarioEquipe = async function (id) {
   if (!confirm('Tem certeza que deseja remover este usuário da equipe?')) return;
   try {
-    const res = await fetch('/api/equipe/' + id, {
-      method: 'DELETE',
-      headers: { ..._authHeader() }
+    const res = await apiFetch('/api/equipe/' + id, {
+      method: 'DELETE'
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erro ao deletar');
@@ -2143,10 +2432,9 @@ if (formEquipe) {
     const method = id ? 'PUT' : 'POST';
 
     try {
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json', ..._authHeader() },
-        body: JSON.stringify(payload)
+        body: payload
       });
 
       const data = await res.json();
@@ -2223,7 +2511,7 @@ window.desconectarIntegracao = async function (plataforma) {
   if (!confirm(`Você perderá conexões de pedidos com ${plataforma}. Deseja mesmo desconectar?`)) return;
 
   try {
-    const res = await fetch('/api/integracoes/' + plataforma + '/desconectar', { method: 'POST' });
+    const res = await apiFetch('/api/integracoes/' + plataforma + '/desconectar', { method: 'POST' });
     if (!res.ok) throw new Error('Falha ao desconectar');
     alert('Desconectado com Sucesso!');
     carregarIntegracoes();
@@ -2237,7 +2525,7 @@ window.carregarIntegracoes = async function () {
   console.log('🔥 carregando integrações...');
 
   try {
-    const res = await fetch('/api/integracoes');
+    const res = await apiFetch('/api/integracoes');
     const data = await res.json();
 
     console.log('✅ dados das integrações:', data);
@@ -2323,10 +2611,9 @@ document.addEventListener('submit', async (e) => {
     if (plat === 'BOLTFOOD') creds = { access_token: f1 };
 
     try {
-      const res = await fetch('/api/integracoes/' + plat.toLowerCase() + '/conectar', {
+      const res = await apiFetch('/api/integracoes/' + plat.toLowerCase() + '/conectar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_ativo: true, credenciais: creds })
+        body: { is_ativo: true, credenciais: creds }
       });
       if (!res.ok) throw new Error('Falha ao conectar.');
       document.getElementById('modalIntegAPI').style.display = 'none';
@@ -2340,7 +2627,7 @@ document.addEventListener('submit', async (e) => {
 window.desconectarInteg = async function (plat) {
   if (!confirm('Deseja desconectar ' + plat + '?')) return;
   try {
-    await fetch('/api/integracoes/' + plat.toLowerCase() + '/desconectar', { method: 'POST' });
+    await apiFetch('/api/integracoes/' + plat.toLowerCase() + '/desconectar', { method: 'POST' });
     carregarIntegracoes();
   } catch (e) {
     alert('Erro: ' + e.message);
@@ -2360,7 +2647,7 @@ window.entregadoresCache = [];
 
 async function carregarEntregadores() {
   try {
-    const res = await fetch('/api/equipe');
+    const res = await apiFetch('/api/equipe');
     const equipe = await res.json();
     window.entregadoresCache = equipe.filter(u => u.funcao === 'Entregador' && u.ativo);
   } catch (e) {
@@ -2374,10 +2661,9 @@ window.salvarEntregador = async function (pedidoId) {
   if (!sel) return;
   const entregador_id = sel.value ? Number(sel.value) : null;
   try {
-    const res = await fetch(`/api/pedidos/${pedidoId}/entregador`, {
+    const res = await apiFetch(`/api/pedidos/${pedidoId}/entregador`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entregador_id })
+      body: { entregador_id }
     });
     if (res.ok) {
       carregarPedidos();
@@ -2537,11 +2823,31 @@ window.handlePWAInstall = function () {
   }
 };
 
+// Sincroniza o header do dropdown com o utilizador actualmente autenticado.
+// Chamada: após settings carregadas E após _currentUser ser definido.
+function _syncUserProfileUI() {
+  const cu = window._currentUser;
+  if (!cu) return;
+
+  // Botão do topo: mostra nome do utilizador logado
+  const nameEl = document.getElementById('profileMenuName');
+  if (nameEl) nameEl.textContent = cu.nome || 'Admin';
+
+  // Subtítulo dentro do dropdown: nome + função
+  const userInfoEl = document.getElementById('profileDropUserInfo');
+  if (userInfoEl) {
+    const label = cu.email ? `${cu.nome} · ${cu.email}` : `${cu.nome} · ${cu.funcao || 'Admin'}`;
+    userInfoEl.textContent = label;
+  }
+}
+window._syncUserProfileUI = _syncUserProfileUI;
+
 // Sair da sessão
 window.handleLogout = function () {
+  console.log('[Logout] Limpando sessão e redirecionando para /login');
   try { localStorage.clear(); } catch(e) {}
   try { sessionStorage.clear(); } catch(e) {}
-  window.location.href = '/';
+  window.location.href = '/login';
 };
 
 // Preview da logo no admin
@@ -2572,17 +2878,16 @@ window.saveMinhaContaModal = async function () {
   try {
     const fd = new FormData();
     Object.entries(fields).forEach(([k, v]) => fd.append(k, v));
-    const res = await fetch('/api/settings', { method: 'POST', body: fd });
+    const res = await apiFetch('/api/settings', { method: 'POST', body: fd });
     if (!res.ok) throw new Error('Erro ' + res.status);
     // Atualizar nome no dropdown
     if (fields.store_name) {
-      const nameEl     = document.getElementById('profileMenuName');
       const dropNameEl = document.getElementById('profileDropName');
-      if (nameEl)     nameEl.textContent     = fields.store_name;
       if (dropNameEl) dropNameEl.textContent = fields.store_name;
       if (window._profileSettings) window._profileSettings.store_name = fields.store_name;
-      // Também atualiza data-brand
       document.querySelectorAll('[data-brand="name"]').forEach(el => { el.textContent = fields.store_name; });
+      // Botão do topo mantém o nome do utilizador logado, não o nome da loja
+      _syncUserProfileUI();
     }
     showProfileToast('✅ Dados salvos com sucesso!');
     window.closeProfileModal('minha-conta');

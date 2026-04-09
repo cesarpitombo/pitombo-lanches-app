@@ -12,7 +12,7 @@ const CategoriasManager = {
 
     async load() {
         try {
-            const response = await fetch('/api/categorias');
+            const response = await apiFetch('/api/categorias');
             this.categorias = await response.json();
             this.renderSidebar();
             this.updateSelects();
@@ -26,10 +26,9 @@ const CategoriasManager = {
         const url = isNew ? '/api/categorias' : `/api/categorias/${categoria.id}`;
         const method = isNew ? 'POST' : 'PUT';
         try {
-            const response = await fetch(url, {
+            const response = await apiFetch(url, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(categoria)
+                body: categoria
             });
             if (response.ok) {
                 await this.load();
@@ -44,7 +43,7 @@ const CategoriasManager = {
     async delete(id) {
         if (!confirm('Excluir esta categoria? Os produtos ficarão sem categoria.')) return;
         try {
-            const response = await fetch(`/api/categorias/${id}`, { method: 'DELETE' });
+            const response = await apiFetch(`/api/categorias/${id}`, { method: 'DELETE' });
             if (response.ok) {
                 // Se a que foi excluída era a ativa, voltar para "all"
                 if (ProdutosManager.currentCategory == id) {
@@ -221,7 +220,7 @@ const CategoriasManager = {
         const formData = new FormData();
         formData.append('image', file);
         try {
-            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            const res = await apiFetch('/api/upload', { method: 'POST', body: formData });
             if (res.ok) {
                 const data = await res.json();
                 hiddenInput.value = data.url;

@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function carregarDadosLinks() {
   try {
-    const res = await fetch('/api/settings');
+    const res = await apiFetch('/api/settings');
     const settings = await res.json();
 
     // 1. Textos e Slogan

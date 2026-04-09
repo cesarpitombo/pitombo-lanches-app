@@ -228,7 +228,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       return `
       <div class="produto-card" style="${esgotado ? 'opacity:0.6;' : ''}">
-        <div class="produto-card__img--placeholder">🍔</div>
+        ${p.imagem_url
+          ? `<img class="produto-card__img" src="${p.imagem_url}" alt="${p.nome}" onerror="this.parentElement.innerHTML='<div class=\\"produto-card__img--placeholder\\">🍔</div>'">`
+          : `<div class="produto-card__img--placeholder">🍔</div>`}
         <div class="produto-card__body">
           <p class="produto-card__nome">${p.nome}</p>
           <div class="produto-card__footer">

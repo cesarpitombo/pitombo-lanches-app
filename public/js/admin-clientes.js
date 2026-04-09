@@ -21,7 +21,7 @@ window.carregarClientes = async function() {
     if (!container) return;
 
     try {
-        const res = await fetch('/api/clientes');
+        const res = await apiFetch('/api/clientes');
         if (!res.ok) throw new Error('Falha ao buscar clientes no servidor.');
         
         todosClientes = await res.json();
@@ -152,10 +152,9 @@ window.salvarCliente = async function(event) {
     const url = id ? `/api/clientes/${id}` : '/api/clientes';
 
     try {
-        const res = await fetch(url, {
+        const res = await apiFetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: payload
         });
 
         if (!res.ok) {
@@ -175,7 +174,7 @@ window.excluirCliente = async function(id) {
     if (!confirm('Deseja realmente excluir este cliente da base?')) return;
 
     try {
-        const res = await fetch(`/api/clientes/${id}`, { method: 'DELETE' });
+        const res = await apiFetch(`/api/clientes/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('Erro ao excluir cliente.');
         carregarClientes();
     } catch (err) {

@@ -1,18 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Admin Cardápio Module Initialized');
-
-  // Submenu Toggles
-  const btnToggleCardapio = document.getElementById('btnToggleCardapio');
-  const submenuCardapio = document.getElementById('submenuCardapio');
-  const cardapioArrow = document.getElementById('cardapioArrow');
-
-  if (btnToggleCardapio && submenuCardapio) {
-    btnToggleCardapio.addEventListener('click', () => {
-      const isHidden = submenuCardapio.style.display === 'none';
-      submenuCardapio.style.display = isHidden ? 'flex' : 'none';
-      if (cardapioArrow) cardapioArrow.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
-    });
-  }
+  // NOTA: O toggle do submenuCardapio é gerenciado pelo admin.js para evitar listeners duplicados.
 
   // Load and Render Settings for the new tabs
   const menuItems = document.querySelectorAll('.menu-item');
@@ -36,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const statusMsg = document.getElementById('cfgStatusMsgBoasVindas');
       
       try {
-        const res = await fetch('/api/settings', {
+        const res = await apiFetch('/api/settings', {
           method: 'POST',
           body: formData
         });
@@ -76,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       try {
-        const res = await fetch('/api/settings', {
+        const res = await apiFetch('/api/settings', {
           method: 'POST',
           body: formData
         });
@@ -98,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function carregarConfiguracoesBoasVindas() {
   try {
-    const res = await fetch('/api/settings');
+    const res = await apiFetch('/api/settings');
     const data = await res.json();
     
     document.getElementById('cfgLandingAtivo').checked = data.landing_ativo;
@@ -113,7 +101,7 @@ async function carregarConfiguracoesBoasVindas() {
 
 async function carregarConfiguracoesPedidos() {
   try {
-    const res = await fetch('/api/settings');
+    const res = await apiFetch('/api/settings');
     const data = await res.json();
     
     const form = document.getElementById('formCfgPedidos');
