@@ -10,6 +10,101 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    /* ── Grupos de modificadores ───────────────────────────── */
+    .mod-group {
+      background: #f9fafb;
+      padding: 1rem;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .mod-group-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.4rem;
+    }
+    .mod-group-title {
+      margin: 0;
+      font-size: 1rem;
+      color: #111827;
+      font-weight: 700;
+    }
+    .mod-group-desc {
+      margin: 0 0 0.75rem 0;
+      font-size: 0.82rem;
+      color: #6b7280;
+    }
+    .mod-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .mod-badge-required { background: #fee2e2; color: #dc2626; }
+    .mod-badge-optional { background: #e5e7eb; color: #6b7280; }
+    .mod-sel-count {
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      background: #f3f4f6;
+      border-radius: 6px;
+      display: inline-block;
+    }
+    .mod-items-list {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .mod-option-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.8rem;
+      border-bottom: 1px solid #f3f4f6;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .mod-option-label:last-child { border-bottom: none; }
+    .mod-option-label:hover { background: #f9fafb; }
+    .mod-option-checkbox-row {
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #f3f4f6;
+      padding-right: 0.5rem;
+    }
+    .mod-option-checkbox-row:last-child { border-bottom: none; }
+    .mod-option-checkbox-row:hover { background: #f9fafb; }
+    /* Quantity spinner for "varios" items */
+    .mod-qty-control {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-left: 0.5rem;
+      flex-shrink: 0;
+    }
+    .mod-qty-btn {
+      width: 28px;
+      height: 28px;
+      border: 1.5px solid #d1d5db;
+      background: #fff;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #374151;
+      transition: all 0.15s;
+    }
+    .mod-qty-btn:hover { background: #f3f4f6; border-color: var(--cor-primaria, #e63946); }
+    input[type="checkbox"]:disabled + span { color: #9ca3af; }
+    input[type="checkbox"]:disabled { opacity: 0.4; cursor: not-allowed; }
+  </style>
 </head>
 <body>
 
@@ -60,6 +155,49 @@
         <p class="modal__total">Total: <strong id="carrinhoTotal"><span class="currency-symbol">R$</span> 0,00</strong></p>
         <button class="btn btn--primary" id="btnFinalizarPedido">Ir para o Checkout</button>
         <button class="btn btn--ghost" id="btnFecharModal">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PRODUTO COM MODIFICADORES -->
+  <div class="modal-overlay" id="modalProduto" hidden style="z-index:9999;">
+    <div class="modal" id="modalProdutoConteudo" style="max-width: 500px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; padding: 0;">
+      
+      <!-- Cabeçalho do Produto -->
+      <div style="position: relative;">
+        <button type="button" id="btnFecharModalProduto" style="position:absolute; top:1rem; right:1rem; background:rgba(0,0,0,0.5); border:none; width:36px; height:36px; border-radius:50%; color:#fff; font-size:1.5rem; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:10;">&times;</button>
+        <div id="modalProdutoImgContainer" style="width:100%; height:200px; background:#f3f4f6; position:relative;">
+           <img id="modalProdutoImg" src="" alt="" style="width:100%; height:100%; object-fit:cover; display:none;">
+           <div id="modalProdutoImgFallback" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:4rem; color:#ccc;">🍔</div>
+        </div>
+      </div>
+      
+      <!-- Corpo com Scroll -->
+      <div style="padding: 1.5rem; overflow-y: auto; flex: 1;">
+        <h2 id="modalProdutoNome" style="margin: 0 0 0.5rem 0; font-size: 1.5rem; color:#111827;">Nome</h2>
+        <p id="modalProdutoDesc" style="color: #6b7280; font-size: 0.95rem; margin-bottom: 1.5rem;">Descrição opcional</p>
+        
+        <div id="modificadoresContainers">
+           <!-- Renderizado via JS -->
+        </div>
+        
+        <!-- Quantidade do Produto Base -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:1.5rem; padding-top:1.5rem; border-top:1px solid #e5e7eb;">
+           <span style="font-weight:600; color:#374151;">Quantidade</span>
+           <div style="display:flex; align-items:center; gap:1rem; background:#f3f4f6; border-radius:8px; padding:0.25rem;">
+              <button type="button" id="btnSubProd" style="width:36px; height:36px; border:none; background:#fff; border-radius:6px; font-size:1.2rem; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.05); color:#374151;">−</button>
+              <span id="txtQtdProd" style="font-weight:700; width:20px; text-align:center;">1</span>
+              <button type="button" id="btnAddProd" style="width:36px; height:36px; border:none; background:#fff; border-radius:6px; font-size:1.2rem; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.05); color:#374151;">+</button>
+           </div>
+        </div>
+      </div>
+      
+      <!-- Footer Fixo (Botão Adicionar) -->
+      <div style="padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb; background:#fff; border-radius: 0 0 16px 16px;">
+        <button class="btn btn--primary" id="btnConfirmarAddProduto" style="width: 100%; display:flex; justify-content:space-between; align-items:center; padding: 1rem;">
+           <span>Adicionar</span>
+           <span id="modalProdutoPrecoTotal">R$ 0,00</span>
+        </button>
       </div>
     </div>
   </div>

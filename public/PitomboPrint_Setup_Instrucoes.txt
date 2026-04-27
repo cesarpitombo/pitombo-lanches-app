@@ -12,3 +12,4 @@ Instruções Futuras:
 1. Instale o Aplicativo
 2. Busque suas impressoras EPSON/Bematech/Bluetooth no painel
 3. O software escutará a rota /api/pedidos e disparará cupons na cozinha 1 e caixa automaticamente!
+

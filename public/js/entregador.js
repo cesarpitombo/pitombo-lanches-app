@@ -169,6 +169,8 @@ document.addEventListener('DOMContentLoaded', () => {
         body: { status: novoStatus, origem: 'entregador' }
       });
       if (res.ok) {
+        const dados = await res.json().catch(()=>({}));
+        if (dados._status_blocked === 'same_status') return;
         carregarEntregas();
       } else {
         alert('Erro ao atualizar status');

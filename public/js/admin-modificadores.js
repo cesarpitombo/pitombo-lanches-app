@@ -169,17 +169,40 @@ const ModificadoresManager = {
 
             <!-- Seção: Tipo de seleção -->
             <div class="oc-modif-editor-section">
-                <p class="oc-modif-section-title">Nessa categoria, você pode selecionar</p>
-                <div class="oc-radio-group">
-                    <div class="oc-radio-option">
-                        <input type="radio" name="selecao-${cat.id}" id="sel-unica-${cat.id}" value="1" ${cat.selecao_unica ? 'checked' : ''}
-                            onchange="ModificadoresManager.saveCategoryField(${cat.id}, 'selecao_unica', true)">
-                        <label class="oc-radio-label" for="sel-unica-${cat.id}">Apenas um modificador</label>
+                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:1rem;">
+                    <p class="oc-modif-section-title" style="margin:0;">Nessa categoria, você pode selecionar</p>
+                    <div class="oc-radio-group" style="flex:1;">
+                        <div class="oc-radio-option">
+                            <input type="radio" name="selecao-${cat.id}" id="sel-unica-${cat.id}" value="1" ${cat.selecao_unica ? 'checked' : ''}
+                                onchange="ModificadoresManager.toggleSelecaoUnica(${cat.id}, true)">
+                            <label class="oc-radio-label" for="sel-unica-${cat.id}">Apenas um modificador</label>
+                        </div>
+                        <div class="oc-radio-option">
+                            <input type="radio" name="selecao-${cat.id}" id="sel-multi-${cat.id}" value="0" ${!cat.selecao_unica ? 'checked' : ''}
+                                onchange="ModificadoresManager.toggleSelecaoUnica(${cat.id}, false)">
+                            <label class="oc-radio-label" for="sel-multi-${cat.id}">Vários</label>
+                        </div>
                     </div>
-                    <div class="oc-radio-option">
-                        <input type="radio" name="selecao-${cat.id}" id="sel-multi-${cat.id}" value="0" ${!cat.selecao_unica ? 'checked' : ''}
-                            onchange="ModificadoresManager.saveCategoryField(${cat.id}, 'selecao_unica', false)">
-                        <label class="oc-radio-label" for="sel-multi-${cat.id}">Vários</label>
+                    <!-- Min/Max inputs: visíveis apenas quando "Vários" está selecionado -->
+                    <div id="minmax-section-${cat.id}" style="display:${cat.selecao_unica ? 'none' : 'flex'}; align-items:center; gap:0.5rem; flex-shrink:0;">
+                        <div style="display:flex; flex-direction:column; align-items:center;">
+                            <label style="font-size:0.7rem; color:#6b7280; font-weight:600; margin-bottom:0.25rem;">Min</label>
+                            <input type="number" id="min-escolhas-${cat.id}" min="0" step="1"
+                                value="${Number(cat.min_escolhas) || 0}"
+                                style="width:60px; padding:0.4rem 0.5rem; border:1.5px solid #d1d5db; border-radius:8px; font-size:0.9rem; font-weight:600; text-align:center; outline:none;"
+                                onfocus="this.style.borderColor='var(--primary)'"
+                                onblur="this.style.borderColor='#d1d5db'; ModificadoresManager.saveMinMax(${cat.id})"
+                                oninput="ModificadoresManager.onMinMaxInput(${cat.id})">
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:center;">
+                            <label style="font-size:0.7rem; color:#6b7280; font-weight:600; margin-bottom:0.25rem;">Max</label>
+                            <input type="number" id="max-escolhas-${cat.id}" min="1" step="1"
+                                value="${Number(cat.max_escolhas) || 1}"
+                                style="width:60px; padding:0.4rem 0.5rem; border:1.5px solid #d1d5db; border-radius:8px; font-size:0.9rem; font-weight:600; text-align:center; outline:none;"
+                                onfocus="this.style.borderColor='var(--primary)'"
+                                onblur="this.style.borderColor='#d1d5db'; ModificadoresManager.saveMinMax(${cat.id})"
+                                oninput="ModificadoresManager.onMinMaxInput(${cat.id})">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -233,7 +256,6 @@ const ModificadoresManager = {
     },
 
     _buildItemRowHtml(catId, item) {
-        const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
         return `
             <div class="oc-modif-item-row" data-item-id="${item.id}">
                 <div class="oc-modif-item-header">
@@ -254,7 +276,15 @@ const ModificadoresManager = {
                         <input type="number" step="0.01" min="0" value="${Number(item.preco || 0).toFixed(2)}"
                             onblur="ModificadoresManager.saveItemField(${catId}, ${item.id}, 'preco', this.value)">
                     </div>
-                    
+
+                    <!-- Quantidade máxima por item -->
+                    <div style="display:flex; flex-direction:column; align-items:center; margin-left:0.25rem;">
+                        <label style="font-size:0.65rem; color:#9ca3af; font-weight:600; margin-bottom:0.15rem; white-space:nowrap;">Qtd. max</label>
+                        <input type="number" min="1" step="1" value="${Number(item.quantidade_maxima) || 1}"
+                            style="width:60px; padding:0.3rem 0.4rem; border:1px solid #e5e7eb; border-radius:6px; font-size:0.8rem; text-align:center;"
+                            onblur="ModificadoresManager.saveItemField(${catId}, ${item.id}, 'quantidade_maxima', this.value)">
+                    </div>
+
                     <!-- Chip + Custo -->
                     <span class="oc-item-chip" id="chip-custo-${item.id}" onclick="ModificadoresManager.showItemExtra(${item.id}, 'custo', this)" style="${item.custo > 0 ? 'display:none' : ''}">+ Custo</span>
                     <div class="oc-item-extra-input${item.custo > 0 ? ' visible' : ''}" id="extra-custo-${item.id}">
@@ -307,6 +337,44 @@ const ModificadoresManager = {
             const input = extra.querySelector('input');
             if (input) input.focus();
         }
+    },
+
+    // ====== Seleção Única / Vários ======
+
+    toggleSelecaoUnica(catId, isUnica) {
+        const section = document.getElementById(`minmax-section-${catId}`);
+        if (section) section.style.display = isUnica ? 'none' : 'flex';
+        // Se único: força min=max=1
+        if (isUnica) {
+            const minEl = document.getElementById(`min-escolhas-${catId}`);
+            const maxEl = document.getElementById(`max-escolhas-${catId}`);
+            if (minEl) minEl.value = 1;
+            if (maxEl) maxEl.value = 1;
+        }
+        this.saveMinMax(catId, isUnica);
+    },
+
+    onMinMaxInput(catId) {
+        const minEl = document.getElementById(`min-escolhas-${catId}`);
+        const maxEl = document.getElementById(`max-escolhas-${catId}`);
+        if (!minEl || !maxEl) return;
+        const min = parseInt(minEl.value) || 0;
+        const max = parseInt(maxEl.value) || 1;
+        // Garantir que max >= min
+        if (max < min) maxEl.value = min;
+    },
+
+    async saveMinMax(catId, forceUnica) {
+        const cat = this.categorias.find(c => c.id === catId);
+        if (!cat) return;
+        const selUnica = forceUnica !== undefined ? forceUnica :
+            document.querySelector(`input[name="selecao-${catId}"]:checked`)?.value === '1';
+        const minEl = document.getElementById(`min-escolhas-${catId}`);
+        const maxEl = document.getElementById(`max-escolhas-${catId}`);
+        const min = selUnica ? 1 : (parseInt(minEl?.value) || 0);
+        const max = selUnica ? 1 : Math.max(1, parseInt(maxEl?.value) || 1);
+        const updated = { ...cat, selecao_unica: !!selUnica, min_escolhas: min, max_escolhas: max };
+        await this.saveCategory(updated);
     },
 
     // ====== APIs ======

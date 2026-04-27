@@ -47,7 +47,9 @@ CREATE TABLE IF NOT EXISTS pedidos (
   observacoes     TEXT,
   status          status_pedido NOT NULL DEFAULT 'recebido',
   total           NUMERIC(10, 2) NOT NULL CHECK (total >= 0),
-  entregador_id   INTEGER REFERENCES entregadores(id) ON DELETE SET NULL,
+  -- entregador_id referencia equipe(id) (funcao='Entregador'). FK adicionado em runtime
+  -- para evitar dependência circular com a tabela equipe (criada no boot via routes/equipe.js).
+  entregador_id   INTEGER,
   criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   atualizado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

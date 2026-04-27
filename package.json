@@ -10,6 +10,7 @@
     "db:test": "node db/testar-conexao.js"
   },
   "dependencies": {
+    "@whiskeysockets/baileys": "^7.0.0-rc.9",
     "bcrypt": "^6.0.0",
     "body-parser": "^1.20.2",
     "dotenv": "^16.6.1",
@@ -17,7 +18,8 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
     "openai": "^6.33.0",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
@@ -26,5 +28,8 @@
     "node": ">=18.0.0"
   },
   "author": "Pitombo Lanches",
-  "license": "ISC"
+  "license": "ISC",
+  "nodemonConfig": {
+    "ignore": ["autoprint-app/", "sessions/", "node_modules/", "public/uploads/"]
+  }
 }

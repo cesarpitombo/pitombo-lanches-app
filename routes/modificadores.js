@@ -170,16 +170,61 @@ router.delete('/itens/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req,
 
 // --- VINCULOS PRODUTO <-> MODIFICADORES ---
 
-// GET /api/modificadores/produto/:id - Listar modificadores de um produto
+// GET /api/modificadores/produto/:id - Listar modificadores de um produto (com seus itens)
+// Respeita ordem_override e obrigatorio_override salvos no vínculo produto<->modificador.
+// A ordem_override é a fonte única da verdade para ordenação no cliente.
 router.get('/produto/:id', async (req, res) => {
     const produtoId = Number(req.params.id);
     try {
         const { rows } = await query(`
-            SELECT mc.* 
+            SELECT
+              mc.id,
+              mc.nome,
+              mc.ativo,
+              mc.ordem,
+              -- Usa obrigatorio_override quando explicitamente definido no vínculo,
+              -- caso contrário cai de volta ao valor global da categoria
+              COALESCE(pm_link.obrigatorio_override, mc.obrigatorio) AS obrigatorio,
+              COALESCE(pm_link.selecao_unica_override, mc.selecao_unica) AS selecao_unica,
+              COALESCE(pm_link.min_escolhas_override, mc.min_escolhas) AS min_escolhas,
+              COALESCE(pm_link.max_escolhas_override, mc.max_escolhas) AS max_escolhas,
+              pm_link.ordem_override,
+              COALESCE(
+                json_agg(
+                  json_build_object(
+                    'id',              mi.id,
+                    'nome',            mi.nome,
+                    'preco',           mi.preco,
+                    'quantidade_maxima', mi.quantidade_maxima
+                  ) ORDER BY mi.ordem ASC
+                ) FILTER (WHERE mi.id IS NOT NULL AND mi.ativo = true), '[]'
+              ) AS itens
             FROM modificador_categorias mc
-            JOIN produto_modificadores pm ON mc.id = pm.categoria_id
-            WHERE pm.produto_id = $1
-            ORDER BY mc.id ASC
+            -- Left join no vínculo direto do produto para pegar os overrides
+            LEFT JOIN produto_modificadores pm_link
+              ON pm_link.categoria_id = mc.id AND pm_link.produto_id = $1
+            -- Inner join para filtrar apenas modificadores associados a este produto
+            JOIN (
+              -- links diretos ao produto
+              SELECT categoria_id FROM produto_modificadores WHERE produto_id = $1
+
+              UNION
+
+              -- links via categoria do produto
+              SELECT cm.modificador_categoria_id
+              FROM categoria_modificadores cm
+              JOIN produtos p ON p.categoria_id = cm.categoria_id AND p.id = $1
+            ) pm ON mc.id = pm.categoria_id
+            LEFT JOIN modificador_itens mi ON mc.id = mi.categoria_id
+            WHERE mc.ativo = true
+            GROUP BY mc.id, mc.nome, mc.ativo, mc.ordem,
+                     mc.obrigatorio, mc.selecao_unica, mc.min_escolhas, mc.max_escolhas,
+                     pm_link.obrigatorio_override, pm_link.selecao_unica_override,
+                     pm_link.min_escolhas_override, pm_link.max_escolhas_override,
+                     pm_link.ordem_override
+            -- Ordenar por ordem_override (a posição definida no produto),
+            -- fallback para mc.ordem global e depois mc.id para desempate
+            ORDER BY COALESCE(pm_link.ordem_override, mc.ordem, 9999) ASC, mc.id ASC
         `, [produtoId]);
         res.json(rows);
     } catch (err) {

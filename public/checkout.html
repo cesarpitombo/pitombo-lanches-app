@@ -196,8 +196,8 @@
             </div>
             <div class="form-row">
               <div class="form-group" style="flex:1">
-                <label for="end_bairro">Bairro *</label>
-                <input type="text" id="end_bairro" placeholder="Ex: Centro">
+                <label for="end_bairro">Localidade / Bairro *</label>
+                <input type="text" id="end_bairro" placeholder="Ex: Albufeira">
               </div>
               <div class="form-group" style="flex:1">
                 <label for="end_comp">Complemento (Opcional)</label>
@@ -292,17 +292,83 @@
       // ── Estado ───────────────────────────────────────────────────────────────
       let tipoEntregaSelecionado = null;  // 'delivery' | 'balcao'
       let taxaEntrega = 0;
-      let taxaDeliveryPadrao = 0;         // carregada da 1ª zona
+      let isCalculandoFrete = false;
+      let foraDaCobertura = false;
+      let ultimoQuote = null;             // { mode, fee, in_coverage, label, distance_m, ... }
+      let timeoutQuote = null;
+
+      function dispararQuoteServer() {
+        if (tipoEntregaSelecionado !== 'delivery') return;
+        const rua = document.getElementById('end_rua').value.trim();
+        const num = document.getElementById('end_num').value.trim();
+        const bairro = document.getElementById('end_bairro').value.trim();
+
+        if (!rua || !num || !bairro) {
+          taxaEntrega = 0;
+          foraDaCobertura = false;
+          ultimoQuote = null;
+          isCalculandoFrete = false;
+          atualizarTotal();
+          return;
+        }
+
+        const endereco = `${rua}, ${num}, ${bairro}, Albufeira, Portugal`;
+        clearTimeout(timeoutQuote);
+        isCalculandoFrete = true;
+        atualizarTotal();
+        timeoutQuote = setTimeout(async () => {
+          try {
+            const r = await fetch('/api/delivery/quote', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ address: endereco, neighborhood: bairro })
+            });
+            if (!r.ok) throw new Error('quote http ' + r.status);
+            const q = await r.json();
+            ultimoQuote = q;
+            taxaEntrega = parseFloat(q.fee) || 0;
+            foraDaCobertura = !q.in_coverage;
+          } catch (e) {
+            console.error('[checkout] quote falhou:', e);
+            ultimoQuote = null;
+            taxaEntrega = 0;
+            foraDaCobertura = true;
+          } finally {
+            isCalculandoFrete = false;
+            atualizarTotal();
+          }
+        }, 600);
+      }
 
       const taxaEntregaEl = document.getElementById('taxaEntregaValor');
       const resumoTotalEl = document.getElementById('resumoTotal');
       const blocoEndereco = document.getElementById('blocoEndereco');
+      const btnFinalizar  = document.getElementById('btnEnviarPedido');
 
       function atualizarTotal() {
         const taxa = tipoEntregaSelecionado === 'delivery' ? taxaEntrega : 0;
         const totalFinal = totalCarrinho + taxa;
+
+        if (isCalculandoFrete && tipoEntregaSelecionado === 'delivery') {
+          taxaEntregaEl.innerHTML = '<span style="color:#888; font-size:0.85rem">Calculando...</span>';
+          resumoTotalEl.textContent = `R$ ${totalCarrinho.toFixed(2).replace('.', ',')}`;
+          return;
+        }
+
+        if (foraDaCobertura && tipoEntregaSelecionado === 'delivery') {
+          const motivo = ultimoQuote?.label || 'Endereço fora da área de entrega';
+          taxaEntregaEl.innerHTML = `<span style="color:#b91c1c; font-size:0.85rem">⚠️ ${motivo}</span>`;
+          resumoTotalEl.textContent = `R$ ${totalCarrinho.toFixed(2).replace('.', ',')}`;
+          if (btnFinalizar) { btnFinalizar.disabled = true; btnFinalizar.style.opacity = '0.5'; }
+          return;
+        } else if (btnFinalizar && !btnFinalizar.dataset.lojaFechada) {
+          btnFinalizar.disabled = false;
+          btnFinalizar.style.opacity = '';
+        }
+
         if (taxa > 0) {
-          taxaEntregaEl.textContent = `R$ ${taxa.toFixed(2).replace('.', ',')}`;
+          const lbl = ultimoQuote?.label ? ` <span style="color:#999; font-size:0.78rem">(${ultimoQuote.label})</span>` : '';
+          taxaEntregaEl.innerHTML = `R$ ${taxa.toFixed(2).replace('.', ',')}${lbl}`;
           taxaEntregaEl.style.color = '#e8420a';
         } else if (tipoEntregaSelecionado === 'balcao') {
           taxaEntregaEl.textContent = 'Grátis (retirada)';
@@ -317,18 +383,6 @@
         resumoTotalEl.textContent = `R$ ${totalFinal.toFixed(2).replace('.', ',')}`;
       }
 
-      // ── Buscar taxa da 1ª zona disponível ───────────────────────────────────
-      try {
-        const res = await fetch('/api/zonas/ativas');
-        if (res.ok) {
-          const zonas = await res.json();
-          if (zonas.length > 0) {
-            taxaDeliveryPadrao = parseFloat(zonas[0].taxa) || 0;
-            taxaEntrega = taxaDeliveryPadrao;
-          }
-        }
-      } catch(e) { /* sem zona — taxa 0 */ }
-
       // ── Tipo de Entrega ──────────────────────────────────────────────────────
       document.querySelectorAll('input[name="tipoEntrega"]').forEach(radio => {
         radio.addEventListener('change', (e) => {
@@ -339,7 +393,14 @@
           // Resetar erros visuais no bloco de tipo
           document.querySelectorAll('.tipo-option').forEach(el => el.classList.remove('tipo-erro'));
 
-          atualizarTotal();
+          if (isDelivery) {
+            dispararQuoteServer();
+          } else {
+            taxaEntrega = 0;
+            foraDaCobertura = false;
+            ultimoQuote = null;
+            atualizarTotal();
+          }
         });
       });
 
@@ -354,6 +415,16 @@
         if (sRes.ok) {
           const settings = await sRes.json();
 
+          if (!settings.delivery_enabled && !settings.cfg_retirada) {
+            // Nenhum habilitado
+            document.getElementById('blocoTipoEntrega').style.display = 'none';
+          } else {
+             const lblDelivery = document.querySelector('input[value="delivery"]')?.parentElement;
+             if (lblDelivery && !settings.delivery_enabled) lblDelivery.style.display = 'none';
+             const lblBalcao = document.querySelector('input[value="balcao"]')?.parentElement;
+             if (lblBalcao && !settings.cfg_retirada) lblBalcao.style.display = 'none';
+          }
+          
           if (settings.scheduling_enabled) {
             const schedBox = document.getElementById('schedulingBox');
             if (schedBox) schedBox.style.display = 'block';
@@ -401,6 +472,16 @@
               });
             });
           }
+          // ── Guard: loja fechada ───────────────────────────────────────────
+          if (settings.status_loja === 'fechada') {
+            if (btnFinalizar) {
+              btnFinalizar.disabled = true;
+              btnFinalizar.style.opacity = '0.5';
+              btnFinalizar.textContent = '🔒 Loja Fechada';
+              btnFinalizar.dataset.lojaFechada = '1';
+            }
+            mostrarErros(['A loja está fechada no momento. Tente novamente mais tarde.']);
+          }
         }
       } catch(_) {}
 
@@ -434,7 +515,14 @@
       }
       ['nome','telefone','end_rua','end_num','end_bairro'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.addEventListener('input', () => limparErrosCampo(el));
+        if (el) {
+          el.addEventListener('input', () => {
+            limparErrosCampo(el);
+            if (['end_rua', 'end_num', 'end_bairro'].includes(id)) {
+              dispararQuoteServer();
+            }
+          });
+        }
       });
 
       // ── Submit ───────────────────────────────────────────────────────────────
@@ -499,6 +587,17 @@
           document.getElementById('paymentMethodsContainer').classList.add('pay-block-erro');
         }
 
+        // 5. Cobertura de delivery
+        if (tipoEntregaSelecionado === 'delivery') {
+          if (isCalculandoFrete) {
+            erros.push('Aguardando cálculo da taxa de entrega...');
+          } else if (foraDaCobertura) {
+            erros.push(ultimoQuote?.label || 'Endereço fora da área de entrega.');
+          } else if (!ultimoQuote) {
+            erros.push('Não foi possível calcular a taxa de entrega para este endereço.');
+          }
+        }
+
         if (erros.length > 0) {
           mostrarErros(erros);
           return;
@@ -508,16 +607,18 @@
         btn.disabled = true;
         btn.textContent = 'Enviando pedido...';
 
-        const taxaFinal = tipoEntregaSelecionado === 'delivery' ? taxaEntrega : 0;
-        const totalFinal = totalCarrinho + taxaFinal;
-
         const itensSaneados = itensCarrinho
-          .map(item => ({
-            id:         Number(item.id),
-            nome:       item.nome,
-            preco:      parseFloat(item.preco),
-            quantidade: parseInt(item.quantidade)
-          }))
+          .map(item => {
+             const finalNome = (item.modificadores && item.modificadores.length > 0)
+                ? `${item.nome} (${item.modificadores.map(m => '+ ' + m.nome).join(', ')})`
+                : item.nome;
+             return {
+               id:         Number(item.realId || item.id),
+               nome:       finalNome.slice(0, 100),
+               preco:      parseFloat(item.preco),
+               quantidade: parseInt(item.quantidade)
+             };
+          })
           .filter(item => item.id && !isNaN(item.id));
 
         const payload = {
@@ -531,8 +632,10 @@
                              : null,
           observacoes:     document.getElementById('observacoes') ? document.getElementById('observacoes').value.trim() : '',
           itens:           itensSaneados,
-          total:           totalFinal,
-          taxa_entrega:    taxaFinal,
+          // Hints para o servidor recalcular a taxa (taxa/total finais são autoritativos no backend)
+          delivery_neighborhood: tipoEntregaSelecionado === 'delivery' ? document.getElementById('end_bairro').value.trim() : null,
+          delivery_lat:    ultimoQuote?.geocoded?.lat || null,
+          delivery_lng:    ultimoQuote?.geocoded?.lng || null,
           is_scheduled:    isAgendado,
           scheduled_for:   isAgendado && scheduledFor ? scheduledFor : null
         };
@@ -546,6 +649,12 @@
 
           if (!res.ok) {
             const errData = await res.json();
+            if (res.status === 403) {
+              mostrarErros([errData.error || 'A loja está fechada no momento.']);
+              btn.disabled = false;
+              btn.textContent = 'Confirmar Pedido';
+              return;
+            }
             if (res.status === 400 && errData.error && errData.error.includes('IDs inválidos')) {
               localStorage.removeItem('pitombo_carrinho');
               localStorage.removeItem('pitombo_total');

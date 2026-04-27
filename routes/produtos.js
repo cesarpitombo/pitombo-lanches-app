@@ -80,11 +80,11 @@ router.get('/', async (req, res) => {
                        'selecao_unica_override', base.selecao_unica_override,
                        'ordem_override', base.ordem_override,
                        'ativo_override', base.ativo_override
-                     )), '[]')
+                     ) ORDER BY COALESCE(base.ordem_override, 9999) ASC, base.modificador_id ASC), '[]')
                      FROM (
                         SELECT pm.categoria_id as modificador_id, pm.min_escolhas_override, pm.max_escolhas_override, pm.obrigatorio_override, pm.selecao_unica_override, pm.ordem_override, pm.ativo_override
                         FROM produto_modificadores pm WHERE pm.produto_id = p.id
-                        UNION
+                        UNION ALL
                         SELECT cm.modificador_categoria_id as modificador_id, NULL, NULL, NULL, NULL, NULL, NULL
                         FROM categoria_modificadores cm WHERE cm.categoria_id = p.categoria_id AND cm.modificador_categoria_id NOT IN (SELECT categoria_id FROM produto_modificadores WHERE produto_id = p.id)
                      ) AS base
@@ -137,11 +137,11 @@ router.get('/:id', async (req, res) => {
                        'selecao_unica_override', base.selecao_unica_override,
                        'ordem_override', base.ordem_override,
                        'ativo_override', base.ativo_override
-                     )), '[]')
+                     ) ORDER BY COALESCE(base.ordem_override, 9999) ASC, base.modificador_id ASC), '[]')
                      FROM (
                         SELECT pm.categoria_id as modificador_id, pm.min_escolhas_override, pm.max_escolhas_override, pm.obrigatorio_override, pm.selecao_unica_override, pm.ordem_override, pm.ativo_override
                         FROM produto_modificadores pm WHERE pm.produto_id = p.id
-                        UNION
+                        UNION ALL
                         SELECT cm.modificador_categoria_id as modificador_id, NULL, NULL, NULL, NULL, NULL, NULL
                         FROM categoria_modificadores cm WHERE cm.categoria_id = p.categoria_id AND cm.modificador_categoria_id NOT IN (SELECT categoria_id FROM produto_modificadores WHERE produto_id = p.id)
                      ) AS base

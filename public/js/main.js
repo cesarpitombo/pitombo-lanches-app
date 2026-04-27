@@ -67,23 +67,31 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    carrinhoItens.innerHTML = itens.map(item => `
+    carrinhoItens.innerHTML = itens.map(item => {
+      const modsHtml = (item.modificadores && item.modificadores.length > 0)
+        ? `<div style="font-size:0.75rem; color:#6b7280; margin-top:0.25rem;">
+             ${item.modificadores.map(m => `+ ${m.nome}`).join('<br>')}
+           </div>`
+        : '';
+        
+      return `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 0;border-bottom:1px solid #f3f4f6">
         <div style="flex:1">
           <strong style="display:block;color:#111827;font-size:0.95rem;">${item.nome}</strong>
           <span style="color:#6b7280;font-size:0.85rem;">
             ${window.formatCurrency(item.preco)} × ${item.quantidade}
           </span>
+          ${modsHtml}
         </div>
         <div style="display:flex;align-items:center;gap:0.75rem">
           <span style="font-weight:700;color:#111827">${window.formatCurrency(item.preco * item.quantidade)}</span>
           <button
-            onclick="window._remover(${item.id})"
+            onclick="window._remover('${item.id}')"
             style="background:#f3f4f6;border:none;border-radius:50%;width:32px;height:32px;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#4b5563;transition:all 0.2s"
             title="Remover">−</button>
         </div>
       </div>
-    `).join('');
+    `}).join('');
 
     const total = calcularTotal();
     carrinhoTotal.textContent = `${window.formatCurrency(total)}`;
@@ -104,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── Carregar e renderizar produtos ────────────────────────────────
-  // ── Carregar e renderizar dados (Categorias e Produtos) ─────────────
+  // ... (categorias) ...
   let todasCategorias = [];
   let todosProdutos = [];
 
@@ -129,7 +137,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       renderizarCategorias();
 
-      // Listener para o botão Voltar
       if (btnVoltar) {
         btnVoltar.onclick = () => {
           gridProdutos.style.display = 'none';
@@ -140,7 +147,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
     } catch (err) {
-      console.error('Erro ao carregar dados:', err);
       gridCategorias.innerHTML = '<div class="loading">Erro ao carregar o cardápio.</div>';
     }
   }
@@ -149,12 +155,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridCategorias = document.getElementById('categoriasGrid');
     if (!gridCategorias) return;
 
-    // Criamos uma lista de IDs de categoria que realmente possuem produtos
     const categoriasComProdutos = todasCategorias.filter(cat => 
         todosProdutos.some(p => p.categoria_id === cat.id)
     );
 
-    // Adicionamos produtos sem categoria (fallback)
     const produtosSemCategoria = todosProdutos.filter(p => !p.categoria_id);
     
     let html = categoriasComProdutos.map(cat => {
@@ -224,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const esgotado = p.controlar_estoque && p.estoque_atual <= 0;
       const btnHtml = esgotado 
         ? `<button class="btn-adicionar" disabled style="background:#ccc;cursor:not-allowed;color:#666;font-weight:bold;">Esgotado</button>`
-        : `<button class="btn-adicionar" data-id="${p.id}" data-nome="${p.nome}" data-preco="${p.preco}">+ Adicionar</button>`;
+        : `<button class="btn-adicionar" data-id="${p.id}">+ Adicionar</button>`;
 
       return `
       <div class="produto-card" style="${esgotado ? 'opacity:0.6;' : ''}">
@@ -242,15 +246,312 @@ document.addEventListener('DOMContentLoaded', () => {
     `}).join('');
   }
 
-  // Delegar cliques de adição exatamente como antes para não quebrar
-  lista.addEventListener('click', (e) => {
+  // ── Modificadores e Modal Produto ────────────────────────────────
+  let produtoConfigurando = null;
+  let modificadoresCarregados = [];
+  const modalProd = document.getElementById('modalProduto');
+  const btnFecharProd = document.getElementById('btnFecharModalProduto');
+  const txtQtdProd = document.getElementById('txtQtdProd');
+  
+  if (btnFecharProd) btnFecharProd.onclick = () => { modalProd.hidden = true; };
+
+  function atualizarPrecoModalProd() {
+    if (!produtoConfigurando) return;
+    const base = Number(produtoConfigurando.preco) || 0;
+    let extras = 0;
+
+    // Radio buttons (seleção única)
+    document.querySelectorAll('.mod-radio:checked').forEach(el => {
+      const precoStr = (el.dataset.preco || '').replace(',', '.');
+      extras += parseFloat(precoStr) || 0;
+    });
+
+    // Checkboxes com quantidade (vários)
+    document.querySelectorAll('.mod-checkbox:checked').forEach(el => {
+      const precoStr = (el.dataset.preco || '').replace(',', '.');
+      const preco = parseFloat(precoStr) || 0;
+      const itemId = el.value;
+      const qtdEl = document.getElementById(`mod-qtd-${itemId}`);
+      const qtd = qtdEl ? (parseInt(qtdEl.textContent) || 1) : 1;
+      extras += preco * qtd;
+    });
+
+    const qtd = Number(txtQtdProd.textContent) || 1;
+    const total = (base + extras) * qtd;
+    document.getElementById('modalProdutoPrecoTotal').textContent = window.formatCurrency(total);
+  }
+
+  lista.addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-adicionar');
     if (!btn) return;
-    adicionarAoCarrinho({
-      id:    Number(btn.dataset.id),
-      nome:  btn.dataset.nome,
-      preco: Number(btn.dataset.preco),
-    });
+    
+    const pId = Number(btn.dataset.id);
+    const p = todosProdutos.find(x => x.id === pId);
+    if (!p) return;
+
+    produtoConfigurando = { ...p };
+    
+    document.getElementById('modalProdutoNome').textContent = p.nome;
+    document.getElementById('modalProdutoDesc').textContent = p.descricao || '';
+    txtQtdProd.textContent = '1';
+    
+    const imgEl = document.getElementById('modalProdutoImg');
+    const fallback = document.getElementById('modalProdutoImgFallback');
+    if (p.imagem_url) {
+        imgEl.src = p.imagem_url; imgEl.style.display = 'block';
+        if (fallback) fallback.style.display = 'none';
+    } else {
+        imgEl.style.display = 'none';
+        if (fallback) fallback.style.display = 'flex';
+    }
+
+    const containerMods = document.getElementById('modificadoresContainers');
+    containerMods.innerHTML = '<div style="text-align:center; padding:2rem; color:#888;">Carregando modificadores...</div>';
+    atualizarPrecoModalProd();
+    modalProd.hidden = false;
+
+     try {
+        const res = await fetch(`/api/modificadores/produto/${p.id}`);
+        modificadoresCarregados = await res.json();
+        
+        if (modificadoresCarregados.length === 0) {
+            containerMods.innerHTML = '';
+        } else {
+            containerMods.innerHTML = modificadoresCarregados.map(cat => {
+               if (cat.selecao_unica) {
+                 // ── MODO RADIO (apenas um) ──────────────────────────
+                 const itensHtml = cat.itens.map(item => `
+                   <label class="mod-option-label">
+                     <div style="display:flex; align-items:center;">
+                       <input type="radio" name="mod_${cat.id}" class="mod-radio"
+                         value="${item.id}" data-catid="${cat.id}"
+                         data-nome="${item.nome.replace(/"/g,'&quot;')}"
+                         data-preco="${item.preco}"
+                         style="margin-right:0.75rem; transform:scale(1.2); accent-color:var(--cor-primaria,#e63946);">
+                       <span style="color:#374151; font-weight:500;">${item.nome}</span>
+                     </div>
+                     <span style="color:#6b7280; font-size:0.9rem;">${item.preco > 0 ? '+ ' + window.formatCurrency(item.preco) : ''}</span>
+                   </label>
+                 `).join('');
+                 const desc = `Escolha 1 opção${cat.obrigatorio ? ' <strong style="color:var(--cor-primaria,#e63946)">(Obrigatório)</strong>' : ''}`;
+                 return `
+                   <div class="mod-group" data-catid="${cat.id}">
+                     <div class="mod-group-header">
+                       <h3 class="mod-group-title">${cat.nome} ${cat.obrigatorio ? '<span style="color:red">*</span>' : ''}</h3>
+                       <span class="mod-badge ${cat.obrigatorio ? 'mod-badge-required' : 'mod-badge-optional'}">${cat.obrigatorio ? 'Obrigatório' : 'Opcional'}</span>
+                     </div>
+                     <p class="mod-group-desc">${desc}</p>
+                     <div class="mod-items-list">${itensHtml}</div>
+                   </div>
+                 `;
+               } else {
+                 // ── MODO CHECKBOX (vários) ──────────────────────────
+                 const min = Number(cat.min_escolhas) || 0;
+                 const max = Number(cat.max_escolhas) || 99;
+                 const itensHtml = cat.itens.map(item => {
+                   const maxItem = Number(item.quantidade_maxima) || 1;
+                   return `
+                     <div class="mod-option-checkbox-row" data-item-id="${item.id}" data-catid="${cat.id}">
+                       <label class="mod-option-label" style="flex:1;">
+                         <div style="display:flex; align-items:center;">
+                           <input type="checkbox" class="mod-checkbox"
+                             value="${item.id}" data-catid="${cat.id}"
+                             data-nome="${item.nome.replace(/"/g,'&quot;')}"
+                             data-preco="${item.preco}"
+                             data-max-item="${maxItem}"
+                             style="margin-right:0.75rem; transform:scale(1.2); accent-color:var(--cor-primaria,#e63946);">
+                           <span style="color:#374151; font-weight:500;">${item.nome}</span>
+                         </div>
+                         <span style="color:#6b7280; font-size:0.9rem;">${item.preco > 0 ? '+ ' + window.formatCurrency(item.preco) : ''}</span>
+                       </label>
+                       ${maxItem > 1 ? `
+                       <div class="mod-qty-control" id="mod-qty-ctrl-${item.id}" style="display:none; align-items:center; gap:0.4rem; margin-left:0.5rem;">
+                         <button type="button" class="mod-qty-btn" onclick="window._modQty(${item.id}, -1, ${maxItem}, ${cat.id}, ${max})">−</button>
+                         <span id="mod-qtd-${item.id}" style="min-width:20px; text-align:center; font-weight:700; font-size:0.9rem;">1</span>
+                         <button type="button" class="mod-qty-btn" onclick="window._modQty(${item.id}, +1, ${maxItem}, ${cat.id}, ${max})">+</button>
+                       </div>` : `<span id="mod-qtd-${item.id}" style="display:none;">1</span>`}
+                     </div>
+                   `;
+                 }).join('');
+                 let desc = '';
+                 if (min > 0 && max > 1) desc = `Escolha de ${min} até ${max} opções <strong style="color:var(--cor-primaria,#e63946)">(mínimo: ${min})</strong>`;
+                 else if (min > 0) desc = `Escolha pelo menos ${min} opçõe${min>1?'s':''} <strong style="color:var(--cor-primaria,#e63946)">(Obrigatório)</strong>`;
+                 else if (max > 1) desc = `Escolha até ${max} opções`;
+                 return `
+                   <div class="mod-group" data-catid="${cat.id}" data-min="${min}" data-max="${max}">
+                     <div class="mod-group-header">
+                       <h3 class="mod-group-title">${cat.nome} ${cat.obrigatorio ? '<span style="color:red">*</span>' : ''}</h3>
+                       <span class="mod-badge ${cat.obrigatorio ? 'mod-badge-required' : 'mod-badge-optional'}">${cat.obrigatorio ? 'Obrigatório' : 'Opcional'}</span>
+                     </div>
+                     <p class="mod-group-desc">${desc}</p>
+                     <div id="mod-sel-count-${cat.id}" class="mod-sel-count" style="display:none"></div>
+                     <div class="mod-items-list">${itensHtml}</div>
+                   </div>
+                 `;
+               }
+            }).join('');
+
+            // ── Helpers de quantidade por item
+            window._modQty = function(itemId, delta, maxItem, catId, catMax) {
+              const qtdEl = document.getElementById(`mod-qtd-${itemId}`);
+              if (!qtdEl) return;
+              const current = parseInt(qtdEl.textContent) || 1;
+              // Calcular total selecionado no grupo
+              const totalGrupo = window._calcGrupoTotal(catId);
+              let next = current + delta;
+              if (next < 1) next = 1;
+              if (next > maxItem) next = maxItem;
+              if (delta > 0 && totalGrupo >= catMax) return; // bloquear se atingiu max do grupo
+              qtdEl.textContent = next;
+              window._updateGrupoCount(catId, catMax);
+              atualizarPrecoModalProd();
+            };
+
+            window._calcGrupoTotal = function(catId) {
+              let total = 0;
+              document.querySelectorAll(`.mod-checkbox[data-catid="${catId}"]:checked`).forEach(cb => {
+                const qtdEl = document.getElementById(`mod-qtd-${cb.value}`);
+                total += qtdEl ? (parseInt(qtdEl.textContent) || 1) : 1;
+              });
+              return total;
+            };
+
+            window._updateGrupoCount = function(catId, max) {
+              const total = window._calcGrupoTotal(catId);
+              const countEl = document.getElementById(`mod-sel-count-${catId}`);
+              if (countEl) {
+                if (total > 0) {
+                  countEl.style.display = '';
+                  countEl.textContent = `${total} de ${max} selecionado${total>1?'s':''}`;
+                  countEl.style.color = total >= max ? '#e63946' : '#6b7280';
+                } else {
+                  countEl.style.display = 'none';
+                }
+              }
+              // Bloquear checkboxes quando limite de grupo atingido
+              document.querySelectorAll(`.mod-checkbox[data-catid="${catId}"]`).forEach(cb => {
+                if (!cb.checked) cb.disabled = total >= max;
+              });
+            };
+
+            // ── Eventos de change nos checkboxes e radios
+            containerMods.querySelectorAll('.mod-checkbox').forEach(inp => {
+               inp.addEventListener('change', () => {
+                 const catId = Number(inp.dataset.catid);
+                 const cat = modificadoresCarregados.find(c => c.id === catId);
+                 const max = cat ? (Number(cat.max_escolhas) || 99) : 99;
+                 const itemId = inp.value;
+                 const qtyCtrl = document.getElementById(`mod-qty-ctrl-${itemId}`);
+                 // Mostrar/esconder controle de quantidade quando item tem max > 1
+                 if (qtyCtrl) qtyCtrl.style.display = inp.checked ? 'flex' : 'none';
+                 if (!inp.checked) {
+                   const qtdEl = document.getElementById(`mod-qtd-${itemId}`);
+                   if (qtdEl) qtdEl.textContent = '1';
+                 }
+                 window._updateGrupoCount(catId, max);
+                 atualizarPrecoModalProd();
+               });
+            });
+
+            containerMods.querySelectorAll('.mod-radio').forEach(inp => {
+               inp.addEventListener('change', () => atualizarPrecoModalProd());
+            });
+        }
+    } catch (err) {
+        containerMods.innerHTML = '<div style="color:red; text-align:center; padding:1rem;">Erro ao carregar extras.</div>';
+    }
+  });
+
+  document.getElementById('btnAddProd')?.addEventListener('click', () => {
+      let q = Number(txtQtdProd.textContent);
+      txtQtdProd.textContent = q + 1;
+      atualizarPrecoModalProd();
+  });
+  document.getElementById('btnSubProd')?.addEventListener('click', () => {
+      let q = Number(txtQtdProd.textContent);
+      if (q > 1) {
+          txtQtdProd.textContent = q - 1;
+          atualizarPrecoModalProd();
+      }
+  });
+
+  document.getElementById('btnConfirmarAddProduto')?.addEventListener('click', () => {
+      if (!produtoConfigurando) return;
+      
+      let modificadoresEscolhidos = [];
+      let validos = true;
+      let extraTotal = 0;
+
+      for (const cat of modificadoresCarregados) {
+          if (cat.selecao_unica) {
+            // ── Radio: verificar se algum está selecionado (se obrigatório)
+            const sel = document.querySelector(`input.mod-radio[data-catid="${cat.id}"]:checked`);
+            if (cat.obrigatorio && !sel) {
+                alert(`Por favor, selecione uma opção em "${cat.nome}".`);
+                validos = false; break;
+            }
+            if (sel) {
+                const preco = Number(sel.dataset.preco) || 0;
+                extraTotal += preco;
+                modificadoresEscolhidos.push({ id: Number(sel.value), nome: sel.dataset.nome, preco, categoria: cat.nome });
+            }
+          } else {
+            // ── Checkbox: verificar mínimo
+            const min = Number(cat.min_escolhas) || 0;
+            const max = Number(cat.max_escolhas) || 99;
+            const checkeds = Array.from(document.querySelectorAll(`.mod-checkbox[data-catid="${cat.id}"]:checked`));
+            const totalSelecionado = checkeds.reduce((s, cb) => {
+                const qtdEl = document.getElementById(`mod-qtd-${cb.value}`);
+                return s + (qtdEl ? parseInt(qtdEl.textContent) || 1 : 1);
+            }, 0);
+
+            if ((cat.obrigatorio || min > 0) && totalSelecionado < Math.max(min, cat.obrigatorio ? 1 : 0)) {
+                const needed = Math.max(min, 1);
+                alert(`"${cat.nome}" requer pelo menos ${needed} seleção${needed > 1 ? 'ões' : ''}.`);
+                validos = false; break;
+            }
+
+            checkeds.forEach(cb => {
+                const qtdEl = document.getElementById(`mod-qtd-${cb.value}`);
+                const qtd = qtdEl ? (parseInt(qtdEl.textContent) || 1) : 1;
+                const preco = Number(cb.dataset.preco) || 0;
+                extraTotal += preco * qtd;
+                // Adiciona uma entrada por unidade selecionada
+                for (let i = 0; i < qtd; i++) {
+                  modificadoresEscolhidos.push({ id: Number(cb.value), nome: cb.dataset.nome, preco, categoria: cat.nome });
+                }
+            });
+          }
+      }
+
+      if (!validos) return;
+
+      const qtd = Number(txtQtdProd.textContent) || 1;
+      
+      const strMods = modificadoresEscolhidos.map(m => m.id).sort().join(',');
+      const cartId = modificadoresEscolhidos.length > 0 ? `${produtoConfigurando.id}_${strMods}` : produtoConfigurando.id;
+      
+      const itemToCart = {
+          id: cartId,
+          realId: produtoConfigurando.id,
+          nome: produtoConfigurando.nome,
+          preco: Number(produtoConfigurando.preco) + extraTotal,
+          precoBase: Number(produtoConfigurando.preco),
+          modificadores: modificadoresEscolhidos,
+          quantidade: qtd
+      };
+
+      const existente = itens.find(i => i.id === itemToCart.id);
+      if (existente) {
+          existente.quantidade += itemToCart.quantidade;
+      } else {
+          itens.push(itemToCart);
+      }
+
+      salvarCarrinho();
+      atualizarBadge();
+      renderizarCarrinho();
+      modalProd.hidden = true;
   });
 
   // ── Finalizar pedido ─────────────────────────────────────────────

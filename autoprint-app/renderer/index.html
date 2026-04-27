@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoPrint Pitombo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- TELA 1: LOGIN / PAREAMENTO -->
+  <div id="screen-login" class="screen active">
+    <div class="brand">
+      <div class="brand-icon">🖨️</div>
+      <h1>AutoPrint Pitombo</h1>
+      <p class="brand-sub">Impressão automática para o seu sistema</p>
+    </div>
+    <div class="login-form">
+      <label for="server-url">Endereço do servidor</label>
+      <input type="text" id="server-url" placeholder="https://seudominio.com ou http://localhost:3000" spellcheck="false">
+      
+      <label for="pair-code">Código de pareamento</label>
+      <input type="text" id="pair-code" placeholder="Ex: QM3S75" maxlength="6" spellcheck="false" autocomplete="off" style="text-transform:uppercase; letter-spacing:0.3rem; text-align:center; font-size:1.3rem; font-weight:bold;">
+      
+      <button id="btn-pair" onclick="doPairing()">🔗 Parear com o servidor</button>
+      <div id="login-status" class="status-msg"></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: DASHBOARD -->
+  <div id="screen-dashboard" class="screen">
+    <div class="topbar">
+      <div>
+        <strong>AutoPrint Pitombo</strong>
+        <span id="conn-badge" class="badge offline">● Desconectado</span>
+      </div>
+      <button class="btn-sm danger" onclick="doLogout()">Sair</button>
+    </div>
+
+    <!-- Status -->
+    <div class="card">
+      <h3>📡 Conexão</h3>
+      <div id="server-display" class="info-row">—</div>
+      <div id="heartbeat-display" class="info-row">Último heartbeat: —</div>
+    </div>
+
+    <!-- Impressoras locais -->
+    <div class="card">
+      <div class="card-header">
+        <h3>🖨️ Impressoras Locais</h3>
+        <button class="btn-sm" onclick="refreshPrinters()">🔄 Atualizar</button>
+      </div>
+      <div id="printers-list" class="printers-list">
+        <div class="empty">Clique "Atualizar" para detectar impressoras do Windows</div>
+      </div>
+    </div>
+
+    <!-- Setores vinculados -->
+    <div class="card">
+      <div class="card-header">
+        <h3>🗂️ Setores</h3>
+      </div>
+      <div id="setores-config" class="setores-config">
+        <div class="empty">Conecte-se ao servidor para ver os setores</div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="card">
+      <h3>📋 Log de Impressão</h3>
+      <div id="print-log" class="print-log">
+        <div class="empty">Nenhuma impressão registada ainda</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

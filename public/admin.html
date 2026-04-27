@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/css/admin-produtos.css">
   <link rel="stylesheet" href="/css/admin-clientes.css">
   <link rel="stylesheet" href="/css/admin-cozinhas.css">
+  <link rel="stylesheet" href="/css/admin-olaclick-actions.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -197,6 +198,44 @@
       margin: 1.5rem -2rem;
     }
   </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+  <style>
+    /* Delivery panel map widgets */
+    .dlv-map {
+      width: 100%;
+      height: 100%;
+      min-height: 360px;
+      border-radius: 10px;
+      border: 1px solid #e0e0e0;
+      background: #f4f4f4;
+      z-index: 0;
+    }
+    .dlv-map-mini { min-height: 180px; }
+    .dlv-mode-card { transition: border-color .12s, background .12s, transform .05s; }
+    .dlv-mode-card:hover { transform: translateY(-1px); }
+    .dlv-suggest {
+      position: absolute;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.08);
+      max-height: 220px; overflow-y: auto;
+      z-index: 50;
+      min-width: 220px;
+    }
+    .dlv-suggest-item {
+      padding: 0.55rem 0.8rem; cursor: pointer; font-size: 0.88rem;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .dlv-suggest-item:hover, .dlv-suggest-item.active { background: #eff6ff; }
+    .dlv-area-popup-actions { display:flex; gap:0.4rem; margin-top:0.4rem; }
+    .dlv-area-popup-actions button { font-size:0.78rem; padding:0.3rem 0.6rem; border-radius:4px; cursor:pointer; border:1px solid #ccc; background:#fff; }
+    .dlv-area-popup-actions button.danger { background:#fde0e0; border-color:#c00; color:#c00; }
+    .dlv-area-popup-actions button.primary { background:#1976d2; color:#fff; border-color:#1976d2; }
+  </style>
 </head>
 
 <body>
@@ -267,17 +306,18 @@
               <li><button class="menu-item" data-target="cfg-integracoes"
                   style="padding:0.6rem; border-radius:6px; color:#aaa; font-size:0.9rem; width:100%; text-align:left; border:none; background:transparent; cursor:pointer;">Integrações</button>
               </li>
+              <li><button class="menu-item" data-target="cfg-pedidos"
+                  style="padding:0.6rem; border-radius:6px; color:#aaa; font-size:0.9rem; width:100%; text-align:left; border:none; background:transparent; cursor:pointer;">🛵 Config. de Pedidos</button>
+              </li>
             </ul>
           </li>
-          <li><button class="menu-item" data-target="zonas"
-              style="padding:0.8rem 1rem; border-radius:6px; color:#aaa; font-size:0.95rem; width:100%; text-align:left; border:none; background:transparent; cursor:pointer;"><span
-                style="margin-right:0.6rem; font-size:1.2rem;">📍</span> Zonas de Entrega</button></li>
+
           <li><button class="menu-item" data-target="cfg-clientes"
               style="padding:0.8rem 1rem; border-radius:6px; color:#aaa; font-size:0.95rem; width:100%; text-align:left; border:none; background:transparent; cursor:pointer;"><span
                 style="margin-right:0.6rem; font-size:1.2rem;">👥</span> Clientes</button></li>
           <li><button class="menu-item" data-target="cfg-cozinhas"
               style="padding:0.8rem 1rem; border-radius:6px; color:#aaa; font-size:0.95rem; width:100%; text-align:left; border:none; background:transparent; cursor:pointer;"><span
-                style="margin-right:0.6rem; font-size:1.2rem;">👨‍🍳</span> Cozinhas</button></li>
+                style="margin-right:0.6rem; font-size:1.2rem;">🏢</span> Gestão de Cozinhas</button></li>
           <li><button class="menu-item" data-target="chatbot-whatsapp" id="menuChatbotWhatsapp"
               style="padding:0.8rem 1rem; border-radius:6px; color:#aaa; font-size:0.95rem; width:100%; text-align:left; border:none; background:transparent; cursor:pointer; display:flex; align-items:center; gap:0.6rem;">
               <span style="font-size:1.2rem;">💬</span> Chatbot do WhatsApp
@@ -1002,74 +1042,7 @@
           </div>
         </section>
 
-        <!-- TAB ZONAS DE ENTREGA -->
-        <section id="zonas" class="tab-content">
-<div class="section-header"
-            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-            <h2>Zonas de Entrega</h2>
-            <button id="btnNovaZona" class="btn"
-              style="background:#e8420a; color:#fff; border:none; padding:0.7rem 1.4rem; border-radius:8px; font-weight:900; cursor:pointer; font-size:1rem;">+
-              Nova Zona</button>
-          </div>
 
-          <!-- Formulário de criação/edição (inicialmente oculto) -->
-          <div id="zonaFormBox"
-            style="display:none; background:#fff; border:1px solid #ddd; border-radius:10px; padding:1.5rem; margin-bottom:2rem; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
-            <h3 id="zonaFormTitle" style="margin-bottom:1rem; color:#333;">Nova Zona</h3>
-            <form id="formZona" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-              <input type="hidden" id="zonaId">
-              <div>
-                <label style="font-weight:700; display:block; margin-bottom:0.3rem;">Nome da Zona *</label>
-                <input type="text" id="zonaInputNome" placeholder="Ex: Centro, Zona Norte" required
-                  style="width:100%; padding:0.7rem; border-radius:6px; border:1px solid #ccc;">
-              </div>
-              <div>
-                <label style="font-weight:700; display:block; margin-bottom:0.3rem;">Taxa de Entrega (<span class="currency-symbol">R$</span>) *</label>
-                <input type="number" id="zonaInputTaxa" placeholder="Ex: 5.00" step="0.01" min="0" required
-                  style="width:100%; padding:0.7rem; border-radius:6px; border:1px solid #ccc;">
-              </div>
-              <div style="grid-column:span 2;">
-                <label style="font-weight:700; display:block; margin-bottom:0.3rem;">Bairros / Descrição</label>
-                <input type="text" id="zonaInputDesc" placeholder="Ex: Bairros: Boa Viagem, Piedade, Imbiribeira"
-                  style="width:100%; padding:0.7rem; border-radius:6px; border:1px solid #ccc;">
-              </div>
-              <div style="display:flex; align-items:center; gap:0.5rem; grid-column:span 2;">
-                <input type="checkbox" id="zonaInputAtivo" checked style="width:18px; height:18px;">
-                <label for="zonaInputAtivo" style="font-weight:600;">Zona Ativa (disponível no checkout)</label>
-              </div>
-              <div style="grid-column:span 2; display:flex; gap:1rem;">
-                <button type="submit"
-                  style="background:#4caf50; color:#fff; border:none; padding:0.8rem 1.8rem; border-radius:8px; font-weight:900; cursor:pointer; font-size:1rem;">💾
-                  Salvar Zona</button>
-                <button type="button" id="btnCancelarZona"
-                  style="background:#eee; color:#333; border:none; padding:0.8rem 1.4rem; border-radius:8px; font-weight:700; cursor:pointer;">Cancelar</button>
-              </div>
-            </form>
-            <div id="zonaStatusMsg" style="margin-top:0.8rem; font-weight:bold;"></div>
-          </div>
-
-          <!-- Listagem de zonas -->
-          <div style="background:#fff; border-radius:10px; border:1px solid #eee; overflow:hidden;">
-            <table class="data-table" style="margin-bottom:0;">
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Bairros / Descrição</th>
-                  <th>Taxa</th>
-                  <th>Status</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody id="listaZonas">
-                <tr>
-                  <td colspan="5" class="loading">Carregando zonas...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- TAB CONFIGURACOES DA LOJA (INFO DO NEGÓCIO) -->
         <!-- TAB CONFIGURACOES DA LOJA (INFO DO NEGÓCIO) -->
         <section id="cfg-negocio" class="tab-content" style="padding-bottom:5rem;">
           <div class="section-header">
@@ -1560,8 +1533,19 @@
         <!-- NEW TABS PLACEHOLDERS -->
         <section id="cfg-pedidos" class="tab-content" style="padding-bottom:5rem;">
           <div class="section-header">
-            <h2>Configurações de pedidos</h2>
+            <h2>Configurações de Pedidos</h2>
           </div>
+
+          <!-- Sub-abas internas -->
+          <div id="cfgPedidosTabsBar" style="display:flex; gap:0.5rem; margin-bottom:1.5rem; border-bottom:2px solid #eee; padding-bottom:0;">
+            <button class="cfg-ped-tab active" data-tab="geral" onclick="switchCfgPedidosTab('geral', this)"
+              style="padding:0.6rem 1.4rem; border:none; border-bottom:3px solid #e8420a; background:transparent; font-weight:700; color:#e8420a; cursor:pointer; font-size:0.95rem; border-radius:6px 6px 0 0;">⚙️ Geral</button>
+            <button class="cfg-ped-tab" data-tab="delivery" onclick="switchCfgPedidosTab('delivery', this)"
+              style="padding:0.6rem 1.4rem; border:none; border-bottom:3px solid transparent; background:transparent; font-weight:700; color:#888; cursor:pointer; font-size:0.95rem; border-radius:6px 6px 0 0;">🛵 Entrega &amp; Cobertura</button>
+          </div>
+
+          <!-- Painel Geral -->
+          <div id="cfgPedidosPanel-geral">
           <div
             style="background:#f9f9f9; border-radius:12px; padding:2rem; max-width:800px; margin:0 auto; box-shadow:0 4px 15px rgba(0,0,0,0.05); border:1px solid #eee;">
             <form class="form-config" id="formCfgPedidos" style="display:flex; flex-direction:column; gap:1.5rem;">
@@ -1629,46 +1613,18 @@
 
                 <p style="font-size:0.9rem; color:#333; font-weight:600; margin-bottom:0.3rem;">Configurar preços e
                   cobertura de envio</p>
-                <p
-                  style="font-size:0.9rem; color:#666; margin-bottom:1rem; display:flex; align-items:center; gap:0.4rem;">
-                  📍 Faixas personalizadas</p>
+                <p style="font-size:0.9rem; color:#666; margin-bottom:1rem; display:flex; align-items:center; gap:0.4rem;">
+                  📍 <span id="cfgDeliveryModeLabel">Faixas personalizadas</span></p>
                 <p style="margin-bottom:1.5rem;"><a href="#"
-                    onclick="document.querySelector('[data-target=\'zonas\']').click(); return false;"
+                    onclick="switchCfgPedidosTab('delivery', document.querySelector('[data-tab=\'delivery\']')); return false;"
                     style="color:#1976d2; font-weight:600; font-size:0.95rem; text-decoration:none;">✏️ Editar
-                    configurações de entrega (Zonas)</a></p>
+                    configurações de entrega</a></p>
 
                 <details
                   style="background:#f8f9fa; border:1px solid #eee; border-radius:8px; padding:1rem; margin-bottom:1.5rem;">
-                  <summary style="font-weight:700; color:#444; cursor:pointer;">⚙️ Detalhes de Taxas e Agendamento
+                  <summary style="font-weight:700; color:#444; cursor:pointer;">⏰ Agendamento de pedidos
                   </summary>
                   <div style="margin-top:1rem; border-top:1px solid #ddd; padding-top:1rem;">
-                    <label style="font-weight:700; display:block; margin-bottom:0.4rem;">Modo de Cálculo da
-                      Entrega</label>
-                    <select id="cfgModoEntrega" name="delivery_mode"
-                      style="width:100%; padding:0.8rem; border-radius:6px; border:1px solid #ccc; margin-bottom:1rem;">
-                      <option value="zona">Por Zona / Faixa (padrão)</option>
-                      <option value="km">Por KM</option>
-                      <option value="gratis">Entrega Grátis</option>
-                      <option value="fixo">Taxa Fixa</option>
-                    </select>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
-                      <div><label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:0.3rem;">Valor
-                          Base (<span class="currency-symbol">R$</span>)</label><input type="number" id="cfgDeliveryBase" name="delivery_base" step="0.01"
-                          style="width:100%; padding:0.7rem; border-radius:6px; border:1px solid #ccc;"></div>
-                      <div><label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:0.3rem;">Valor
-                          por KM (<span class="currency-symbol">R$</span>)</label><input type="number" id="cfgDeliveryPerKm" name="delivery_per_km"
-                          step="0.01" style="width:100%; padding:0.7rem; border-radius:6px; border:1px solid #ccc;">
-                      </div>
-                      <div><label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:0.3rem;">Taxa
-                          Fixa (<span class="currency-symbol">R$</span>)</label><input type="number" id="cfgDeliveryFixed" name="delivery_fixed" step="0.01"
-                          style="width:100%; padding:0.7rem; border-radius:6px; border:1px solid #ccc;"></div>
-                      <div><label
-                          style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:0.3rem;">Franquia
-                          Grátis (km)</label><input type="number" id="cfgDeliveryFreeKm" name="delivery_free_km"
-                          step="0.1" style="width:100%; padding:0.7rem; border-radius:6px; border:1px solid #ccc;">
-                      </div>
-                    </div>
-
                     <div
                       style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1rem; padding:0.8rem; background:#fff; border-radius:6px; border:1px solid #ccc;">
                       <input type="checkbox" id="cfgSchedulingEnabled" name="scheduling_enabled"
@@ -1678,11 +1634,11 @@
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
                       <div><label
                           style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:0.3rem;">Antecedência
-                          Mínima</label><input type="number" id="cfgSchedulingMinAdvance" name="scheduling_min_advance"
+                          Mínima (min)</label><input type="number" id="cfgSchedulingMinAdvance" name="scheduling_min_advance"
                           style="width:100%; padding:0.7rem; border-radius:6px; border:1px solid #ccc;"></div>
                       <div><label
                           style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:0.3rem;">Entrar na
-                          Fila</label><input type="number" id="cfgSchedulingQueueBefore" name="scheduling_queue_before"
+                          Fila (min antes)</label><input type="number" id="cfgSchedulingQueueBefore" name="scheduling_queue_before"
                           style="width:100%; padding:0.7rem; border-radius:6px; border:1px solid #ccc;"></div>
                     </div>
                   </div>
@@ -1801,49 +1757,16 @@
                   placeholder="Ex: Olá! Recebemos seu pedido e já estamos preparando com todo carinho!"></textarea>
               </div>
 
-              <!-- Card 6: Checkout Customizado -->
-              <div style="background:#fff; border:1px solid #e0e0e0; border-radius:12px; padding:1.5rem;">
-                <h3 style="margin-top:0; color:#333; font-size:1.15rem; display:flex; align-items:center; gap:0.5rem;">
-                  <span style="font-size:1.3rem;">📝</span> Campos do Checkout</h3>
-                <p style="font-size:0.9rem; color:#666; margin-bottom:1.2rem;">Escolha quais informações solicitar ao cliente no final da compra.</p>
-                
-                <div style="display:flex; flex-direction:column; gap:1rem;">
-                  <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer;">
-                    <input type="checkbox" name="checkout_cpf_required" style="width:18px; height:18px;">
-                    <span style="font-weight:600;">Exigir CPF do cliente</span>
-                  </label>
-                  <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer;">
-                    <input type="checkbox" name="checkout_email_required" style="width:18px; height:18px;">
-                    <span style="font-weight:600;">Exigir E-mail</span>
-                  </label>
-                  <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer;">
-                    <input type="checkbox" name="checkout_obs_required" style="width:18px; height:18px;">
-                    <span style="font-weight:600;">Obrigar campo de observação</span>
-                  </label>
-                </div>
-              </div>
-
 
               <!-- Card: Gorjetas -->
               <div style="background:#fff; border:1px solid #e0e0e0; border-radius:12px; padding:1.5rem;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">
                   <h3 style="margin:0; font-size:1.15rem; color:#333; display:flex; align-items:center; gap:0.5rem;">
-                    <span style="font-size:1.3rem;">%</span> Gorjetas</h3>
+                    <span style="font-size:1.3rem;">%</span> Gorjetas <span style="font-size:0.75rem; background:#fff3cd; color:#856404; padding:2px 8px; border-radius:4px; font-weight:700; margin-left:4px;">(apenas PDV)</span></h3>
                   <label style="display:inline-flex; align-items:center; cursor:pointer;"><input type="checkbox"
                       name="gorjeta_enabled" checked style="width:18px; height:18px;"></label>
                 </div>
-                <p style="font-size:0.9rem; color:#444; font-weight:700; margin-bottom:0.5rem;">Adicionar gorjetas
-                  apenas para um serviço específico</p>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:1rem;">
-                  <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.9rem; color:#888;"><input
-                      type="checkbox" disabled> Na mesa (PDV)</label>
-                  <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.9rem; cursor:pointer;"><input
-                      type="checkbox" checked> Delivery</label>
-                  <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.9rem; cursor:pointer;"><input
-                      type="checkbox" checked> Retirada</label>
-                  <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.9rem; cursor:pointer;"><input
-                      type="checkbox" checked> No local</label>
-                </div>
+                <p style="font-size:0.9rem; color:#666; margin-bottom:0;">Habilita o campo de gorjeta no PDV (pagamento de pedidos pelo painel admin). Não aparece no checkout do cliente.</p>
                 <p style="font-size:0.9rem; color:#444; font-weight:700; margin-bottom:0.5rem;">Defina o valor das
                   gorjetas</p>
                 <div style="display:flex; gap:0.5rem; align-items:center;">
@@ -1865,6 +1788,161 @@
               </div>
             </form>
           </div>
+          </div><!-- /cfgPedidosPanel-geral -->
+
+          <!-- Painel Entrega & Cobertura (delivery_config + faixas/bairros/km/areas) -->
+          <div id="cfgPedidosPanel-delivery" style="display:none;">
+            <div style="max-width:1100px; margin:0 auto; display:grid; grid-template-columns:300px 1fr; gap:1.5rem;">
+
+              <!-- Coluna Esquerda: seletor de modo (cards) -->
+              <aside style="display:flex; flex-direction:column; gap:0.8rem;">
+                <h3 style="margin:0 0 0.3rem; font-size:1rem; color:#111;">Selecione o preço e a cobertura</h3>
+                <div id="dlvModeCards" style="display:flex; flex-direction:column; gap:0.6rem;">
+                  <!-- gerados via JS -->
+                </div>
+
+                <div style="background:#fff; border:1px solid #e0e0e0; border-radius:10px; padding:1rem; margin-top:1rem;">
+                  <h4 style="margin:0 0 0.5rem; font-size:0.95rem;">📍 Origem do cálculo de distância</h4>
+                  <p style="margin:0 0 0.6rem; color:#666; font-size:0.82rem;">Endereço base para calcular KM e faixas.</p>
+                  
+                  <input type="text" id="dlvStoreAddress" placeholder="Ex: Rua Direita 10, Albufeira"
+                    style="width:100%; padding:0.6rem; border:1px solid #ccc; border-radius:6px; font-size:0.9rem; margin-bottom:0.5rem;">
+                    
+                  <button type="button" id="dlvGeocodeStoreBtn" style="width:100%; padding:0.5rem; background:#eef; border:1px solid #ccd; border-radius:6px; cursor:pointer; font-size:0.85rem; font-weight:600; color:#333;">
+                    🔍 Buscar Coordenadas
+                  </button>
+                  
+                  <div style="display:flex; justify-content:space-between; margin-top:0.5rem; font-size:0.75rem; color:#888;">
+                    <span>Lat: <input type="text" id="dlvStoreLat" style="width:70px; border:none; background:transparent; color:#888; pointer-events:none;" readonly></span>
+                    <span>Lng: <input type="text" id="dlvStoreLng" style="width:70px; border:none; background:transparent; color:#888; pointer-events:none;" readonly></span>
+                  </div>
+                </div>
+
+                <div style="background:#fff; border:1px solid #e0e0e0; border-radius:10px; padding:1rem;">
+                  <label style="display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer;">
+                    <input type="checkbox" id="dlvAcceptOutside" style="width:18px; height:18px; margin-top:2px;">
+                    <span style="font-size:0.88rem;">
+                      <strong>Aceitar pedidos fora da cobertura</strong>
+                      <br><span style="color:#777;">Cobra a última faixa/preço base. Se desligado, o checkout bloqueia o pedido.</span>
+                    </span>
+                  </label>
+                </div>
+
+                <button type="button" id="dlvSaveConfigBtn" class="btn"
+                  style="background:#1976d2; color:#fff; border:none; padding:0.9rem; border-radius:8px; font-weight:800; cursor:pointer; font-size:1rem;">
+                  💾 Salvar configuração
+                </button>
+                <div id="dlvConfigMsg" style="font-size:0.85rem; font-weight:600;"></div>
+              </aside>
+
+              <!-- Coluna Direita: editor do modo selecionado -->
+              <section id="dlvEditor" style="background:#fff; border:1px solid #e0e0e0; border-radius:12px; padding:1.5rem; min-height:300px;">
+                <div id="dlvEditorBody"><p style="color:#777;">Selecione um modo de entrega à esquerda.</p></div>
+              </section>
+            </div>
+
+            <!-- Templates dos editores (clonados via JS) -->
+            <template id="tplDlvFixo">
+              <h3 style="margin:0 0 0.5rem;">💰 Preço fixo</h3>
+              <p style="color:#666; margin:0 0 1rem;">O mesmo preço de envio se aplica a todos os pedidos.</p>
+              <label style="font-weight:700; font-size:0.9rem; display:block; margin-bottom:0.3rem;">Preço (<span class="currency-symbol">€</span>)</label>
+              <input type="number" step="0.01" min="0" id="dlvPrecoFixo"
+                style="width:240px; padding:0.7rem; border:1px solid #ccc; border-radius:6px;">
+            </template>
+
+            <template id="tplDlvSemPreco">
+              <h3 style="margin:0 0 0.5rem;">🆓 Sem preço (frete grátis)</h3>
+              <p style="color:#666;">Ofereça frete grátis aos seus clientes. Nenhuma taxa será cobrada.</p>
+            </template>
+
+            <template id="tplDlvKm">
+              <h3 style="margin:0 0 0.5rem;">📐 Distância percorrida</h3>
+              <p style="color:#666; margin:0 0 1rem;">O cliente paga conforme a distância calculada.</p>
+              <p style="background:#eef; padding:0.7rem 1rem; border-radius:8px; font-size:0.85rem; color:#1976d2;">
+                Total = preço base + (km × preço por KM). Acima da distância máxima, o pedido é bloqueado.
+              </p>
+              <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-top:1rem;">
+                <div>
+                  <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:0.3rem;">Preço base (<span class="currency-symbol">€</span>)</label>
+                  <input type="number" step="0.01" min="0" id="dlvKmBase" style="width:100%; padding:0.6rem; border:1px solid #ccc; border-radius:6px;">
+                </div>
+                <div>
+                  <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:0.3rem;">Preço por KM (<span class="currency-symbol">€</span>)</label>
+                  <input type="number" step="0.01" min="0" id="dlvKmPorKm" style="width:100%; padding:0.6rem; border:1px solid #ccc; border-radius:6px;">
+                </div>
+                <div>
+                  <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:0.3rem;">Distância máxima (KM)</label>
+                  <input type="number" step="0.01" min="0" id="dlvKmMax" style="width:100%; padding:0.6rem; border:1px solid #ccc; border-radius:6px;">
+                </div>
+              </div>
+            </template>
+
+            <template id="tplDlvFaixas">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
+                <div>
+                  <h3 style="margin:0 0 0.3rem;">📍 Faixas personalizadas</h3>
+                  <p style="color:#666; margin:0;">Calcula o preço com base na distância da sua empresa. Cada faixa vira um anel colorido no mapa.</p>
+                </div>
+                <button type="button" id="dlvFaixaAddBtn"
+                  style="background:#1976d2; color:#fff; border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:700; cursor:pointer;">
+                  + Adicionar faixa
+                </button>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 380px; gap:1rem; margin-top:1rem; min-height:420px;">
+                <div id="dlvFaixasMap" class="dlv-map" style="min-height:420px;"></div>
+                <div id="dlvFaixasList" style="display:flex; flex-direction:column; gap:0.5rem; max-height:420px; overflow-y:auto;">
+                  <p style="color:#999; text-align:center; padding:1rem;">Carregando…</p>
+                </div>
+              </div>
+            </template>
+
+            <template id="tplDlvBairros">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
+                <div>
+                  <h3 style="margin:0 0 0.3rem;">🏘️ Localidade de destino</h3>
+                  <p style="color:#666; margin:0;">O preço varia conforme a localidade informada pelo cliente. Comparação por nome.</p>
+                </div>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 160px 80px; gap:0.5rem; align-items:center; margin-top:1rem;">
+                <input type="text" id="dlvBairroNome" placeholder="Nome da localidade / bairro"
+                  style="padding:0.7rem; border:1px solid #ccc; border-radius:6px;">
+                <input type="number" step="0.01" min="0" id="dlvBairroPreco" placeholder="Preço"
+                  style="padding:0.7rem; border:1px solid #ccc; border-radius:6px;">
+                <button type="button" id="dlvBairroAddBtn"
+                  style="padding:0.7rem; background:#1976d2; color:#fff; border:none; border-radius:6px; font-weight:700; cursor:pointer;">+</button>
+              </div>
+              <div id="dlvBairrosList" style="margin-top:1rem; display:flex; flex-direction:column; gap:0.4rem;">
+                <p style="color:#999;">Carregando…</p>
+              </div>
+            </template>
+
+            <template id="tplDlvAreas">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
+                <div>
+                  <h3 style="margin:0 0 0.3rem;">🗺️ Áreas personalizadas</h3>
+                  <p style="color:#666; margin:0;">Desenhe polígonos no mapa para definir áreas com preço próprio. Use o ícone <strong>⬠</strong> no canto superior direito do mapa.</p>
+                </div>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 380px; gap:1rem; margin-top:1rem; min-height:480px;">
+                <div id="dlvAreasMap" class="dlv-map" style="min-height:480px;"></div>
+                <div style="display:flex; flex-direction:column; gap:0.6rem; max-height:480px; overflow-y:auto;">
+                  <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:0.8rem; font-size:0.85rem; color:#475569;">
+                    <strong>Como usar:</strong>
+                    <ol style="margin:0.4rem 0 0 1rem; padding:0;">
+                      <li>Clique no ícone <strong>⬠</strong> do mapa.</li>
+                      <li>Clique em pontos para criar o polígono.</li>
+                      <li>Duplo-clique no último vértice para fechar.</li>
+                      <li>Informe nome e preço — pronto.</li>
+                    </ol>
+                  </div>
+                  <div id="dlvAreasList" style="display:flex; flex-direction:column; gap:0.4rem;">
+                    <p style="color:#999;">Carregando…</p>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div><!-- /cfgPedidosPanel-delivery -->
+
         </section>
 
         <!-- Outras tabs placeholders -->
@@ -2054,17 +2132,9 @@
             </form>
           </div>
         </section>
-        <section id="cfg-equipe" class="tab-content">
-          <div class="section-header">
-            <h2>Equipe e Funções</h2>
-          </div>
-          <div
-            style="padding:2rem; background:#fff; border-radius:12px; border:1px solid #eee; text-align:center; color:#777;">
-            Em breve: Controle de acesso (Gerente, Caixa, Cozinheiro, Entregador).</div>
-        </section>
-        
-        
+
     <!-- INÍCIO ABA IMPRESSORAS TÉRMICAS REFATORADA -->
+
     <section id="cfg-impressoras" class="tab-content">
       <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
         <h2>🖨️ Impressoras e Tickets</h2>
@@ -2078,6 +2148,35 @@
       <p style="color:#666; font-size:0.9rem; margin-bottom:1.5rem;">
         Gerencie impressoras térmicas ESC/POS conectadas na sua rede local IP (ex: 192.168.x.x) ou fixadas na USB pelo Windows Spooler.
       </p>
+
+      <!-- BLOCO AutoPrint Desktop (devices + pareamento) -->
+      <div id="autoprint-block" style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1.25rem; margin-bottom:1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+          <div>
+            <h3 style="margin:0 0 4px 0;">🖥️ AutoPrint Desktop</h3>
+            <p style="margin:0; color:#666; font-size:0.85rem;">App Windows que executa impressão automática a partir do servidor. Parear → vincular setores → imprimir.</p>
+          </div>
+          <div style="display:flex; gap:0.5rem;">
+            <a href="/download-print-app" class="btn" style="background:#111; color:#fff; text-decoration:none; padding:10px 16px; border-radius:8px; font-weight:bold;">⬇️ Baixar AutoPrint</a>
+            <button type="button" onclick="gerarCodigoPareamento()" style="background:#16a34a; color:#fff; border:none; padding:10px 16px; border-radius:8px; font-weight:bold; cursor:pointer;">🔗 Gerar código de pareamento</button>
+          </div>
+        </div>
+        <div id="pair-code-display" style="display:none; margin-top:1rem; padding:1rem; background:#f0fdf4; border:1px dashed #16a34a; border-radius:8px; text-align:center;">
+          <div style="font-size:0.85rem; color:#166534;">Digite este código no app desktop (válido por 10 min):</div>
+          <div id="pair-code-value" style="font-size:2rem; font-weight:bold; letter-spacing:0.4rem; color:#111;">------</div>
+        </div>
+        <div id="devices-list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:1rem; margin-top:1rem;"></div>
+      </div>
+
+      <!-- SETORES -->
+      <div id="setores-block" style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1.25rem; margin-bottom:1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="margin:0;">🗂️ Setores de Impressão</h3>
+          <button type="button" onclick="abrirModalNovoSetor()" style="background:#e3f2fd; color:#1565c0; border:none; padding:8px 14px; border-radius:8px; font-weight:bold; cursor:pointer;">+ Novo Setor</button>
+        </div>
+        <p style="color:#666; font-size:0.85rem; margin:0.4rem 0 1rem 0;">Destinos lógicos (Cliente, Cozinha, Bar, Expedição). Cada impressora pode atender 1 ou mais setores.</p>
+        <div id="setores-list" style="display:flex; gap:0.5rem; flex-wrap:wrap;"></div>
+      </div>
 
       <div id="grid-impressoras" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:1.5rem;">
          <div style="text-align:center; padding:3rem; color:#888; grid-column:1/-1;">Carregando frota de impressão...</div>
@@ -2882,7 +2981,8 @@
   <!-- ══ /MODAIS DO MENU DE PERFIL ══ -->
 
   <script src="/js/currency.js"></script>
-  <script src="/js/admin-zonas.js"></script>
+  <script src="/js/map-helpers.js"></script>
+  <script src="/js/admin-delivery.js"></script>
   <script src="/js/admin.js"></script>
   <script src="/js/admin-impressoras.js"></script>
   <script src="/js/admin-clientes.js"></script>

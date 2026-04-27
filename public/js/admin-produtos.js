@@ -1079,21 +1079,23 @@ const ProdutosManager = {
         }
 
         container.innerHTML = this.selectedModificadores.map((mod, index) => {
-            // Resolver nome
+            // Resolver nome e valores globais da categoria como fallback
             let name = mod.nome || mod.modificador_nome || mod.name;
-            if (!name && typeof ModificadoresManager !== 'undefined') {
-                const g = ModificadoresManager.categorias.find(c => c.id === (mod.modificador_id || mod.id));
-                if (g) name = g.nome;
+            let globalCat = null;
+            if (typeof ModificadoresManager !== 'undefined') {
+                globalCat = ModificadoresManager.categorias.find(c => c.id === (mod.modificador_id || mod.id));
+                if (!name && globalCat) name = globalCat.nome;
             }
             name = name || `Grupo ${mod.modificador_id || mod.id}`;
 
-            const isReq = mod.obrigatorio_override;
-            const isSingle = mod.selecao_unica_override;
-            const min = mod.min_escolhas_override || 0;
-            const max = mod.max_escolhas_override || 1;
+            // Usar override quando definido; cair para o valor global da categoria como fallback
+            const isReq   = (mod.obrigatorio_override  != null) ? mod.obrigatorio_override   : (globalCat ? globalCat.obrigatorio   : false);
+            const isSingle = (mod.selecao_unica_override != null) ? mod.selecao_unica_override : (globalCat ? globalCat.selecao_unica : false);
+            const min      = (mod.min_escolhas_override  != null) ? mod.min_escolhas_override  : (globalCat ? (globalCat.min_escolhas || 0) : 0);
+            const max      = (mod.max_escolhas_override  != null) ? mod.max_escolhas_override  : (globalCat ? (globalCat.max_escolhas || 1) : 1);
 
             return `
-                <div class="oc-mod-item">
+                <div class="oc-mod-item" draggable="true" data-mod-index="${index}">
                     <span class="oc-mod-drag" title="Reordenar"><i class="fas fa-grip-vertical"></i></span>
                     <div class="oc-mod-name">
                         <div style="font-weight:700; color:#1f2937;">${name}</div>
@@ -1107,7 +1109,60 @@ const ProdutosManager = {
                 </div>
             `;
         }).join('');
+
+        // Ativar drag-and-drop depois de renderizar
+        this._setupModDrag(container);
     },
+
+    // ── Drag-and-drop nativo para reordenar modificadores ──────────────────────
+    _setupModDrag(container) {
+        let dragSrcIndex = null;
+
+        container.querySelectorAll('.oc-mod-item').forEach(el => {
+            // Iniciar drag — registra o índice de origem
+            el.addEventListener('dragstart', (e) => {
+                dragSrcIndex = parseInt(el.dataset.modIndex, 10);
+                el.classList.add('oc-mod-dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', dragSrcIndex);
+            });
+
+            el.addEventListener('dragend', () => {
+                el.classList.remove('oc-mod-dragging');
+                container.querySelectorAll('.oc-mod-item').forEach(r => r.classList.remove('oc-mod-drag-over'));
+            });
+
+            // Alvo de drop — highlight visual
+            el.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                container.querySelectorAll('.oc-mod-item').forEach(r => r.classList.remove('oc-mod-drag-over'));
+                el.classList.add('oc-mod-drag-over');
+            });
+
+            el.addEventListener('dragleave', () => {
+                el.classList.remove('oc-mod-drag-over');
+            });
+
+            // Soltar — reordenar array e atualizar UI
+            el.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const dropIndex = parseInt(el.dataset.modIndex, 10);
+                if (dragSrcIndex === null || dragSrcIndex === dropIndex) return;
+
+                // Mover item dentro do array
+                const moved = this.selectedModificadores.splice(dragSrcIndex, 1)[0];
+                this.selectedModificadores.splice(dropIndex, 0, moved);
+
+                // Atualizar ordem_override para refletir nova posição
+                this.selectedModificadores.forEach((m, i) => { m.ordem_override = i + 1; });
+
+                dragSrcIndex = null;
+                this.renderModificadores(); // Re-render com nova ordem
+            });
+        });
+    },
+
 
     // --- PERSISTENCIA ---
 

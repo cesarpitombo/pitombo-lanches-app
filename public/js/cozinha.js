@@ -221,6 +221,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (res.ok) {
+        const dados = await res.json().catch(()=>({}));
+        if (dados._status_blocked === 'same_status') return;
         carregarPedidos();
       }
     } catch (err) {

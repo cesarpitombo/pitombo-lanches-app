@@ -154,6 +154,9 @@ function validateWeeklyHours(weeklyHours) {
       ADD COLUMN IF NOT EXISTS req_delivery VARCHAR(30) DEFAULT 'manual',
       ADD COLUMN IF NOT EXISTS cfg_retirada BOOLEAN DEFAULT TRUE,
       ADD COLUMN IF NOT EXISTS cfg_local BOOLEAN DEFAULT TRUE,
+      ADD COLUMN IF NOT EXISTS store_lat NUMERIC(10, 6) DEFAULT 37.0891,
+      ADD COLUMN IF NOT EXISTS store_lng NUMERIC(10, 6) DEFAULT -8.2503,
+      ADD COLUMN IF NOT EXISTS delivery_request_mode VARCHAR(20) DEFAULT 'manual',
       ADD COLUMN IF NOT EXISTS qr_type VARCHAR(30) DEFAULT 'generic',
       ADD COLUMN IF NOT EXISTS table_service BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS gorjeta_enabled BOOLEAN DEFAULT TRUE,
@@ -200,7 +203,8 @@ function validateWeeklyHours(weeklyHours) {
       ADD COLUMN IF NOT EXISTS whatsapp_country_code VARCHAR(5),
       ADD COLUMN IF NOT EXISTS whatsapp_dial_code VARCHAR(10),
       ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(30)`);
-    console.log('\u2705 store_settings: colunas verificadas adequadamente.');
+    await query(`ALTER TABLE zonas_entrega ADD COLUMN IF NOT EXISTS max_km NUMERIC(10,2) DEFAULT NULL`);
+    console.log('\u2705 store_settings e zonas_entrega: colunas configuradas adequadamente.');
   } catch(e) {
     console.error('\u26a0\ufe0f Migration settings:', e.message);
   }
@@ -288,6 +292,7 @@ router.post('/', requireAuth, requireRole(ADMIN_MANAGER), upload.fields([
       'operating_hours', 'weekly_hours',
       'delivery_mode', 'delivery_base', 'delivery_per_km', 'delivery_fixed',
       'delivery_min', 'delivery_max', 'delivery_free_km',
+      'store_lat', 'store_lng', 'delivery_request_mode',
       'scheduling_min_advance', 'scheduling_queue_before',
       'order_receive_mode', 'contact_whatsapp_pedidos', 'auto_accept',
       'req_delivery', 'qr_type',

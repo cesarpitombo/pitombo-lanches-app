@@ -1,98 +1,271 @@
 /**
  * routes/chatbot.js
- * API para configuração do Chatbot WhatsApp + Webhook Meta Cloud API
+ * Chatbot WhatsApp — QR-code connection via Baileys (WhatsApp Web protocol)
+ * Replaces Meta Cloud API approach entirely.
  */
 
 const express = require('express');
-const router = express.Router();
+const router  = express.Router();
 const { query } = require('../db/connection');
 const { requireAuth, requireRole } = require('../middleware/auth');
-const { handleIncomingMessage } = require('../services/whatsappBot');
+const { getStatus, getQRDataUrl, getPairingCode, disconnect, getLastSendInfo, sendWhatsAppMessage, resetManualClose, initBaileys } = require('../services/whatsappBot');
 
 const ADMIN_MANAGER = ['Admin', 'Manager'];
 
-// ─── Auto-migrate: criar tabelas se não existirem ─────────────────────────────
+// ─── Textos padrão por chave ──────────────────────────────────────────────────
+const MSG_DEFAULTS = {
+  boas_vindas:               'Olá! Bem-vindo(a) ao {{loja}}! 😊 Como posso te ajudar hoje?',
+  ausencia:                  'Olá! Estamos fora do horário de atendimento no momento. Voltamos em breve!',
+  fazer_pedido:              'Para fazer seu pedido, acesse nosso cardápio digital pelo link abaixo. 📦',
+  promocoes:                 'Confira nossas promoções e ofertas especiais de hoje! 🎁',
+  solicitar_info:            'Olá! Nosso endereço, telefone e redes sociais estão disponíveis no link abaixo. 📍',
+  horarios:                  'Nosso horário de atendimento: Segunda a Sexta das 11h às 22h | Sábados e Domingos das 11h às 23h.',
+  carrinho_abandonado:       'Olá! 🛒 Você deixou itens no seu carrinho. Posso te ajudar a finalizar seu pedido?',
+  desconto_novos_clientes:   'Bem-vindo(a)! 🎉 É a sua primeira compra? Use o cupom BEMVINDO e ganhe desconto!',
+  solicitar_avaliacao:       'Muito obrigado pelo pedido! ⭐ Como foi sua experiência conosco? Sua avaliação é muito importante!',
+  programa_fidelidade:       'Você acumulou pontos em seus pedidos! 🏆 Acesse nosso app para ver suas recompensas.',
+  pedido_recebido:           '✅ Olá {{cliente}}! Recebemos seu pedido *#{{id}}* e ele está aguardando confirmação. Em breve retornaremos!',
+  pedido_aceito:             '👨‍🍳 Ótima notícia! Seu pedido *#{{id}}* foi aceito e já está sendo preparado com carinho!',
+  pedido_preparo:            '🍳 Seu pedido *#{{id}}* está sendo preparado agora! Em breve estará pronto.',
+  pedido_pronto:             '🔔 Seu pedido *#{{id}}* está pronto! {{tipo_msg}}',
+  pedido_pronto_retirada:    '✅ Seu pedido #{{id}} está pronto para retirada no balcão.',
+  pedido_a_caminho:          '🛵 Seu pedido *#{{id}}* saiu para entrega! Fique de olho, já vamos chegar! 📍',
+  pedido_chegou:             '📍 Seu pedido *#{{id}}* chegou ao local da entrega! Se puder, desça/venha receber agora. Obrigado, {{cliente}}! 😊',
+  pedido_entregue:           '🎉 Pedido *#{{id}}* entregue! Obrigado pela preferência, {{cliente}}! Volte sempre 😊',
+  pedido_finalizado:         '✅ Pedido *#{{id}}* finalizado com sucesso! Obrigado pela preferência!',
+  pedido_cancelado:          '❌ Infelizmente seu pedido *#{{id}}* foi cancelado. Entre em contato se tiver dúvidas.',
+  resumo_pedido:             '📋 Resumo do seu pedido *#{{id}}*:\n{{itens}}\nTotal: R$ {{total}}',
+  solicitar_confirmacao:     '❓ Olá {{cliente}}! Poderia confirmar os dados do seu pedido *#{{id}}*? Responda SIM para confirmar.',
+  notificar_entregador_auto: '🛵 Novo pedido *#{{id}}* atribuído a você! Cliente: {{cliente}} | Endereço: {{endereco}}. Boa entrega!',
+};
+
+// ─── Auto-migrate: chatbot settings table ─────────────────────────────────────
 (async () => {
   try {
-    // Tabela de configuração do chatbot
     await query(`
       CREATE TABLE IF NOT EXISTS chatbot_whatsapp_config (
         id                          SERIAL PRIMARY KEY,
         loja_id                     INTEGER DEFAULT 1,
         ativo                       BOOLEAN DEFAULT FALSE,
-        -- Respostas automáticas
         boas_vindas                 BOOLEAN DEFAULT TRUE,
         ausencia                    BOOLEAN DEFAULT TRUE,
         fazer_pedido                BOOLEAN DEFAULT TRUE,
         promocoes                   BOOLEAN DEFAULT FALSE,
         solicitar_info              BOOLEAN DEFAULT TRUE,
         horarios                    BOOLEAN DEFAULT TRUE,
-        -- Recuperação de vendas
         carrinho_abandonado         BOOLEAN DEFAULT FALSE,
         desconto_novos_clientes     BOOLEAN DEFAULT FALSE,
-        -- Avaliações
         solicitar_avaliacao         BOOLEAN DEFAULT FALSE,
-        -- Fidelidade
         programa_fidelidade         BOOLEAN DEFAULT FALSE,
-        -- Status do pedido
         pedido_recebido             BOOLEAN DEFAULT TRUE,
         pedido_aceito               BOOLEAN DEFAULT TRUE,
         pedido_preparo              BOOLEAN DEFAULT TRUE,
         pedido_pronto               BOOLEAN DEFAULT TRUE,
+        pedido_pronto_retirada      BOOLEAN DEFAULT TRUE,
         pedido_a_caminho            BOOLEAN DEFAULT TRUE,
+        pedido_chegou               BOOLEAN DEFAULT TRUE,
         pedido_entregue             BOOLEAN DEFAULT TRUE,
         pedido_finalizado           BOOLEAN DEFAULT TRUE,
         pedido_cancelado            BOOLEAN DEFAULT TRUE,
         resumo_pedido               BOOLEAN DEFAULT FALSE,
         solicitar_confirmacao       BOOLEAN DEFAULT FALSE,
-        -- Entregador
         notificar_entregador_auto   BOOLEAN DEFAULT FALSE,
         created_at                  TIMESTAMPTZ DEFAULT NOW(),
         updated_at                  TIMESTAMPTZ DEFAULT NOW()
       )
     `);
 
-    // Tabela de configuração da conexão WhatsApp (Meta Cloud API)
-    await query(`
-      CREATE TABLE IF NOT EXISTS whatsapp_config (
-        id                    SERIAL PRIMARY KEY,
-        phone_number_id       VARCHAR(100),
-        business_account_id   VARCHAR(100),
-        access_token          TEXT,
-        webhook_verify_token  VARCHAR(255) DEFAULT 'pitombo_webhook_2024',
-        created_at            TIMESTAMPTZ DEFAULT NOW(),
-        updated_at            TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
+    // Migration: garante que toggles novos (ex: pedido_chegou) sejam adicionados em
+    // instalações antigas que já tinham a tabela criada antes da coluna existir.
+    await query(`ALTER TABLE chatbot_whatsapp_config
+      ADD COLUMN IF NOT EXISTS pedido_chegou BOOLEAN DEFAULT TRUE,
+      ADD COLUMN IF NOT EXISTS pedido_pronto_retirada BOOLEAN DEFAULT TRUE`);
 
-    // Garantir que existe pelo menos 1 row padrão em cada tabela
-    const { rows: cbRows } = await query('SELECT id FROM chatbot_whatsapp_config LIMIT 1');
-    if (cbRows.length === 0) {
+    const { rows } = await query('SELECT id FROM chatbot_whatsapp_config LIMIT 1');
+    if (rows.length === 0) {
       await query('INSERT INTO chatbot_whatsapp_config (loja_id) VALUES (1)');
     }
 
-    const { rows: waRows } = await query('SELECT id FROM whatsapp_config LIMIT 1');
-    if (waRows.length === 0) {
-      await query('INSERT INTO whatsapp_config (webhook_verify_token) VALUES ($1)', ['pitombo_webhook_2024']);
+    // ── Tabela de textos editáveis por chave ──────────────────────────────────
+    await query(`
+      CREATE TABLE IF NOT EXISTS chatbot_mensagens (
+        chave      TEXT        PRIMARY KEY,
+        mensagem   TEXT        NOT NULL DEFAULT '',
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    // Seed: insere defaults apenas se a chave ainda não existir
+    for (const [chave, mensagem] of Object.entries(MSG_DEFAULTS)) {
+      await query(
+        `INSERT INTO chatbot_mensagens (chave, mensagem) VALUES ($1, $2) ON CONFLICT (chave) DO NOTHING`,
+        [chave, mensagem]
+      );
     }
 
-    console.log('✅ chatbot_whatsapp_config + whatsapp_config: tabelas verificadas.');
+    // ── Tabela de regras (origem,status) → enviar/skip ────────────────────────
+    await query(`
+      CREATE TABLE IF NOT EXISTS chatbot_whatsapp_rules (
+        origem  TEXT    NOT NULL,
+        status  TEXT    NOT NULL,
+        enviar  BOOLEAN NOT NULL DEFAULT TRUE,
+        PRIMARY KEY (origem, status)
+      )
+    `);
+    const RULE_SEED = [
+      ['cozinha',    'em_preparo', false],
+      ['cozinha',    'pronto',     false],
+      ['entregador', 'em_entrega', true],
+      ['entregador', 'chegou',     true],
+      ['entregador', 'entregue',   true],
+      ['admin',      'pronto',     true],
+      ['admin',      'em_entrega', true],
+      ['admin',      'chegou',     true],
+      ['admin',      'entregue',   true],
+      ['pdv',        'pronto',     true],
+      ['pdv',        'chegou',     true],
+      ['sistema',    'pronto',     true],
+      ['sistema',    'chegou',     true],
+    ];
+    for (const [origem, status, enviar] of RULE_SEED) {
+      await query(
+        `INSERT INTO chatbot_whatsapp_rules (origem, status, enviar) VALUES ($1, $2, $3) ON CONFLICT (origem, status) DO NOTHING`,
+        [origem, status, enviar]
+      );
+    }
+
+    console.log('✅ chatbot_whatsapp_config + chatbot_mensagens + chatbot_whatsapp_rules: tabelas verificadas.');
   } catch (e) {
-    console.error('⚠️ Migration chatbot/whatsapp:', e.message);
+    console.error('⚠️ Migration chatbot:', e.message);
   }
 })();
 
-// ─── GET /api/chatbot-whatsapp ─────────────────────────────────────────────────
-router.get('/', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
-  try {
-    const { rows: botRows } = await query('SELECT * FROM chatbot_whatsapp_config LIMIT 1');
-    const { rows: waRows }  = await query(
-      'SELECT id, phone_number_id, business_account_id, webhook_verify_token, (access_token IS NOT NULL AND access_token != \'\') AS has_token FROM whatsapp_config LIMIT 1'
-    );
+// ─── GET /api/chatbot-whatsapp/status ────────────────────────────────────────────────────
+// Returns WhatsApp connection status + last send audit trail.
+router.get('/status', requireAuth, requireRole(ADMIN_MANAGER), (req, res) => {
+  const st   = getStatus();
+  const info = getLastSendInfo();
+  res.json({ ...st, ...info });
+});
 
+// ─── POST /api/chatbot-whatsapp/connect ─────────────────────────────────────────
+// Inicia a conexão Baileys.
+// Body opcional: { phone: "5511999999999" } → ativa phone-number pairing em vez de QR.
+router.post('/connect', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
+  const { phone } = req.body || {};
+  const { status, isInitializing } = getStatus();
+  console.log(`[ChatbotAPI] POST /connect | phone=${phone || 'null'} | status=${status} | isInit=${isInitializing}`);
+  if (status === 'connected') {
+    return res.json({ ok: true, already: true });
+  }
+  // Phone pairing permite override: cancela QR em andamento e reinicia com número.
+  // Sem phone: respeita o guard para evitar sockets duplos.
+  if (isInitializing && !phone) {
+    return res.json({ ok: true, already: true, message: 'Conexão já em andamento.' });
+  }
+  resetManualClose();
+  initBaileys(phone || null).catch(err => console.error('[ChatbotAPI] initBaileys error:', err.message));
+  res.json({ ok: true, phoneMode: !!phone });
+});
+
+// ─── GET /api/chatbot-whatsapp/pairing-code ──────────────────────────────────
+// Retorna o código de 8 chars gerado por requestPairingCode() (phone-number pairing).
+// Retorna 202 enquanto o código ainda não está disponível.
+router.get('/pairing-code', requireAuth, requireRole(ADMIN_MANAGER), (_req, res) => {
+  const code = getPairingCode();
+  if (!code) return res.status(202).json({ message: 'Código ainda não disponível.' });
+  res.json({ code });
+});
+
+// ─── GET /api/chatbot-whatsapp/qr ────────────────────────────────────────────────────
+// Retorna o QR code atual como PNG data-url. NÃO inicia conexão — use POST /connect.
+router.get('/qr', requireAuth, requireRole(ADMIN_MANAGER), (req, res) => {
+  const { status } = getStatus();
+  if (status === 'connected') {
+    return res.status(200).json({ connected: true });
+  }
+  const qr = getQRDataUrl();
+  if (!qr) {
+    return res.status(202).json({ message: 'QR não disponível ainda.' });
+  }
+  res.json({ qr });
+});
+
+// ─── POST /api/chatbot-whatsapp/send-test ────────────────────────────────────────────────────
+// Envia mensagem de teste sem precisar criar pedido real.
+router.post('/send-test', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) return res.status(400).json({ error: 'phone é obrigatório' });
+  try {
+    const ok = await sendWhatsAppMessage(String(phone).replace(/\D/g,''), '🤖 Teste Pitombo Lanches! Chatbot operacional. ✅');
+    if (ok) res.json({ success: true });
+    else res.status(503).json({ error: `Não foi possível enviar. Status: ${getStatus().status}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/chatbot-whatsapp/disconnect ────────────────────────────────────────────────────
+router.post('/disconnect', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
+  try {
+    await disconnect();
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[ChatbotAPI] disconnect error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/chatbot-whatsapp/mensagens ─────────────────────────────────────
+// Retorna objeto { chave: mensagem } de todas as mensagens editáveis.
+router.get('/mensagens', requireAuth, requireRole(ADMIN_MANAGER), async (_req, res) => {
+  try {
+    const { rows } = await query('SELECT chave, mensagem FROM chatbot_mensagens ORDER BY chave');
+    const mensagens = {};
+    rows.forEach(r => { mensagens[r.chave] = r.mensagem; });
+    res.json(mensagens);
+  } catch (err) {
+    console.error('[ChatbotAPI] GET /mensagens:', err.message);
+    res.status(500).json({ error: 'Erro ao buscar mensagens' });
+  }
+});
+
+// ─── PUT /api/chatbot-whatsapp/mensagens ─────────────────────────────────────
+// Salva textos das mensagens. Body: { boas_vindas: '...', pedido_aceito: '...', ... }
+router.put('/mensagens', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
+  try {
+    const entries = Object.entries(req.body || {}).filter(([k]) => k in MSG_DEFAULTS);
+    if (!entries.length) return res.json({ success: true, updated: 0 });
+
+    for (const [chave, mensagem] of entries) {
+      await query(
+        `INSERT INTO chatbot_mensagens (chave, mensagem, updated_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (chave) DO UPDATE SET mensagem = EXCLUDED.mensagem, updated_at = NOW()`,
+        [chave, String(mensagem)]
+      );
+    }
+    res.json({ success: true, updated: entries.length });
+  } catch (err) {
+    console.error('[ChatbotAPI] PUT /mensagens:', err.message);
+    res.status(500).json({ error: 'Erro ao salvar mensagens' });
+  }
+});
+
+// ─── GET /api/chatbot-whatsapp ────────────────────────────────────────────────
+// Returns chatbot toggle config + WA status + mensagens (combined for UI load).
+router.get('/', requireAuth, requireRole(ADMIN_MANAGER), async (_req, res) => {
+  try {
+    const [cfgResult, msgResult] = await Promise.all([
+      query('SELECT * FROM chatbot_whatsapp_config LIMIT 1'),
+      query('SELECT chave, mensagem FROM chatbot_mensagens'),
+    ]);
+    const mensagens = {};
+    msgResult.rows.forEach(r => { mensagens[r.chave] = r.mensagem; });
     res.json({
-      chatbot: botRows[0] || {},
-      whatsapp: waRows[0] || {},   // access_token NUNCA é exposto no GET
+      chatbot:    cfgResult.rows[0] || {},
+      whatsapp:   getStatus(),
+      mensagens,
     });
   } catch (err) {
     console.error('[ChatbotAPI] GET:', err.message);
@@ -100,170 +273,35 @@ router.get('/', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
   }
 });
 
-// ─── PUT /api/chatbot-whatsapp ─────────────────────────────────────────────────
+// ─── PUT /api/chatbot-whatsapp ────────────────────────────────────────────────
+// Saves chatbot toggle settings.
 router.put('/', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
   try {
     const body = req.body;
-
     const boolFields = [
       'ativo', 'boas_vindas', 'ausencia', 'fazer_pedido', 'promocoes',
       'solicitar_info', 'horarios', 'carrinho_abandonado', 'desconto_novos_clientes',
       'solicitar_avaliacao', 'programa_fidelidade', 'pedido_recebido', 'pedido_aceito',
-      'pedido_preparo', 'pedido_pronto', 'pedido_a_caminho', 'pedido_entregue',
-      'pedido_finalizado', 'pedido_cancelado', 'resumo_pedido', 'solicitar_confirmacao',
-      'notificar_entregador_auto',
+      'pedido_preparo', 'pedido_pronto', 'pedido_pronto_retirada', 'pedido_a_caminho', 'pedido_chegou',
+      'pedido_entregue', 'pedido_finalizado', 'pedido_cancelado', 'resumo_pedido',
+      'solicitar_confirmacao', 'notificar_entregador_auto',
     ];
 
-    const setClauses = boolFields
-      .filter(f => f in body)
-      .map((f, i) => `${f} = $${i + 1}`)
-      .join(', ');
+    const fields = boolFields.filter(f => f in body);
+    if (fields.length === 0) return res.json({ success: true, message: 'Nenhum campo atualizado.' });
 
-    const values = boolFields
-      .filter(f => f in body)
-      .map(f => Boolean(body[f]));
+    const setClauses = fields.map((f, i) => `${f} = $${i + 1}`).join(', ');
+    const values     = fields.map(f => Boolean(body[f]));
+    values.push(new Date());
 
-    if (values.length > 0) {
-      values.push(new Date()); // updated_at
-      const { rows } = await query(
-        `UPDATE chatbot_whatsapp_config SET ${setClauses}, updated_at = $${values.length} WHERE id = (SELECT id FROM chatbot_whatsapp_config LIMIT 1) RETURNING *`,
-        values
-      );
-
-      // Atualizar config WhatsApp se enviado
-      if (body.whatsapp) {
-        const wa = body.whatsapp;
-        await query(
-          `UPDATE whatsapp_config SET
-            phone_number_id     = COALESCE(NULLIF($1, ''), phone_number_id),
-            business_account_id = COALESCE(NULLIF($2, ''), business_account_id),
-            access_token        = COALESCE(NULLIF($3, ''), access_token),
-            webhook_verify_token = COALESCE(NULLIF($4, ''), webhook_verify_token),
-            updated_at = NOW()
-          WHERE id = (SELECT id FROM whatsapp_config LIMIT 1)`,
-          [wa.phone_number_id || '', wa.business_account_id || '', wa.access_token || '', wa.webhook_verify_token || '']
-        );
-      }
-
-
-      return res.json({ success: true, chatbot: rows[0] });
-    }
-
-    // Se body.whatsapp apenas (sem flags de chatbot)
-    if (body.whatsapp) {
-      const wa = body.whatsapp;
-      // NULLIF: string vazia → NULL → COALESCE mantém valor existente
-      await query(
-        `UPDATE whatsapp_config SET
-          phone_number_id     = COALESCE(NULLIF($1, ''), phone_number_id),
-          business_account_id = COALESCE(NULLIF($2, ''), business_account_id),
-          access_token        = COALESCE(NULLIF($3, ''), access_token),
-          webhook_verify_token = COALESCE(NULLIF($4, ''), webhook_verify_token),
-          updated_at = NOW()
-        WHERE id = (SELECT id FROM whatsapp_config LIMIT 1)`,
-        [wa.phone_number_id || '', wa.business_account_id || '', wa.access_token || '', wa.webhook_verify_token || '']
-      );
-      console.log('[ChatbotAPI] WhatsApp config atualizada:', { phone: wa.phone_number_id, hasToken: !!wa.access_token });
-      return res.json({ success: true });
-    }
-
-    res.json({ success: true, message: 'Nenhuma field atualizada.' });
+    const { rows } = await query(
+      `UPDATE chatbot_whatsapp_config SET ${setClauses}, updated_at = $${values.length} WHERE id = (SELECT id FROM chatbot_whatsapp_config LIMIT 1) RETURNING *`,
+      values
+    );
+    res.json({ success: true, chatbot: rows[0] });
   } catch (err) {
     console.error('[ChatbotAPI] PUT:', err.message);
     res.status(500).json({ error: 'Erro ao salvar configurações do chatbot' });
-  }
-});
-
-// ─── POST /api/chatbot-whatsapp/test-send ─────────────────────────────────────
-router.post('/test-send', requireAuth, requireRole(ADMIN_MANAGER), async (req, res) => {
-  const { phone } = req.body;
-  if (!phone || phone.replace(/\D/g, '').length < 10) {
-    return res.status(400).json({ error: 'Número de telefone inválido.' });
-  }
-
-  try {
-    const { rows } = await query('SELECT phone_number_id, access_token FROM whatsapp_config LIMIT 1');
-    const cfg = rows[0];
-    if (!cfg || !cfg.phone_number_id || !cfg.access_token) {
-      return res.status(400).json({ error: 'Credenciais WhatsApp não configuradas. Salve o Phone Number ID e o Access Token primeiro.' });
-    }
-
-    const url = `https://graph.facebook.com/v18.0/${cfg.phone_number_id}/messages`;
-    const payload = {
-      messaging_product: 'whatsapp',
-      to: phone.replace(/\D/g, ''),
-      type: 'text',
-      text: { body: '🤖 Mensagem de teste do Pitombo Lanches! Chatbot configurado com sucesso. ✅' },
-    };
-
-    const fetchRes = await fetch(url, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${cfg.access_token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await fetchRes.json();
-
-    if (!fetchRes.ok) {
-      console.error('[ChatbotAPI] test-send Meta error:', data);
-      const metaError = data?.error?.message || JSON.stringify(data);
-      return res.status(400).json({ error: `Meta API: ${metaError}` });
-    }
-
-    console.log('[ChatbotAPI] ✅ Mensagem de teste enviada para', phone);
-    res.json({ success: true, messageId: data.messages?.[0]?.id });
-  } catch (err) {
-    console.error('[ChatbotAPI] test-send error:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── GET /api/chatbot-whatsapp/webhook (verificação Meta) ─────────────────────
-router.get('/webhook', async (req, res) => {
-  const mode      = req.query['hub.mode'];
-  const token     = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
-
-  try {
-    const { rows } = await query('SELECT webhook_verify_token FROM whatsapp_config LIMIT 1');
-    const savedToken = rows[0]?.webhook_verify_token || 'pitombo_webhook_2024';
-
-    if (mode === 'subscribe' && token === savedToken) {
-      console.log('[WhatsApp Webhook] ✅ Webhook verificado pela Meta!');
-      return res.status(200).send(challenge);
-    }
-    console.warn('[WhatsApp Webhook] ⚠️ Token inválido:', token, '≠', savedToken);
-    res.sendStatus(403);
-  } catch (err) {
-    console.error('[WhatsApp Webhook] Erro na verificação:', err.message);
-    res.sendStatus(500);
-  }
-});
-
-// ─── POST /api/chatbot-whatsapp/webhook (receber mensagens) ───────────────────
-router.post('/webhook', async (req, res) => {
-  // Responder 200 imediatamente (requisito Meta)
-  res.sendStatus(200);
-
-  try {
-    const body = req.body;
-    if (body.object !== 'whatsapp_business_account') return;
-
-    const entry = body.entry?.[0];
-    const changes = entry?.changes?.[0];
-    const value = changes?.value;
-    const messages = value?.messages;
-
-    if (!messages || messages.length === 0) return;
-
-    for (const message of messages) {
-      console.log('[WhatsApp Webhook] 📨 Mensagem recebida:', JSON.stringify(message));
-      // Processar em background sem bloquear a resposta
-      handleIncomingMessage(message).catch(err =>
-        console.error('[WhatsApp Webhook] Erro ao processar mensagem:', err.message)
-      );
-    }
-  } catch (err) {
-    console.error('[WhatsApp Webhook] Erro ao processar evento:', err.message);
   }
 });
 

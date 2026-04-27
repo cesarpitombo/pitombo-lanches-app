@@ -740,18 +740,25 @@ body {
 .btn-pdc-rejeitar  { background: #ef4444; color: #fff; font-weight: 700; }
 .btn-pdc-entregador { background: #0d6efd; color: #fff; }
 
+.pdc-entregador-atual {
+  font-size: 0.85rem;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
 .pdc-entregador-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  flex-direction: row;
+  gap: 0.35rem;
+  align-items: center;
   margin-bottom: 0.5rem;
 }
 .pdc-select-entregador {
-  width: 100%;
-  padding: 0.6rem 0.8rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.6rem;
   border: 1.5px solid #ddd;
   border-radius: 6px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-family: inherit;
   background: #fff;
   cursor: pointer;
@@ -760,6 +767,31 @@ body {
   outline: none;
   border-color: #0d6efd;
 }
+.pdc-btn-mini {
+  padding: 0.45rem 0.65rem;
+  border: 0;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.pdc-btn-primary { background: #2563eb; color: #fff; }
+.pdc-btn-primary:hover { background: #1d4ed8; }
+.pdc-btn-danger  { background: #fee2e2; color: #dc2626; }
+.pdc-btn-danger:hover  { background: #fecaca; }
+.btn-row-trocar {
+  margin-left: 0.3rem;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.85rem;
+  background: #eef2ff;
+  color: #4338ca;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.btn-row-trocar:hover { background: #e0e7ff; }
 
 /* ---- Ajuste na th da nova tabela ---- */
 .th-pedido  { width: 145px; }
@@ -2373,4 +2405,79 @@ body.modo-rapido .ola-shortcuts-bar { display: flex; }
   background: #fef3c7; color: #92400e;
   padding: 1px 8px; border-radius: 10px;
   font-weight: 800; font-size: 0.75rem;
+}
+
+/* ============================================================
+   EXIBIÇÃO ESTRUTURADA DE ITENS DO PEDIDO (Adicionais + Bebidas)
+   ============================================================ */
+
+/* Wrapper flex para nome + extras */
+.ola-pdc-item-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+/* Linha dos chips de adicionais */
+.ola-pdc-item-extras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.15rem;
+}
+.ola-pdc-extras-label {
+  font-size: 0.68rem;
+  color: #9ca3af;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ola-pdc-extra-chip {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: #f3f4f6;
+  color: #374151;
+  padding: 0.1rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+/* Seção BEBIDAS — separada no fundo da lista de itens */
+.ola-pdc-bebidas-section {
+  margin-top: 0.25rem;
+  border-top: 2px solid #e0f2fe;
+  background: #f0f9ff;
+  border-radius: 0 0 6px 6px;
+  padding: 0.5rem 1.1rem 0.6rem;
+}
+.ola-pdc-bebidas-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #0369a1;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 0.4rem;
+}
+.ola-pdc-bebida-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0;
+  font-size: 0.85rem;
+  color: #0c4a6e;
+}
+.ola-pdc-bebida-qty {
+  font-weight: 800;
+  font-size: 0.75rem;
+  color: #0369a1;
+  min-width: 18px;
+}
+.ola-pdc-bebida-nome {
+  font-weight: 600;
 }

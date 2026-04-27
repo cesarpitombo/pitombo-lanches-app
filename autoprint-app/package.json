@@ -1,0 +1,36 @@
+{
+  "name": "autoprint-pitombo",
+  "version": "1.0.0",
+  "description": "AutoPrint Pitombo — Impressão automática para Windows",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "set CSC_IDENTITY_AUTO_DISCOVERY=false && electron-builder --win portable",
+    "build:setup": "set CSC_IDENTITY_AUTO_DISCOVERY=false && electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.pitombo.autoprint",
+    "productName": "AutoPrint Pitombo",
+    "forceCodeSigning": false,
+    "win": {
+      "target": [
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "signAndEditExecutable": false,
+      "verifyUpdateCodeSignature": false
+    },
+    "portable": {
+      "artifactName": "PitomboPrint_Setup.${ext}"
+    },
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.0"
+  }
+}

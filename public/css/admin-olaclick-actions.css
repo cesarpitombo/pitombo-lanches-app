@@ -1,0 +1,216 @@
+/* ============================================================
+   NEW STATUS: CHEGOU
+   ============================================================ */
+.ola-st-chegou { background: #d1fae5; color: #065f46; }
+.ola-pedido-row.status-chegou { border-left-color: #10b981; }
+
+/* ============================================================
+   OlaClick ACTION BAR — 5 botoes por pedido
+   ============================================================ */
+.ola-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 0.5rem;
+  flex-wrap: nowrap;
+}
+.ola-ab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.ola-ab-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+.ola-ab-btn svg { flex-shrink: 0; }
+.ola-ab-print { color: #6b7280; }
+.ola-ab-print:hover { background: #f0fdf4; color: #15803d; border-color: #86efac; }
+.ola-ab-status { color: #3b82f6; border-color: #bfdbfe; background: #eff6ff; }
+.ola-ab-status:hover { background: #dbeafe; border-color: #93c5fd; }
+.ola-ab-pagar { color: #059669; border-color: #a7f3d0; background: #ecfdf5; }
+.ola-ab-pagar:hover { background: #d1fae5; border-color: #6ee7b7; }
+.ola-ab-finalizar { color: #fff; background: #16a34a; border-color: #15803d; }
+.ola-ab-finalizar:hover { background: #15803d; }
+.ola-ab-dots { color: #9ca3af; padding: 5px 6px; }
+.ola-ab-dots:hover { background: #f3f4f6; color: #4b5563; }
+
+/* ============================================================
+   OlaClick POPUP MENUS
+   ============================================================ */
+.ola-popup-menu {
+  position: absolute;
+  z-index: 9999;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+  min-width: 200px;
+  padding: 6px 0;
+  animation: popup-in 0.12s ease;
+}
+@keyframes popup-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ola-pm-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; font-size: 0.85rem; font-weight: 600;
+  color: #374151; cursor: pointer; transition: background 0.1s;
+}
+.ola-pm-item:hover { background: #f3f4f6; }
+.ola-pm-item:first-child { border-radius: 12px 12px 0 0; }
+.ola-pm-item:last-child { border-radius: 0 0 12px 12px; }
+.ola-st-item.active { font-weight: 800; color: #15803d; border-left: 3px solid #16a34a; }
+.ola-pm-cancel { color: #f59e0b; }
+.ola-pm-cancel:hover { background: #fffbeb; }
+.ola-pm-delete { color: #ef4444; }
+.ola-pm-delete:hover { background: #fef2f2; }
+
+/* ============================================================
+   PAYMENT PANEL
+   ============================================================ */
+.pgto-panel {
+  width: 0; overflow: hidden; transition: width 0.25s ease;
+  background: #fff; border-left: 1px solid #e5e7eb;
+  position: sticky; top: 0; max-height: calc(100vh - 100px);
+  overflow-y: auto; flex-shrink: 0; display: flex; flex-direction: column;
+}
+.pgto-aberto { width: 420px; }
+.pgto-fechado { width: 0; }
+.pgto-header {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 1rem 1.2rem; border-bottom: 1px solid #e5e7eb;
+  background: #fff; font-weight: 800; font-size: 0.95rem; color: #111;
+  position: sticky; top: 0; z-index: 1;
+}
+.pgto-back {
+  background: #f3f4f6; border: none; width: 32px; height: 32px;
+  border-radius: 8px; font-size: 1.1rem; cursor: pointer; color: #374151;
+  display: flex; align-items: center; justify-content: center;
+}
+.pgto-close {
+  background: #f3f4f6; border: none; width: 28px; height: 28px;
+  border-radius: 50%; font-size: 0.9rem; cursor: pointer; color: #6b7280;
+  margin-left: auto; display: flex; align-items: center; justify-content: center;
+}
+.pgto-pedido-id { font-size: 0.8rem; color: #6b7280; font-weight: 700; margin-left: auto; }
+.pgto-tipo-chip {
+  display: inline-block; font-size: 0.68rem; font-weight: 700;
+  background: #e0f2fe; color: #0369a1; padding: 1px 6px; border-radius: 4px; margin-left: 4px;
+}
+.pgto-summary {
+  padding: 1rem 1.2rem; background: #f9fafb; border-bottom: 1px solid #e5e7eb;
+}
+.pgto-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.3rem 0; font-size: 0.9rem; color: #374151;
+}
+.pgto-row-sub { font-size: 0.82rem; color: #6b7280; }
+.pgto-resta { font-size: 0.95rem; }
+.pgto-total-val { font-weight: 900; font-size: 1.1rem; color: #111; }
+.pgto-badge-nao_pago {
+  display: inline-block; font-size: 0.68rem; font-weight: 700;
+  background: #fff7ed; color: #c2410c; padding: 2px 8px; border-radius: 10px; border: 1px solid #fed7aa;
+}
+.pgto-badge-pago {
+  display: inline-block; font-size: 0.68rem; font-weight: 700;
+  background: #f0fdf4; color: #15803d; padding: 2px 8px; border-radius: 10px; border: 1px solid #bbf7d0;
+}
+.pgto-body { padding: 1.2rem; flex: 1; display: flex; flex-direction: column; gap: 1rem; }
+.pgto-methods { display: flex; gap: 6px; flex-wrap: wrap; }
+.pgto-method-btn {
+  flex: 1; min-width: 80px; padding: 0.6rem 0.5rem;
+  border: 2px solid #e5e7eb; border-radius: 10px; background: #fff;
+  font-size: 0.8rem; font-weight: 700; color: #374151; cursor: pointer;
+  transition: all 0.12s; text-align: center;
+}
+.pgto-method-btn:hover { border-color: #3b82f6; color: #1d4ed8; }
+.pgto-method-btn.active {
+  background: #eff6ff; border-color: #3b82f6; color: #1d4ed8;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+.pgto-outros-select {
+  width: 100%; padding: 0.6rem; border: 1px solid #e5e7eb;
+  border-radius: 8px; font-size: 0.85rem; color: #6b7280; background: #f9fafb; cursor: pointer;
+}
+.pgto-field { display: flex; flex-direction: column; gap: 4px; }
+.pgto-field label { font-size: 0.78rem; font-weight: 700; color: #6b7280; }
+.pgto-field input {
+  width: 100%; padding: 0.65rem 0.8rem; border: 1.5px solid #d1d5db;
+  border-radius: 8px; font-size: 1rem; font-weight: 700; color: #111;
+  outline: none; box-sizing: border-box;
+}
+.pgto-field input:focus { border-color: #3b82f6; }
+.pgto-input-row { display: flex; align-items: center; gap: 6px; }
+.pgto-input-row input { flex: 1; }
+.pgto-pm-btns { display: flex; flex-direction: column; gap: 2px; }
+.pgto-pm-btns button {
+  width: 28px; height: 22px; border: 1px solid #d1d5db; border-radius: 5px;
+  background: #f9fafb; font-size: 0.9rem; font-weight: 800; cursor: pointer;
+  color: #374151; display: flex; align-items: center; justify-content: center;
+}
+.pgto-pm-btns button:hover { background: #e5e7eb; }
+.pgto-cur-symbol { font-weight: 700; color: #9ca3af; font-size: 0.9rem; }
+.pgto-troco {
+  background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px;
+  padding: 0.7rem 1rem; font-size: 0.9rem; font-weight: 800; color: #16a34a;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.pgto-footer {
+  padding: 1rem 1.2rem; border-top: 1px solid #e5e7eb; background: #f9fafb;
+  display: flex; flex-direction: column; gap: 0.5rem;
+}
+.pgto-btn-registrar {
+  width: 100%; padding: 0.8rem; border: 2px solid #3b82f6; border-radius: 10px;
+  background: #fff; color: #3b82f6; font-size: 0.9rem; font-weight: 800;
+  cursor: pointer; transition: all 0.12s;
+}
+.pgto-btn-registrar:hover { background: #eff6ff; }
+.pgto-btn-finalizar {
+  width: 100%; padding: 0.8rem; border: none; border-radius: 10px;
+  background: #16a34a; color: #fff; font-size: 0.9rem; font-weight: 800;
+  cursor: pointer; transition: background 0.12s;
+}
+.pgto-btn-finalizar:hover { background: #15803d; }
+/* ============================================================
+   PAINEL ENTREGADOR DRAWER
+   ============================================================ */
+.ola-entregador-item {
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ola-entregador-item:hover { background: #f9fafb; }
+.ola-entregador-item.selected {
+  background: #eff6ff;
+  border-left: 4px solid #3b82f6;
+}
+.ola-entregador-item-left {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.ola-entregador-nome { font-weight: 700; color: #111; font-size: 0.95rem; }
+.ola-entregador-status { font-size: 0.75rem; color: #6b7280; display:flex; align-items:center; gap: 4px; }
+.ola-dot.ativo { width:6px; height:6px; border-radius:50%; background:#10b981; }
+.ola-wa-btn-drawer {
+   display: flex; align-items:center; justify-content:center;
+   width: 32px; height: 32px; border-radius: 50%;
+   background: #dcfce7; color: #15803d; text-decoration: none;
+   transition: background 0.15s;
+}
+.ola-wa-btn-drawer:hover { background: #bbf7d0; color: #16a34a; }

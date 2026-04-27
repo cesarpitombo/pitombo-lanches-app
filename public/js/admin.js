@@ -7,6 +7,16 @@ if (document.readyState === 'loading') {
   _syncUserProfileUI();
 }
 
+window.addEventListener('mousedown', (e) => {
+  console.log('--- CLICK EM:', e.target.tagName, e.target.className);
+  // Se renderPedidos estiver acessível, as variáveis só mudam se o event listener delas for chamado.
+  // Vou usar variáveis globais injetadas nos listeners de filtro para printar.
+  console.log('ANTES: searchTerm=', window._debugSearchTerm, 'type=', window._debugTypeFilter, 'status=', window._debugStatusFilter, 'qtde=', window.pedidosAtuais ? window.pedidosAtuais.length : 0);
+  setTimeout(() => {
+    console.log('DEPOIS: searchTerm=', window._debugSearchTerm, 'type=', window._debugTypeFilter, 'status=', window._debugStatusFilter, 'qtde=', window.pedidosAtuais ? window.pedidosAtuais.length : 0);
+  }, 100);
+});
+
 /* ORIGINAL — descomentar para reativar:
 (async () => {
   try {
@@ -161,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Garante que o hidden de DDI sincroniza na carga inicial
     const initOpt = waSel.options[waSel.selectedIndex];
     const dialHidden = document.getElementById('cfgWaDial');
-    if (initOpt && dialHidden && !dialHidden.value) dialHidden.value = initOpt.dataset.dial || '';
+    if (initOpt && initOpt.dataset && dialHidden && !dialHidden.value) dialHidden.value = initOpt.dataset.dial || '';
   }
 
   window.updatePayStatus = function (checkbox) {
@@ -234,7 +244,9 @@ document.addEventListener('DOMContentLoaded', () => {
         tabContents.forEach(c => c.classList.remove('active'));
         btn.classList.add('active');
         targetEl.classList.add('active');
-        if (pageTitle) pageTitle.textContent = btn.innerText.replace(/📦|🍔/g, '').trim();
+        const cleanName = btn.innerText.replace(/📦|🍔|⚡|🍴|👨‍🍳|⚙️|🛵|👥|🏢|💬/g, '').trim();
+        if (pageTitle) pageTitle.textContent = cleanName;
+        console.log(`[AdminNav] seção aberta: ${cleanName}`);
       }
 
       if (btn.dataset.target === 'produtos') {
@@ -263,8 +275,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btn.dataset.target === 'cfg-equipe') {
           if (typeof carregarEquipe === 'function') carregarEquipe();
         }
-      } else if (btn.dataset.target === 'zonas') {
-        carregarZonas();
+        if (btn.dataset.target === 'cfg-pedidos') {
+          // Pré-carrega o painel de entrega para popular o label inline e validar config
+          if (typeof initDeliveryPanel === 'function') initDeliveryPanel();
+        }
       } else if (btn.dataset.target === 'chatbot-whatsapp') {
         if (typeof ChatbotManager !== 'undefined') {
           ChatbotManager.init();
@@ -304,7 +318,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const hash = window.location.hash.substring(1);
     if (!hash) return;
 
-    // Bloquear navegação para secção não autorizada via URL
+    // FIX Regra 1 e 2: Se o alvo não existir, abortar sem desmontar as sections e sem remover o .active
+    const targetItem = document.querySelector(`.menu-item[data-target="${hash}"]`);
+    if (!targetItem) {
+      return;
+    }
+
+    // Bloquear navegação para seção não autorizada via URL
     const cu = window._currentUser;
     if (cu) {
       const allowedSet = ALLOWED_SECTIONS[cu.funcao];
@@ -314,21 +334,18 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    const targetItem = document.querySelector(`.menu-item[data-target="${hash}"]`);
-    if (targetItem) {
-      // Abrir submenu se estiver fechado
-      const parentSubmenu = targetItem.closest('.submenu');
-      if (parentSubmenu && (parentSubmenu.style.display === 'none' || parentSubmenu.style.display === '')) {
-        const toggleId = parentSubmenu.id.replace('submenu', 'btnToggle');
-        const toggleBtn = document.getElementById(toggleId);
-        if (toggleBtn) toggleBtn.click();
-      }
-
-      // Delay pequeno para garantir que submenus expandam e managers estejam prontos
-      setTimeout(() => {
-        targetItem.click();
-      }, 50);
+    // Abrir submenu se estiver fechado
+    const parentSubmenu = targetItem.closest('.submenu');
+    if (parentSubmenu && (parentSubmenu.style.display === 'none' || parentSubmenu.style.display === '')) {
+      const toggleId = parentSubmenu.id.replace('submenu', 'btnToggle');
+      const toggleBtn = document.getElementById(toggleId);
+      if (toggleBtn) toggleBtn.click();
     }
+
+    // Delay pequeno para garantir que submenus expandam e managers estejam prontos
+    setTimeout(() => {
+      targetItem.click();
+    }, 50);
   };
 
   // Executar após um pequeno fôlego para scripts externos
@@ -382,9 +399,10 @@ document.addEventListener('DOMContentLoaded', () => {
   window.statusMap = {
     'pendente_aprovacao': { label: '⏳ Pendente', class: 'status-pendente_aprovacao' },
     'recebido': { label: 'Recebido', class: 'status-recebido' },
-    'em_preparo': { label: 'Em Preparo', class: 'status-em_preparo' },
+    'em_preparo': { label: 'Em preparação', class: 'status-em_preparo' },
     'pronto': { label: 'Pronto', class: 'status-pronto' },
-    'em_entrega': { label: 'Em Entrega', class: 'status-em_entrega' },
+    'em_entrega': { label: 'No caminho', class: 'status-em_entrega' },
+    'chegou': { label: 'Chegou', class: 'status-chegou' },
     'entregue': { label: 'Entregue', class: 'status-entregue' },
     'cancelado': { label: 'Cancelado', class: 'status-cancelado' },
     'rejeitado': { label: 'Rejeitado', class: 'status-rejeitado' }
@@ -399,7 +417,8 @@ document.addEventListener('DOMContentLoaded', () => {
       'recebido':           ['em_preparo', 'cancelado'],
       'em_preparo':         ['pronto', 'cancelado'],
       'pronto':             ['em_entrega', 'cancelado'],
-      'em_entrega':         ['entregue', 'cancelado'],
+      'em_entrega':         ['chegou', 'cancelado'],
+      'chegou':             ['entregue', 'cancelado'],
       'entregue':           []
     };
     const mapMesaBalcao = {
@@ -429,7 +448,8 @@ document.addEventListener('DOMContentLoaded', () => {
     'recebido': ['em_preparo', 'cancelado'],
     'em_preparo': ['pronto', 'cancelado'],
     'pronto': ['em_entrega', 'cancelado'],
-    'em_entrega': ['entregue', 'cancelado'],
+    'em_entrega': ['chegou', 'cancelado'],
+    'chegou': ['entregue', 'cancelado'],
     'entregue': []
   };
 
@@ -438,12 +458,25 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentStatusFilter = 'operacional';
   let searchTerm = '';
 
-  // Busca e Filtros — sempre começa limpo (evita autofill do browser)
+  // Busca e Filtros - sempre começa limpo (evita autofill agressivo do browser)
   const inputBusca = document.getElementById('inputBusca');
   if (inputBusca) {
     inputBusca.value = '';
+    
+    // Bloqueios inativos contra heurísticas do Chrome
+    inputBusca.setAttribute('autocomplete', 'new-password');
+    inputBusca.setAttribute('name', 'search_' + Date.now());
+    
     searchTerm = '';
     inputBusca.addEventListener('input', (e) => {
+      // CAUSA RAIZ (Correção): O browser dispara 'input' silencioso ao soltar foco da tela (clicar no fundo).
+      // Se não há foco ATIVO no box e chegou um e-mail (@), ignoramos totalmente o re-render fatal.
+      if (e.target.value.includes('@') && document.activeElement !== inputBusca) {
+        console.warn('[FIX] Bloqueado autofill silencioso do browser.');
+        inputBusca.value = '';
+        searchTerm = '';
+        return;
+      }
       searchTerm = e.target.value.toLowerCase();
       renderPedidos();
     });
@@ -671,6 +704,24 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       primeiraCarga = false;
 
+      // ── Delivery grouping: busca sugestões + grupos ativos (paralelo, fail-safe) ──
+      try {
+        const [resSug, resGrp] = await Promise.all([
+          apiFetch('/api/delivery-groups/suggestions').catch(() => null),
+          apiFetch('/api/delivery-groups').catch(() => null),
+        ]);
+        if (resSug && resSug.ok) {
+          const j = await resSug.json();
+          window._deliverySuggestions = j.sugestoes || {};
+        }
+        if (resGrp && resGrp.ok) {
+          const arr = await resGrp.json();
+          const map = {};
+          for (const g of arr) map[g.id] = g;
+          window._deliveryGroupsById = map;
+        }
+      } catch (_) { /* opcional, não bloqueia */ }
+
       console.log(`[ADMIN_POLL] renderPedidos() — selectedId=${window._pedidoSelecionado || 'none'}`);
       renderPedidos();
 
@@ -692,10 +743,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Inject debug proxy properly
   function renderPedidos() {
+    window._debugSearchTerm = searchTerm;
+    window._debugTypeFilter = currentTypeFilter;
+    window._debugStatusFilter = currentStatusFilter;
+    
+    console.log('[DEBUG-RENDER] disparado por:\n', new Error().stack);
+    
     const lista = document.getElementById('listaPedidos');
     let pedidos = window.pedidosAtuais || [];
-
+    
     // Contadores Operacionais e KPIs
     const counts = {
       type: { todos: 0, balcao: 0, delivery: 0, mesa: 0 },
@@ -942,6 +1000,45 @@ document.addEventListener('DOMContentLoaded', () => {
         agrupamentoHtml = `<div style="background:#fff3cd; color:#856404; padding:0.3rem 0.6rem; border-radius:4px; font-size:0.75rem; margin-top:0.5rem; margin-bottom:0.5rem; border:1px solid #ffeeba; font-weight:bold;">⚠️ Cliente possui ${phonesActive[p.telefone]} pedidos ativos na fila. Considere agrupar a entrega.</div>`;
       }
 
+      // ── Badge de grupo já existente ────────────────────────────────────
+      if (p.delivery_group_id) {
+        const g = (window._deliveryGroupsById || {})[p.delivery_group_id];
+        const cor = (g && g.cor) || '#3b82f6';
+        const ids = g ? g.pedidos.map(x => '#' + x.id).join(', ') : '';
+        agrupamentoHtml += `
+          <div style="background:${cor}15; color:${cor}; border:1px solid ${cor}; padding:0.4rem 0.6rem; border-radius:6px; font-size:0.78rem; margin-top:0.4rem; display:flex; justify-content:space-between; align-items:center; gap:0.4rem;">
+            <span>🚚 <strong>Grupo #${p.delivery_group_id}</strong> ${ids ? '— ' + ids : ''}</span>
+            <button onclick="event.stopPropagation(); desfazerGrupoDelivery(${p.delivery_group_id})"
+              style="background:transparent; color:${cor}; border:1px solid ${cor}; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:bold; cursor:pointer;">✕ Desfazer</button>
+          </div>`;
+      }
+      // ── Sugestões de proximidade (somente se ainda não está em grupo) ──
+      else if (isActive && p.tipo === 'delivery') {
+        const sug = (window._deliverySuggestions || {})[p.id];
+        if (sug && sug.length) {
+          const top = sug[0];
+          const motivoLabel = {
+            mesmo_endereco:   '📍 Mesmo destino',
+            mesmo_cliente:    '👤 Mesmo cliente',
+            endereco_proximo: '🏘️ Pedido próximo',
+            mesma_rua:        '🛣️ Mesma rua',
+            mesma_zona:       '🗺️ Mesma região',
+          };
+          let label = motivoLabel[top.motivo] || ('🛣️ ' + top.motivo);
+          if (/^geo_muito_proximo/.test(top.motivo)) label = '📍 Muito próximo';
+          else if (/^geo_proximo/.test(top.motivo))  label = '🏘️ Pedido próximo';
+          else if (/^geo_mesma_regiao/.test(top.motivo)) label = '🗺️ Mesma rota';
+          const extra = sug.length > 1 ? ` +${sug.length - 1}` : '';
+          const allIds = [p.id, ...sug.map(x => x.id)];
+          agrupamentoHtml += `
+            <div style="background:#dbeafe; color:#1e3a8a; border:1px solid #93c5fd; padding:0.35rem 0.6rem; border-radius:6px; font-size:0.78rem; margin-top:0.4rem; display:flex; justify-content:space-between; align-items:center; gap:0.4rem;">
+              <span>${label} (#${sug.map(x => x.id).join(', #')})${extra}</span>
+              <button onclick="event.stopPropagation(); agruparPedidosDelivery([${allIds.join(',')}])"
+                style="background:#1d4ed8; color:#fff; border:none; padding:2px 10px; border-radius:4px; font-size:0.72rem; font-weight:bold; cursor:pointer;">🚀 Agrupar</button>
+            </div>`;
+        }
+      }
+
       // Botão Principal Dominante (Único)
       let botoesHtml = '';
       if (p.status === 'pendente_aprovacao') {
@@ -1038,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tblBody) {
       // Diff rendering: skip full re-render if nothing changed
       const newHash = filtered.map(p =>
-        `${p.id}:${p.status}:${p.payment_status}:${p.entregador_id || 0}:${p.total}`
+        `${p.id}:${p.status}:${p.payment_status}:${p.entregador_id || 0}:${p.total}:${p.delivery_group_id || 0}`
       ).join('|');
       if (newHash === window._lastPedidosHash && tblBody.children.length > 0) {
         return; // nada mudou — evitar re-render desnecessário
@@ -1099,37 +1196,49 @@ document.addEventListener('DOMContentLoaded', () => {
           ? `<span class="ola-grupo-badge" title="${sameStreetIds[p.id]} pedidos na mesma rua — agrupar entrega">🚀 Agrupar</span>`
           : '';
 
-        // Entregador
+        // Entregador — sempre abre painel lateral (UX visual com select + botões trocar/remover)
         const entregadorHtml = p.entregador
-          ? `<span class="ola-entregador-badge">🛵 ${p.entregador}</span>`
+          ? `<span class="ola-entregador-badge">🛵 ${p.entregador}</span>
+             <button class="btn-row btn-row-trocar" onclick="event.stopPropagation(); abrirPainelEntregador(${p.id})" title="Trocar entregador">↻</button>`
           : (p.tipo === 'delivery' && isActive
-              ? `<button class="btn-row" onclick="event.stopPropagation(); escolherEntregador(${p.id})">Escolher entregador ›</button>`
+              ? `<button class="btn-row" onclick="event.stopPropagation(); abrirPainelEntregador(${p.id})">Escolher entregador ›</button>`
               : '');
 
-        // Action buttons
-        let btnAcoes = '';
+        // ═══════════ OlaClick 5-Button Action Bar ═══════════
+        const enderecoStr = p.endereco ? p.endereco.substring(0, 65) + (p.endereco.length > 65 ? '…' : '') : '';
+
+        // Accept/Reject for pending orders
+        let pendingBtns = '';
         if (p.status === 'pendente_aprovacao') {
-          // FIX: não usar stopPropagation — alterarStatus agora abre o painel internamente
-          btnAcoes = `<button class="btn-row btn-row-aceitar" onclick="event.stopPropagation(); console.log('[BUG-FIX] clique detectado no botão Aceitar #${p.id}'); alterarStatus(${p.id},'em_preparo')">✔ Aceitar</button>
-                      <button class="btn-row btn-row-rejeitar" onclick="event.stopPropagation(); alterarStatus(${p.id},'rejeitado')">✕ Rejeitar</button>`;
-        } else if (isActive) {
-          // Acoes dinamicas por tipo: mesa/balcao -> entregue direto, sem em_entrega
-          const proxStatus = window.getAcoesPorTipo(p.status, p.tipo);
-          proxStatus.forEach(st => {
-            if (st === 'cancelado') {
-              btnAcoes += `<button class="btn-row btn-row-cancelar" onclick="event.stopPropagation(); alterarStatus(${p.id},'${st}')" title="Cancelar">✕</button>`;
-            } else if (st === 'entregue') {
-              const lblFin = p.tipo === 'mesa' ? '✓ Servir' : (p.tipo === 'balcao' ? '✓ Retirado' : '✓ Finalizar');
-              btnAcoes += `<button class="btn-row btn-row-entregue" onclick="event.stopPropagation(); alterarStatus(${p.id},'${st}')">${lblFin}</button>`;
-            } else {
-              const lbl = window.getStatusLabelPorTipo(st, p.tipo);
-              btnAcoes += `<button class="btn-row btn-row-avancar" onclick="event.stopPropagation(); alterarStatus(${p.id},'${st}')">▶ ${lbl}</button>`;
-            }
-          });
-          if (!pgPago) btnAcoes += `<button class="btn-row btn-row-pagar" onclick="event.stopPropagation(); marcarPago(${p.id})">$ Pagar</button>`;
+          pendingBtns = `
+            <button class="btn-row btn-row-aceitar" onclick="event.stopPropagation(); alterarStatus(${p.id},'em_preparo')">✔ Aceitar</button>
+            <button class="btn-row btn-row-rejeitar" onclick="event.stopPropagation(); alterarStatus(${p.id},'rejeitado')">✕ Rejeitar</button>`;
         }
 
-        const enderecoStr = p.endereco ? p.endereco.substring(0, 65) + (p.endereco.length > 65 ? '…' : '') : '';
+        // OlaClick action bar (always visible for non-pending orders)
+        const showActionBar = p.status !== 'pendente_aprovacao';
+        const actionBarHtml = showActionBar ? `
+          <div class="ola-action-bar" onclick="event.stopPropagation()">
+            <button class="ola-ab-btn ola-ab-print" onclick="event.stopPropagation(); togglePrintMenu(event, ${p.id})" title="Imprimir">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            </button>
+            <button class="ola-ab-btn ola-ab-status" onclick="event.stopPropagation(); toggleStatusMenu(event, ${p.id})" title="Status">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              <span>Status</span>
+            </button>
+            <button class="ola-ab-btn ola-ab-pagar" onclick="event.stopPropagation(); abrirPainelPagamento(${p.id})" title="Pagar">
+              <span style="font-weight:800">$</span>
+              <span>Pagar</span>
+            </button>
+            <button class="ola-ab-btn ola-ab-finalizar" onclick="event.stopPropagation(); alterarStatus(${p.id},'entregue')" title="Finalizar">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+              <span>Finalizar</span>
+            </button>
+            <button class="ola-ab-btn ola-ab-dots" onclick="event.stopPropagation(); toggleDotsMenu(event, ${p.id})" title="Mais opções">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+            </button>
+          </div>
+        ` : '';
 
         return `
           <tr class="ola-pedido-row pedido-row status-${p.status} ${prioCls}"
@@ -1153,7 +1262,8 @@ document.addEventListener('DOMContentLoaded', () => {
               ${p.telefone ? `<a href="tel:${p.telefone.replace(/\D/g,'')}" class="ola-cli-tel-link" onclick="event.stopPropagation()">📞 ${p.telefone}</a>` : ''}
               ${enderecoStr ? `<div class="ola-cli-addr">📍 ${enderecoStr}</div>` : ''}
               ${entregadorHtml}
-              <div class="ola-row-btns">${btnAcoes}</div>
+              <div class="ola-row-btns">${pendingBtns}</div>
+              ${actionBarHtml}
             </td>
           </tr>
         `;
@@ -1175,21 +1285,12 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // BLOQUEIO: finalizar sem pagamento definido
-    if (novoStatus === 'entregue' && pedidoAtual && pedidoAtual.payment_status === 'pendente') {
-      const ok = confirm(
-        `⚠️ Pedido #${id} ainda não tem pagamento definido.\n\nFinalizar mesmo assim marcará como "Não pago".\n\nDeseja continuar?`
-      );
-      if (!ok) return;
-    }
-
-    // BLOQUEIO: delivery sem telefone (aviso, não bloqueia)
+    // Aviso: delivery sem telefone (não bloqueia)
     if (novoStatus === 'em_preparo' && pedidoAtual && pedidoAtual.tipo === 'delivery' && !pedidoAtual.telefone) {
       showToast('⚠️ Pedido sem telefone — contato com cliente não será possível');
     }
 
-    // FIX: bloquear polling automático durante a ação para evitar race condition
-    // _pedidoAtualizando permanece true até carregarPedidos() terminar (não antes)
+    // Bloqueia polling automático durante a ação para evitar race condition
     window._pedidoAtualizando = true;
 
     try {
@@ -1203,6 +1304,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (res.ok) {
         const dados = await res.json().catch(() => ({}));
         console.log('[alterarStatus] sucesso — dados retornados:', dados);
+
+        if (dados._status_blocked === 'same_status') {
+           showToast(`ℹ️ Status já aplicado`);
+           window._pedidoAtualizando = false;
+           return;
+        }
         
         // Toast de feedback baseado no novo status
         const lblStatus = window.getStatusLabelPorTipo(novoStatus, (pedidoAtual ? pedidoAtual.tipo : 'delivery'));
@@ -1231,9 +1338,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Re-renderizar com dados locais atualizados
         renderPedidos();
 
-        // Se a ação resultou em estado terminal, fechar o painel
+        // Se a ação resultou em estado terminal, fechar o painel e soltar o PIN
         if (TERMINAL.includes(statusFinal)) {
-          console.log(`[BUG-FIX] status terminal — fechando painel`);
+          console.log(`[BUG-FIX] status terminal — fechando painel e soltando seleção`);
+          window._pedidoSelecionado = null; // Libera o "pin" da lista para sumir o card concluído
           fecharDetalhes();
         } else {
           // FIX 3: Abrir o painel lateral com os dados do pedido atualizado
@@ -1242,11 +1350,9 @@ document.addEventListener('DOMContentLoaded', () => {
           abrirDetalhes(id);
         }
 
-        // FIX 4: manter _pedidoAtualizando=true até carregarPedidos() terminar
-        // (evita que o setInterval de 10s dispare durante a requisição)
-        await carregarPedidos();
+        // Libera o flag ANTES de chamar carregarPedidos para que a função não retorne imediatamente
         window._pedidoAtualizando = false;
-        console.log(`[BUG-FIX] _pedidoAtualizando liberado após carregarPedidos`);
+        await carregarPedidos();
 
         // FIX 5: Re-abrir painel com dados frescos do servidor (garante que labels/botões estão corretos)
         // Só re-abre se ainda não for terminal (pode ter sido atualizado no servidor)
@@ -1334,22 +1440,32 @@ document.addEventListener('DOMContentLoaded', () => {
         ? '<span class="ola-pdc-crm" style="background:#dbeafe;color:#1d4ed8;">🔄 Frequente</span>'
         : '<span class="ola-pdc-crm" style="background:#dcfce7;color:#166534;">🌱 Novo</span>';
 
-    // Entregador / choose
+    // Entregador / picker visual — sempre mostra select; ações trocar/remover quando atribuído
     const entregadores = window.entregadoresCache || [];
     const opts = entregadores.map(e =>
       `<option value="${e.id}" ${p.entregador_id == e.id ? 'selected' : ''}>${e.nome}</option>`
     ).join('');
     let entregadorSection = '';
-    if (p.entregador) {
-      entregadorSection = `<span class="ola-entregador-badge">Entregador: ${p.entregador}</span>`;
-    } else if (p.tipo === 'delivery' && isActive) {
+    if (p.tipo === 'delivery' && isActive) {
+      const atual = p.entregador
+        ? `<div class="pdc-entregador-atual">🛵 <b>${p.entregador}</b></div>`
+        : '';
+      const removerBtn = p.entregador_id
+        ? `<button class="pdc-btn-mini pdc-btn-danger" onclick="removerEntregador(${p.id})" title="Remover entregador">✕</button>`
+        : '';
+      const acaoIcone = p.entregador ? '↻' : '✓';
+      const acaoTitulo = p.entregador ? 'Trocar entregador' : 'Atribuir entregador';
       entregadorSection = `
+        ${atual}
         <div class="pdc-entregador-row">
           <select id="sel-entregador-${p.id}" class="pdc-select-entregador">
             <option value="">— Sem entregador —</option>${opts}
           </select>
-          <button class="ola-pdc-btn ola-pdc-btn-pagar" style="margin-top:0.4rem;font-size:0.8rem;" onclick="salvarEntregador(${p.id})">🛵 Salvar</button>
+          <button class="pdc-btn-mini pdc-btn-primary" onclick="salvarEntregador(${p.id})" title="${acaoTitulo}">${acaoIcone}</button>
+          ${removerBtn}
         </div>`;
+    } else if (p.entregador) {
+      entregadorSection = `<span class="ola-entregador-badge">Entregador: ${p.entregador}</span>`;
     } else {
       entregadorSection = '<span style="color:#9ca3af;font-size:0.82rem;">—</span>';
     }
@@ -1384,12 +1500,82 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="ola-pdc-produtos-header">
         <span class="ola-pdc-produtos-title">Produtos</span>
       </div>
-      ${(p.itens || []).map(i => `
-        <div class="ola-pdc-item">
-          <span class="ola-qty-badge">${i.quantidade}</span>
-          <span class="ola-pdc-item-name">${i.nome_produto}${i.observacoes ? `<span class="ola-pdc-item-obs">↳ ${i.observacoes}</span>` : ''}</span>
-          <span class="ola-pdc-item-price">${window.formatCurrency(i.preco_unitario * i.quantidade)}</span>
-        </div>`).join('')}
+      ${(() => {
+        // ── Palavras-chave de bebidas (case-insensitive) ──────────────────────
+        const BEBIDAS_KW = [
+          'guaraná','guarana','coca','cola','fanta','sprite','pepsi','7up',
+          'seven up','água','agua','sumo','suco','ice tea','icetea','limonada',
+          'laranjada','cerveja','beer','vinho','wine','sangria','kombucha',
+          'monster','red bull','redbull','gatorade','powerade','tónica',
+          'tonica','refrigerante','bebida','soda','lata','garrafa','mini'
+        ];
+        function isBebida(nome) {
+          const n = nome.toLowerCase();
+          return BEBIDAS_KW.some(kw => n.includes(kw));
+        }
+
+        // ── Parseia "Nome Produto (+ mod1, + mod2)" em { base, mods[] } ────────
+        // Usa a primeira ocorrência de "(" para separar base dos modificadores.
+        // Funciona mesmo quando o texto foi truncado em 100 chars (sem ")" final).
+        function parseItem(nomeProduto) {
+          const parenIdx = nomeProduto.indexOf('(');
+          if (parenIdx === -1) return { base: nomeProduto.trim(), mods: [] };
+          const base = nomeProduto.slice(0, parenIdx).trim();
+          // Tudo depois do "(", removendo ")" e vírgula/espaço finais residuais
+          const modsStr = nomeProduto.slice(parenIdx + 1).replace(/[),\s]+$/, '');
+          const modsRaw = modsStr.split(',').map(m => m.replace(/^\s*\+\s*/, '').trim()).filter(Boolean);
+          return { base, mods: modsRaw };
+        }
+
+        // ── Processar todos os itens ──────────────────────────────────────────
+        const todasBebidas = []; // bebidas coletadas de todos os itens
+
+        const itensHtml = (p.itens || []).map(i => {
+          const { base, mods } = parseItem(i.nome_produto);
+          const adicionais = mods.filter(m => !isBebida(m));
+          const bebidas    = mods.filter(m =>  isBebida(m));
+
+          // Adicionar bebidas ao pool global (com quantidade do item)
+          bebidas.forEach(b => {
+            const existing = todasBebidas.find(tb => tb.nome.toLowerCase() === b.toLowerCase());
+            if (existing) existing.qty += i.quantidade;
+            else todasBebidas.push({ nome: b, qty: i.quantidade });
+          });
+
+          const adicionaisHtml = adicionais.length > 0
+            ? `<div class="ola-pdc-item-extras">
+                 <span class="ola-pdc-extras-label">+ extras:</span>
+                 ${adicionais.map(a => `<span class="ola-pdc-extra-chip">${a}</span>`).join('')}
+               </div>`
+            : '';
+
+          return `
+            <div class="ola-pdc-item">
+              <span class="ola-qty-badge">${i.quantidade}</span>
+              <div class="ola-pdc-item-body">
+                <span class="ola-pdc-item-name">${base}${i.observacoes ? `<span class="ola-pdc-item-obs">↳ ${i.observacoes}</span>` : ''}</span>
+                ${adicionaisHtml}
+              </div>
+              <span class="ola-pdc-item-price">${window.formatCurrency(i.preco_unitario * i.quantidade)}</span>
+            </div>`;
+        }).join('');
+
+        // ── Seção de bebidas agrupadas ────────────────────────────────────────
+        const bebidasHtml = todasBebidas.length > 0 ? `
+          <div class="ola-pdc-bebidas-section">
+            <div class="ola-pdc-bebidas-header">
+              <span>🥤</span>
+              <span>Bebidas</span>
+            </div>
+            ${todasBebidas.map(b => `
+              <div class="ola-pdc-bebida-row">
+                <span class="ola-pdc-bebida-qty">${b.qty > 1 ? b.qty + '×' : ''}</span>
+                <span class="ola-pdc-bebida-nome">${b.nome}</span>
+              </div>`).join('')}
+          </div>` : '';
+
+        return itensHtml + bebidasHtml;
+      })()}
       ${p.observacoes ? `<div style="background:#fffbeb;border-left:3px solid #f59e0b;padding:0.5rem;border-radius:4px;font-size:0.82rem;color:#92400e;margin-top:0.6rem;"><strong>Obs:</strong> ${p.observacoes}</div>` : ''}
     `;
 
@@ -1452,11 +1638,43 @@ document.addEventListener('DOMContentLoaded', () => {
       painel.classList.remove('detalhe-aberto');
       painel.classList.add('detalhe-fechado');
     }
-    window._pedidoSelecionado = null;
+    
+    // FIX Regras 3 e 4: Não zerar window._pedidoSelecionado. Apenas fechar dormentes visuais.
+    // Preservar estado base para impedir re-renders que zerem a lista.
     document.querySelectorAll('.pedido-row').forEach(r => r.classList.remove('row-selecionado'));
+    
     // compatibilidade com modo cards (modal)
     const modal = document.getElementById('modalDetalhes');
     if (modal) modal.style.display = 'none';
+  };
+
+  window.agruparPedidosDelivery = async function (ids) {
+    if (!Array.isArray(ids) || ids.length < 2) return;
+    if (!confirm(`Agrupar entrega dos pedidos #${ids.join(', #')}?`)) return;
+    try {
+      const res = await apiFetch('/api/delivery-groups', {
+        method: 'POST',
+        body: { pedido_ids: ids },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { alert('Erro ao agrupar: ' + (data.error || res.status)); return; }
+      showToast(`🚚 Grupo #${data.grupo.id} criado com ${ids.length} pedidos`);
+      carregarPedidos();
+    } catch (e) {
+      alert('Erro de conexão ao agrupar: ' + e.message);
+    }
+  };
+
+  window.desfazerGrupoDelivery = async function (groupId) {
+    if (!confirm(`Desfazer grupo #${groupId}? Os pedidos voltam a ser independentes.`)) return;
+    try {
+      const res = await apiFetch(`/api/delivery-groups/${groupId}`, { method: 'DELETE' });
+      if (!res.ok) { alert('Erro ao desfazer grupo'); return; }
+      showToast(`Grupo #${groupId} desfeito`);
+      carregarPedidos();
+    } catch (e) {
+      alert('Erro de conexão: ' + e.message);
+    }
   };
 
   window.marcarPago = async function (id) {
@@ -1496,54 +1714,482 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  window.escolherEntregador = async function (id) {
+  // ═══════════════════════════════════════════════════════════
+  // OlaClick Action Bar — Dropdown Menus & Payment Panel
+  // ═══════════════════════════════════════════════════════════
+
+  // Close all popup menus when clicking outside
+  document.addEventListener('click', function () {
+    document.querySelectorAll('.ola-popup-menu').forEach(m => m.remove());
+  });
+
+  function _closeAllPopups() {
+    document.querySelectorAll('.ola-popup-menu').forEach(m => m.remove());
+  }
+  window._closeAllPopups = _closeAllPopups;
+
+  // ── Print Menu ──────────────────────────────────────────
+  window.togglePrintMenu = function (e, pedidoId) {
+    e.stopPropagation();
+    _closeAllPopups();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.className = 'ola-popup-menu';
+    menu.onclick = function(ev) { ev.stopPropagation(); };
+    menu.innerHTML = `
+      <div class="ola-pm-item" onclick="event.stopPropagation(); imprimirManual(${pedidoId}, 'cozinha')">
+        🍳 Ticket de cozinha
+      </div>
+      <div class="ola-pm-item" onclick="event.stopPropagation(); gerarPDFTicketCliente(${pedidoId})">
+        📄 Baixar o ticket do cliente em PDF
+      </div>
+      <div class="ola-pm-item" onclick="event.stopPropagation(); imprimirManual(${pedidoId}, 'cliente')">
+        🖨 Ticket do cliente
+      </div>
+    `;
+    menu.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+    menu.style.left = Math.max(0, rect.left + window.scrollX - 100) + 'px';
+    document.body.appendChild(menu);
+  };
+
+  // ── Status Menu ─────────────────────────────────────────
+  window.toggleStatusMenu = function (e, pedidoId) {
+    e.stopPropagation();
+    _closeAllPopups();
+    const p = (window.pedidosAtuais || []).find(x => x.id === pedidoId);
+    if (!p) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.className = 'ola-popup-menu ola-status-dropdown';
+    menu.onclick = function(ev) { ev.stopPropagation(); };
+
+    const statuses = [
+      { key: 'em_preparo', label: 'Em preparação', icon: '✅', color: '#dcfce7' },
+      { key: 'pronto', label: 'Pronto', icon: '📦', color: '#fff' },
+      { key: 'em_entrega', label: 'No caminho', icon: '🛵', color: '#fff' },
+      { key: 'chegou', label: 'Chegou', icon: '📍', color: '#fff' },
+      { key: 'entregue', label: 'Entregue', icon: '✓', color: '#fff' },
+    ];
+
+    const allowedTransitions = {
+      'recebido': ['pendente_aprovacao', 'em_preparo', 'pronto', 'cancelado', 'rejeitado'],
+      'pendente_aprovacao': ['em_preparo', 'pronto', 'cancelado', 'rejeitado'],
+      'em_preparo': ['pronto', 'cancelado'],
+      'pronto': ['em_entrega', 'entregue', 'cancelado'],
+      'em_entrega': ['chegou', 'entregue', 'cancelado'],
+      'chegou': ['entregue', 'cancelado'],
+      'entregue': [],
+      'cancelado': [],
+      'rejeitado': []
+    };
+
+    const permitidos = allowedTransitions[p.status] || [];
+
+    menu.innerHTML = statuses.filter(s => permitidos.includes(s.key) || p.status === s.key).map(s => {
+      const isActive = p.status === s.key;
+      const bg = isActive ? s.color : '#fff';
+      return `<div class="ola-pm-item ola-st-item ${isActive ? 'active' : ''}"
+                   style="background:${bg}"
+                   onclick="event.stopPropagation(); alterarStatus(${pedidoId}, '${s.key}'); _closeAllPopups();">
+        <span>${s.icon}</span> ${s.label}
+      </div>`;
+    }).join('');
+
+    menu.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+    menu.style.left = Math.max(0, rect.left + window.scrollX - 60) + 'px';
+    document.body.appendChild(menu);
+  };
+
+  // ── 3-Dots Menu ─────────────────────────────────────────
+  window.toggleDotsMenu = function (e, pedidoId) {
+    e.stopPropagation();
+    _closeAllPopups();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.className = 'ola-popup-menu';
+    menu.onclick = function(ev) { ev.stopPropagation(); };
+    menu.innerHTML = `
+      <div class="ola-pm-item ola-pm-cancel" onclick="event.stopPropagation(); cancelarPedido(${pedidoId})">
+        ⊘ Cancelar
+      </div>
+      <div class="ola-pm-item ola-pm-delete" onclick="event.stopPropagation(); excluirPedido(${pedidoId})">
+        🗑 Excluir
+      </div>
+    `;
+    menu.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+    menu.style.left = Math.max(0, rect.right + window.scrollX - 160) + 'px';
+    document.body.appendChild(menu);
+  };
+
+  // ── Cancel Pedido ───────────────────────────────────────
+  window.cancelarPedido = async function (id) {
+    _closeAllPopups();
+    if (!confirm('Tem certeza que deseja CANCELAR o pedido #' + id + '?\nO histórico será mantido.')) return;
     try {
-      const res = await apiFetch('/api/equipe');
-      const equipe = await res.json();
-      const entregadores = equipe.filter(u => u.funcao === 'Entregador' && u.ativo);
-
-      if (entregadores.length === 0) {
-        alert('Nenhum entregador ativo cadastrado na equipe.');
-        return;
-      }
-
-      let msg = "Selecione o entregador:\n\n";
-      entregadores.forEach((e, index) => {
-        msg += `${index + 1} - ${e.nome}\n`;
-      });
-      msg += "\n0 - Remover entregador";
-
-      const choice = prompt(msg);
-      if (choice === null) return;
-
-      let selectedId = null;
-      if (choice !== "0") {
-        const idx = parseInt(choice) - 1;
-        if (entregadores[idx]) {
-          selectedId = entregadores[idx].id;
-        } else {
-          alert('Opção inválida.');
-          return;
-        }
-      }
-
-      const resUpdate = await fetch(`/api/pedidos/${id}/entregador`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entregador_id: selectedId })
-      });
-
-      if (resUpdate.ok) {
+      const res = await apiFetch('/api/pedidos/' + id + '/cancelar', { method: 'PATCH' });
+      if (res.ok) {
+        showToast('❌ Pedido #' + id + ' cancelado');
+        window._lastPedidosHash = null;
         carregarPedidos();
-        // Se o painel estiver aberto, atualiza ele também chamando abrirDetalhes de novo ou apenas deixando o polling agir
       } else {
-        alert('Erro ao atualizar entregador.');
+        const err = await res.json().catch(function() { return {}; });
+        alert(err.error || 'Erro ao cancelar pedido');
       }
     } catch (err) {
-      console.error(err);
-      alert('Erro de conexão ao buscar equipe.');
+      alert('Erro de conexão');
     }
   };
+
+  // ── Delete Pedido (soft) ────────────────────────────────
+  window.excluirPedido = async function (id) {
+    _closeAllPopups();
+    if (!confirm('⚠️ Excluir pedido #' + id + '?\n\nO pedido será marcado como excluído e não aparecerá mais na lista.')) return;
+    try {
+      const res = await apiFetch('/api/pedidos/' + id, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('🗑 Pedido #' + id + ' excluído');
+        fecharDetalhes();
+        window._pedidoSelecionado = null;
+        window._lastPedidosHash = null;
+        carregarPedidos();
+      } else {
+        const err = await res.json().catch(function() { return {}; });
+        alert(err.error || 'Erro ao excluir pedido');
+      }
+    } catch (err) {
+      alert('Erro de conexão');
+    }
+  };
+
+  // ── Manual Print ────────────────────────────────────────
+  window.imprimirManual = async function (pedidoId, tipoTicket) {
+    _closeAllPopups();
+    try {
+      const res = await apiFetch('/api/pedidos/' + pedidoId + '/imprimir', {
+        method: 'POST',
+        body: { tipo_ticket: tipoTicket },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        showToast('🖨 ' + (tipoTicket === 'cozinha' ? 'Ticket de cozinha' : 'Ticket do cliente') + ' enviado (' + data.jobs_enqueued + ' job' + (data.jobs_enqueued > 1 ? 's' : '') + ')');
+      } else {
+        const err = await res.json().catch(function() { return {}; });
+        showToast('⚠️ ' + (err.error || 'Erro ao imprimir'));
+      }
+    } catch (err) {
+      showToast('⚠️ Erro de conexão ao imprimir');
+    }
+  };
+
+  // ── PDF Ticket Cliente ──────────────────────────────────
+  window.gerarPDFTicketCliente = function (pedidoId) {
+    _closeAllPopups();
+    const p = (window.pedidosAtuais || []).find(function(x) { return x.id === pedidoId; });
+    if (!p) { showToast('Pedido não encontrado'); return; }
+
+    const cur = window.formatCurrency || function(v) { return '€ ' + Number(v).toFixed(2); };
+    const date = new Date(p.criado_em).toLocaleString('pt-BR');
+    const tipoLabel = p.tipo === 'balcao' ? 'Balcão' : p.tipo === 'mesa' ? 'Mesa' : 'Delivery';
+    const pgLabel = p.payment_status === 'pago' ? 'PAGO' : 'NÃO PAGO';
+    const itensHtml = (p.itens || []).map(function(i) {
+      return '<tr><td style="text-align:left">' + i.quantidade + 'x ' + i.nome_produto + '</td><td style="text-align:right">' + cur(i.preco_unitario * i.quantidade) + '</td></tr>';
+    }).join('');
+
+    const html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+      '<title>Ticket #' + p.id + '</title>' +
+      '<style>body{font-family:monospace;width:300px;margin:0 auto;padding:20px;font-size:12px}h2{text-align:center;margin:0 0 5px}.line{border-top:1px dashed #000;margin:8px 0}table{width:100%;border-collapse:collapse}td{padding:2px 0}.total{font-weight:bold;font-size:14px}.footer{text-align:center;margin-top:10px;font-size:10px;color:#666}</style>' +
+      '</head><body>' +
+      '<h2>PITOMBO LANCHES</h2>' +
+      '<div style="text-align:center;font-size:11px">Ticket do Cliente</div>' +
+      '<div class="line"></div>' +
+      '<div><b>Pedido #' + p.id + '</b> — ' + tipoLabel + '</div>' +
+      '<div>' + date + '</div>' +
+      '<div><b>Cliente:</b> ' + p.cliente + '</div>' +
+      (p.telefone ? '<div><b>Tel:</b> ' + p.telefone + '</div>' : '') +
+      (p.endereco ? '<div><b>End:</b> ' + p.endereco + '</div>' : '') +
+      '<div class="line"></div>' +
+      '<table>' + itensHtml + '</table>' +
+      '<div class="line"></div>' +
+      '<table>' +
+      (p.taxa_entrega > 0 ? '<tr><td>Taxa entrega</td><td style="text-align:right">' + cur(p.taxa_entrega) + '</td></tr>' : '') +
+      '<tr class="total"><td>TOTAL</td><td style="text-align:right">' + cur(p.total) + '</td></tr>' +
+      '</table>' +
+      '<div class="line"></div>' +
+      '<div><b>Pagamento:</b> ' + (p.payment_method || 'Dinheiro') + ' — ' + pgLabel + '</div>' +
+      (p.observacoes ? '<div class="line"></div><div><b>Obs:</b> ' + p.observacoes + '</div>' : '') +
+      '<div class="footer">Obrigado pela preferência!</div>' +
+      '</body></html>';
+
+    const printWin = window.open('', '_blank', 'width=350,height=600');
+    printWin.document.write(html);
+    printWin.document.close();
+    printWin.onload = function() { printWin.print(); };
+    showToast('📄 PDF do ticket aberto para impressão');
+  };
+
+  // ── Painel Entregador ───────────────────────────────────────
+  window.abrirPainelEntregador = async function(pedidoId) {
+    _closeAllPopups();
+    const p = (window.pedidosAtuais || []).find(function(x) { return x.id === pedidoId; });
+    if (!p) { showToast('Pedido não encontrado'); return; }
+
+    let equipe = [];
+    try {
+      const res = await apiFetch('/api/equipe');
+      equipe = await res.json();
+    } catch (err) {
+      alert('Erro ao buscar entregadores');
+      return;
+    }
+    const entregadores = equipe.filter(u => u.funcao === 'Entregador' && u.ativo);
+    
+    // Create or reuse the panel (shares CSS with payment panel)
+    var panel = document.getElementById('painel-entregador-lateral');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'painel-entregador-lateral';
+      document.getElementById('pedidos-split-layout').appendChild(panel);
+    }
+    panel.className = 'pgto-panel pgto-aberto';
+    
+    let listHtml = entregadores.map(e => `
+      <div class="ola-entregador-item" onclick="selecionarEntregadorDrawer(${e.id}, event)">
+        <div class="ola-entregador-item-left">
+          <div class="ola-entregador-nome">${e.nome}</div>
+          <div class="ola-entregador-status"><span class="ola-dot ativo"></span> Ativo</div>
+        </div>
+        ${e.telefone ? `<a href="https://wa.me/${e.telefone.replace(/\D/g, '')}" target="_blank" class="ola-wa-btn-drawer" onclick="event.stopPropagation()" title="WhatsApp">
+            <i class="fab fa-whatsapp"></i>
+        </a>` : ''}
+      </div>
+    `).join('');
+
+    if (entregadores.length === 0) {
+        listHtml = '<div style="padding:1rem;color:#6b7280;text-align:center;">Nenhum entregador ativo encontrado.</div>';
+    }
+
+    panel.innerHTML = `
+      <div class="pgto-header">
+        <button class="pgto-back" onclick="fecharPainelEntregador()">←</button>
+        <span>Atribuir Entregador</span>
+        <span class="pgto-pedido-id">#${p.id}</span>
+        <button class="pgto-close" onclick="fecharPainelEntregador()">✕</button>
+      </div>
+      <div class="pgto-summary">
+        <div class="pgto-row">
+           <span style="font-size:0.85rem;color:#6b7280;">Entregador Atual</span>
+           <span style="font-weight:700;color:${p.entregador ? '#111' : '#9ca3af'}">${p.entregador || 'Nenhum'}</span>
+        </div>
+      </div>
+      <div class="pgto-body" style="padding:0; overflow-y:auto; gap:0;">
+          <div style="padding: 1rem 1.2rem; background:#f9fafb; border-bottom:1px solid #e5e7eb; font-size:0.8rem; font-weight:700; color:#6b7280;">SELECIONE NA LISTA:</div>
+          ${listHtml}
+      </div>
+      <div class="pgto-footer" style="padding: 1rem 1.2rem; gap: 0.5rem; background:#fff;">
+         <button class="pgto-btn-registrar" style="border-color:#e5e7eb; color:#ef4444; background:#fff;" onclick="removerEntregadorDrawer(${p.id})">✖ Remover entregador</button>
+         <button class="pgto-btn-finalizar" style="background:#1d4ed8; display:none;" id="btnConfirmaEntregador" onclick="confirmarEntregadorDrawer(${p.id})">✔ Atribuir entregador</button>
+      </div>
+    `;
+
+    var detalhe = document.getElementById('painel-detalhe-lateral');
+    if (detalhe) { detalhe.classList.remove('detalhe-aberto'); detalhe.classList.add('detalhe-fechado'); }
+    if (typeof fecharPainelPagamento === 'function') fecharPainelPagamento();
+  };
+
+  window.fecharPainelEntregador = function() {
+    var panel = document.getElementById('painel-entregador-lateral');
+    if (panel) panel.className = 'pgto-panel pgto-fechado';
+    window._entregadorSelecionadoId = null;
+  };
+
+  window.selecionarEntregadorDrawer = function(id, event) {
+      document.querySelectorAll('.ola-entregador-item').forEach(el => el.classList.remove('selected'));
+      event.currentTarget.classList.add('selected');
+      window._entregadorSelecionadoId = id;
+      document.getElementById('btnConfirmaEntregador').style.display = 'block';
+  };
+
+  window.removerEntregadorDrawer = async function(pedidoId) {
+      if (!confirm('Remover o entregador atual?')) return;
+      try {
+        const res = await apiFetch('/api/pedidos/' + pedidoId + '/entregador', {
+          method: 'PATCH',
+          body: { entregador_id: null }
+        });
+        if (res.ok) {
+           showToast('🚚 Entregador removido!');
+           fecharPainelEntregador();
+           window._lastPedidosHash = null;
+           carregarPedidos();
+        } else {
+           const err = await res.json().catch(function(){return {}});
+           alert(err.error || 'Erro ao remover entregador');
+        }
+      } catch (err) {
+          console.error(err);
+          alert('Erro na operação: ' + err.message);
+      }
+  };
+
+  window.confirmarEntregadorDrawer = async function(pedidoId) {
+      if (!window._entregadorSelecionadoId) return;
+      try {
+        document.getElementById('btnConfirmaEntregador').innerText = 'Atribuindo...';
+        const res = await apiFetch('/api/pedidos/' + pedidoId + '/entregador', {
+          method: 'PATCH',
+          body: { entregador_id: window._entregadorSelecionadoId }
+        });
+        if (res.ok) {
+           showToast('🚚 Entregador atribuído!');
+           fecharPainelEntregador();
+           window._lastPedidosHash = null;
+           carregarPedidos();
+        } else {
+           document.getElementById('btnConfirmaEntregador').innerText = '✔ Atribuir entregador';
+           const err = await res.json().catch(function(){return {}});
+           alert(err.error || 'Erro ao atribuir entregador');
+        }
+      } catch (err) {
+          console.error(err);
+          document.getElementById('btnConfirmaEntregador').innerText = '✔ Atribuir entregador';
+          alert('Erro na operação: ' + err.message);
+      }
+  };
+
+  // ── Payment Panel ───────────────────────────────────────
+  window.abrirPainelPagamento = function (pedidoId) {
+    _closeAllPopups();
+    const p = (window.pedidosAtuais || []).find(function(x) { return x.id === pedidoId; });
+    if (!p) { showToast('Pedido não encontrado'); return; }
+
+    const cur = window.formatCurrency || function(v) { return '€ ' + Number(v).toFixed(2); };
+    const total = parseFloat(p.total) || 0;
+    const pago = parseFloat(p.valor_pago) || 0;
+    const resta = Math.max(0, total - pago);
+    const pgLabel = p.payment_status === 'pago' ? 'Pago' : p.payment_status === 'parcial' ? 'Parcial' : 'Não pago';
+    const pgClass = p.payment_status === 'pago' ? 'pgto-badge-pago' : 'pgto-badge-nao_pago';
+
+    var panel = document.getElementById('painel-pagamento-lateral');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'painel-pagamento-lateral';
+      document.getElementById('pedidos-split-layout').appendChild(panel);
+    }
+    panel.className = 'pgto-panel pgto-aberto';
+    panel.innerHTML =
+      '<div class="pgto-header">' +
+        '<button class="pgto-back" onclick="fecharPainelPagamento()">←</button>' +
+        '<span>Registrar pagamento</span>' +
+        '<span class="pgto-pedido-id">#' + p.id + ' <span class="pgto-tipo-chip">' + (p.tipo === 'delivery' ? 'Delivery' : p.tipo === 'mesa' ? 'Mesa' : 'Balcão') + '</span></span>' +
+        '<button class="pgto-close" onclick="fecharPainelPagamento()">✕</button>' +
+      '</div>' +
+      '<div class="pgto-summary">' +
+        '<div class="pgto-row"><span>Total</span><span class="' + pgClass + '">' + pgLabel + '</span><span class="pgto-total-val">' + cur(total) + '</span></div>' +
+        '<div class="pgto-row pgto-row-sub"><span>Pago</span><span style="color:#16a34a">' + cur(pago) + '</span></div>' +
+        '<div class="pgto-row pgto-row-sub pgto-resta"><span>Resta pagar</span><span style="color:#dc2626;font-weight:800">' + cur(resta) + '</span></div>' +
+      '</div>' +
+      '<div class="pgto-body">' +
+        '<div class="pgto-methods">' +
+          '<button class="pgto-method-btn active" data-method="dinheiro" onclick="selecionarMetodo(this, \'dinheiro\')">Dinheiro</button>' +
+          '<button class="pgto-method-btn" data-method="cartao" onclick="selecionarMetodo(this, \'cartao\')">Cartão</button>' +
+          '<button class="pgto-method-btn" data-method="amex" onclick="selecionarMetodo(this, \'amex\')">American Express</button>' +
+        '</div>' +
+        '<select class="pgto-outros-select" onchange="selecionarMetodo(null, this.value)"><option value="">Outros</option><option value="pix">PIX</option><option value="mbway">MB WAY</option><option value="multibanco">Multibanco</option></select>' +
+        '<div class="pgto-field"><label>Pago:</label><div class="pgto-input-row"><input type="number" id="pgto-valor-pago" step="0.01" min="0" value="' + resta.toFixed(2) + '" oninput="calcularTroco(' + total + ')"><div class="pgto-pm-btns"><button onclick="ajustarValor(\'pgto-valor-pago\', 1, ' + total + ')">+</button><button onclick="ajustarValor(\'pgto-valor-pago\', -1, ' + total + ')">−</button></div></div></div>' +
+        '<div class="pgto-field"><label>Gorjeta:</label><div class="pgto-input-row"><input type="number" id="pgto-gorjeta" step="0.01" min="0" value="0" oninput="calcularTroco(' + total + ')"><span class="pgto-cur-symbol">€</span></div></div>' +
+        '<div class="pgto-field"><label>Quantia entregue:</label><input type="number" id="pgto-quantia" step="0.01" min="0" value="" placeholder="Ex: 50.00" oninput="calcularTroco(' + total + ')"></div>' +
+        '<div class="pgto-troco" id="pgto-troco-display" style="display:none">Troco <span id="pgto-troco-valor">0,00</span></div>' +
+      '</div>' +
+      '<div class="pgto-footer">' +
+        '<button class="pgto-btn-registrar" onclick="registrarPagamento(' + p.id + ', false)">Registrar pagamento</button>' +
+        '<button class="pgto-btn-finalizar" onclick="registrarPagamento(' + p.id + ', true)">Registrar pagamento e finalizar pedido</button>' +
+      '</div>';
+
+    // Close detail panel
+    var detalhe = document.getElementById('painel-detalhe-lateral');
+    if (detalhe) { detalhe.classList.remove('detalhe-aberto'); detalhe.classList.add('detalhe-fechado'); }
+  };
+
+  window.fecharPainelPagamento = function () {
+    var panel = document.getElementById('painel-pagamento-lateral');
+    if (panel) panel.className = 'pgto-panel pgto-fechado';
+  };
+
+  window.selecionarMetodo = function (btn, method) {
+    if (btn) {
+      document.querySelectorAll('.pgto-method-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      var sel = document.querySelector('.pgto-outros-select');
+      if (sel) sel.value = '';
+    } else {
+      document.querySelectorAll('.pgto-method-btn').forEach(function(b) { b.classList.remove('active'); });
+    }
+    window._pgtoMetodo = method;
+  };
+  window._pgtoMetodo = 'dinheiro';
+
+  window.ajustarValor = function (inputId, delta, total) {
+    var inp = document.getElementById(inputId);
+    if (!inp) return;
+    var val = parseFloat(inp.value) || 0;
+    val = Math.max(0, val + delta);
+    inp.value = val.toFixed(2);
+    calcularTroco(total);
+  };
+
+  window.calcularTroco = function (total) {
+    var valorPago = parseFloat(document.getElementById('pgto-valor-pago')?.value) || 0;
+    var gorjeta = parseFloat(document.getElementById('pgto-gorjeta')?.value) || 0;
+    var quantia = parseFloat(document.getElementById('pgto-quantia')?.value) || 0;
+    var trocoDisplay = document.getElementById('pgto-troco-display');
+    var trocoValor = document.getElementById('pgto-troco-valor');
+    if (quantia > 0 && quantia > (valorPago + gorjeta)) {
+      var troco = quantia - valorPago - gorjeta;
+      if (trocoDisplay) trocoDisplay.style.display = 'block';
+      if (trocoValor) trocoValor.textContent = (window.formatCurrency || function(v) { return v.toFixed(2); })(troco);
+    } else {
+      if (trocoDisplay) trocoDisplay.style.display = 'none';
+    }
+  };
+
+  window.registrarPagamento = async function (pedidoId, finalizar) {
+    var valorPago = parseFloat(document.getElementById('pgto-valor-pago')?.value) || 0;
+    var gorjeta = parseFloat(document.getElementById('pgto-gorjeta')?.value) || 0;
+    var quantia = parseFloat(document.getElementById('pgto-quantia')?.value) || 0;
+    var method = window._pgtoMetodo || 'dinheiro';
+
+    try {
+      var res = await apiFetch('/api/pedidos/' + pedidoId + '/pagamento', {
+        method: 'PATCH',
+        body: {
+          valor_pago: valorPago,
+          gorjeta: gorjeta,
+          quantia_entregue: quantia,
+          payment_method: method,
+          finalizar_pedido: finalizar,
+        },
+      });
+      if (res.ok) {
+        var label = finalizar ? 'Pagamento registrado e pedido finalizado' : 'Pagamento registrado';
+        showToast('💰 ' + label + ' — #' + pedidoId);
+        fecharPainelPagamento();
+        window._lastPedidosHash = null;
+        await carregarPedidos();
+        if (!finalizar && window._pedidoSelecionado === pedidoId) {
+          abrirDetalhes(pedidoId);
+        }
+      } else {
+        var err = await res.json().catch(function() { return {}; });
+        alert(err.error || 'Erro ao registrar pagamento');
+      }
+    } catch (err) {
+      alert('Erro de conexão');
+    }
+  };
+
+  // (escolherEntregador removida — UI passou a usar dropdown visual no painel lateral)
+  // Compat: se algum HTML legado ainda chamar window.escolherEntregador, redireciona para o painel.
+  window.escolherEntregador = function (id) { abrirDetalhes(id); };
 
   document.getElementById('btnAtualizarPedidos').addEventListener('click', carregarPedidos);
 
@@ -1749,6 +2395,16 @@ document.addEventListener('DOMContentLoaded', () => {
       setRadio('qr_type', data.qr_type || 'generic');
       setCheckbox('table_service', data.table_service);
       setCheckbox('gorjeta_enabled', data.gorjeta_enabled ?? true);
+
+      // ── Operação e Prazos ─────────────────────────────────────────────────
+      const cfgStatusLoja = document.getElementById('cfgStatusLoja');
+      if (cfgStatusLoja) cfgStatusLoja.value = data.status_loja || 'aberta';
+      const cfgTempoPreparo = document.getElementById('cfgTempoPreparo');
+      if (cfgTempoPreparo) cfgTempoPreparo.value = data.tempo_preparo || '';
+      const cfgPedidoMinimo = document.getElementById('cfgPedidoMinimo');
+      if (cfgPedidoMinimo) cfgPedidoMinimo.value = data.pedido_minimo || '';
+      const cfgMsgAuto = document.getElementById('cfgMensagemAutomatica');
+      if (cfgMsgAuto) cfgMsgAuto.value = data.mensagem_automatica || '';
 
       // Pagamentos
       const payFields = ['pay_money', 'pay_card_machine', 'pay_pix', 'pay_amex', 'pay_visa', 'pay_mastercard', 'pay_online_stripe'];
@@ -2038,8 +2694,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 1000);
 
-  const formConfig = document.querySelector('.form-config');
-  if (formConfig) {
+  const formConfigs = document.querySelectorAll('.form-config');
+  formConfigs.forEach(formConfig => {
     formConfig.addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = formConfig.querySelector('button[type="submit"]');
@@ -2090,8 +2746,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.innerText = originalText;
       }
     });
-  }
-
+  });
 
   // Inicializa e realiza polling para o admin também ser responsivo
   carregarPedidos();
@@ -2660,24 +3315,49 @@ window.salvarEntregador = async function (pedidoId) {
   const sel = document.getElementById(`sel-entregador-${pedidoId}`);
   if (!sel) return;
   const entregador_id = sel.value ? Number(sel.value) : null;
+  console.log(`[Entregador] salvar atribuicao pedido=${pedidoId} entregador=${entregador_id}`);
   try {
     const res = await apiFetch(`/api/pedidos/${pedidoId}/entregador`, {
       method: 'PATCH',
       body: { entregador_id }
     });
     if (res.ok) {
-      carregarPedidos();
-      // Reabrir painel com dados atualizados após polling
-      setTimeout(() => {
-        const p = window.pedidosAtuais.find(x => x.id === pedidoId);
-        if (p) abrirDetalhes(pedidoId);
-      }, 800);
+      console.log(`[Entregador] atribuicao OK pedido=${pedidoId}`);
+      window.showToast(entregador_id ? '🛵 Entregador atribuído' : 'Entregador removido');
+      await carregarPedidos();
+      setTimeout(() => abrirDetalhes(pedidoId), 400);
     } else {
-      alert('Erro ao atribuir entregador.');
+      const data = await res.json().catch(() => ({}));
+      console.warn(`[Entregador] erro ao atribuir pedido=${pedidoId} status=${res.status} motivo=${data.error || 'desconhecido'}`);
+      window.showToast('❌ ' + (data.error || `Erro HTTP ${res.status}`));
     }
   } catch (e) {
-    console.error(e);
-    alert('Erro de conexão.');
+    console.error(`[Entregador] erro de rede pedido=${pedidoId}:`, e);
+    window.showToast('❌ Erro de conexão. Veja o console.');
+  }
+};
+
+window.removerEntregador = async function (pedidoId) {
+  if (!confirm('Remover entregador deste pedido?')) return;
+  console.log(`[Entregador] remover pedido=${pedidoId}`);
+  try {
+    const res = await apiFetch(`/api/pedidos/${pedidoId}/entregador`, {
+      method: 'PATCH',
+      body: { entregador_id: null }
+    });
+    if (res.ok) {
+      console.log(`[Entregador] entregador removido pedido=${pedidoId}`);
+      window.showToast('Entregador removido');
+      await carregarPedidos();
+      setTimeout(() => abrirDetalhes(pedidoId), 400);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      console.warn(`[Entregador] erro ao remover pedido=${pedidoId} status=${res.status} motivo=${data.error || 'desconhecido'}`);
+      window.showToast('❌ ' + (data.error || 'Erro ao remover'));
+    }
+  } catch (e) {
+    console.error(`[Entregador] erro de rede pedido=${pedidoId}:`, e);
+    window.showToast('❌ Erro de conexão');
   }
 };
 
@@ -2972,4 +3652,27 @@ window.removeHeroMedia = function (type) {
   if (input)   input.value = '';
   if (clear)   clear.value = '1'; // sinaliza o backend para limpar a URL
 };
+
+// ── Sub-abas internas de Configurações de Pedidos ─────────────────────────
+window.switchCfgPedidosTab = function(tab, btnEl) {
+  // Atualizar botões
+  document.querySelectorAll('.cfg-ped-tab').forEach(b => {
+    b.style.borderBottomColor = 'transparent';
+    b.style.color = '#888';
+  });
+  if (btnEl) {
+    btnEl.style.borderBottomColor = '#e8420a';
+    btnEl.style.color = '#e8420a';
+  }
+  // Mostrar/ocultar painéis
+  ['geral', 'delivery'].forEach(p => {
+    const el = document.getElementById('cfgPedidosPanel-' + p);
+    if (el) el.style.display = (p === tab) ? '' : 'none';
+  });
+  // Carregar painel de entrega ao entrar
+  if (tab === 'delivery' && typeof initDeliveryPanel === 'function') {
+    initDeliveryPanel();
+  }
+};
+
 
