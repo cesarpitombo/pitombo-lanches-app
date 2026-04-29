@@ -151,16 +151,27 @@
         return;
       }
       list.innerHTML = faixas.map(f => `
-        <div data-id="${f.id}" style="display:grid; grid-template-columns:30px 1fr 1fr 50px 50px; gap:0.5rem; align-items:center; padding:0.6rem 0.8rem; background:#fafafa; border:1px solid #eee; border-radius:8px;">
-          <span style="font-size:1.2rem;">${f.ativo ? '✅' : '⛔'}</span>
-          <input type="number" min="1" step="1" value="${f.cobertura_metros}" data-fld="cobertura_metros"
-            style="padding:0.5rem; border:1px solid #ccc; border-radius:5px;" placeholder="Cobertura (metros)">
-          <input type="number" min="0" step="0.01" value="${parseFloat(f.preco).toFixed(2)}" data-fld="preco"
-            style="padding:0.5rem; border:1px solid #ccc; border-radius:5px;" placeholder="Preço">
+        <div data-id="${f.id}" style="display:flex; align-items:center; flex-wrap:wrap; gap:0.8rem; padding:0.6rem 0.8rem; background:#fafafa; border:1px solid #eee; border-radius:8px;">
           <button type="button" class="dlv-faixa-toggle" title="Ligar/Desligar"
-            style="background:${f.ativo ? '#dff0e0' : '#fde0e0'}; border:1px solid #ccc; border-radius:5px; cursor:pointer; padding:0.4rem;">${f.ativo ? '⏸' : '▶'}</button>
+            style="background:${f.ativo ? '#dff0e0' : '#fde0e0'}; border:1px solid #ccc; border-radius:5px; cursor:pointer; padding:0.4rem 0.6rem; font-size:1.1rem; flex-shrink:0;">${f.ativo ? '✅' : '⛔'}</button>
+          
+          <div style="display:flex; align-items:center; gap:0.4rem; flex:1; min-width:140px;">
+            <span style="font-size:0.85rem; color:#555; font-weight:600;">Até</span>
+            <input type="number" min="1" step="1" value="${f.cobertura_metros}" data-fld="cobertura_metros"
+              style="width:90px; padding:0.4rem; border:1px solid #ccc; border-radius:5px; font-size:0.95rem; text-align:center;" placeholder="Metros">
+            <span style="font-size:0.85rem; color:#555; font-weight:600;">metros</span>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:0.4rem; flex:1; min-width:120px;">
+            <span style="font-size:0.9rem; color:#555; font-weight:600;">€</span>
+            <input type="number" min="0" step="0.01" value="${parseFloat(f.preco).toFixed(2)}" data-fld="preco"
+              style="width:80px; padding:0.4rem; border:1px solid #ccc; border-radius:5px; font-size:0.95rem; text-align:center;" placeholder="Preço">
+          </div>
+
           <button type="button" class="dlv-faixa-delete" title="Excluir"
-            style="background:#fde0e0; border:1px solid #c00; color:#c00; border-radius:5px; cursor:pointer; padding:0.4rem; font-weight:700;">🗑</button>
+            style="background:#fde0e0; border:1px solid #c00; color:#c00; border-radius:5px; cursor:pointer; padding:0.4rem 0.8rem; font-weight:700; flex-shrink:0; display:flex; align-items:center; gap:0.3rem;">
+            <span>🗑</span> <span style="font-size:0.85rem;">Excluir</span>
+          </button>
         </div>
       `).join('');
 

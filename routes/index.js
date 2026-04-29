@@ -137,7 +137,8 @@ router.get('/produtos', async (req, res) => {
 router.post('/pedidos', async (req, res) => {
   const { cliente, telefone, endereco, forma_pagamento, troco_para, observacoes, itens, tipo,
     zona_id, zona_nome, is_scheduled, scheduled_for,
-    delivery_lat, delivery_lng, delivery_neighborhood } = req.body;
+    delivery_lat, delivery_lng, delivery_neighborhood,
+    delivery_rua, delivery_numero, delivery_localidade } = req.body;
 
   if (!cliente || !itens || !itens.length) {
     return res.status(400).json({ error: 'Dados inválidos: cliente e itens são obrigatórios.' });
@@ -150,12 +151,24 @@ router.post('/pedidos', async (req, res) => {
   if (tipo === 'delivery') {
     try {
       const { quoteDelivery } = require('./delivery');
-      serverQuote = await quoteDelivery({
+      const quoteInput = {
         address: endereco,
-        lat: delivery_lat,
-        lng: delivery_lng,
+        rua: delivery_rua,
+        numero: delivery_numero,
+        localidade: delivery_localidade || delivery_neighborhood,
+        lat: (delivery_lat != null && delivery_lat !== '') ? parseFloat(delivery_lat) : null,
+        lng: (delivery_lng != null && delivery_lng !== '') ? parseFloat(delivery_lng) : null,
         neighborhood: delivery_neighborhood
-      });
+      };
+      console.log('[PEDIDO] validation data', JSON.stringify({
+        endereco, delivery_rua, delivery_numero, delivery_localidade, delivery_neighborhood,
+        delivery_lat: quoteInput.lat, delivery_lng: quoteInput.lng
+      }));
+      serverQuote = await quoteDelivery(quoteInput);
+      console.log('[PEDIDO] geocode result', JSON.stringify({
+        mode: serverQuote.mode, fee: serverQuote.fee, in_coverage: serverQuote.in_coverage,
+        geocoded: serverQuote.geocoded
+      }));
       if (!serverQuote.in_coverage) {
         // Permite somente se admin configurou accept_outside_coverage E o quote já refletiu isso
         return res.status(400).json({

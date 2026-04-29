@@ -296,6 +296,7 @@
       let foraDaCobertura = false;
       let ultimoQuote = null;             // { mode, fee, in_coverage, label, distance_m, ... }
       let timeoutQuote = null;
+      const quoteCache = {}; // Cache local do frontend
 
       function dispararQuoteServer() {
         if (tipoEntregaSelecionado !== 'delivery') return;
@@ -303,41 +304,76 @@
         const num = document.getElementById('end_num').value.trim();
         const bairro = document.getElementById('end_bairro').value.trim();
 
-        if (!rua || !num || !bairro) {
+        // 2. Só geocodificar quando rua + localidade estiverem preenchidas
+        if (!rua || !bairro) {
           taxaEntrega = 0;
-          foraDaCobertura = false;
-          ultimoQuote = null;
+          foraDaCobertura = true; // Impede "Grátis" falso
+          ultimoQuote = { label: "Preencha rua e bairro para calcular a entrega" };
           isCalculandoFrete = false;
           atualizarTotal();
           return;
         }
 
-        const endereco = `${rua}, ${num}, ${bairro}, Albufeira, Portugal`;
+        const cacheKey = `${rua.toLowerCase()}|${num.toLowerCase()}|${bairro.toLowerCase()}`;
+
         clearTimeout(timeoutQuote);
+
+        // 4. Cache no frontend
+        if (quoteCache[cacheKey]) {
+          const q = quoteCache[cacheKey];
+          ultimoQuote = q;
+          taxaEntrega = parseFloat(q.fee) || 0;
+          foraDaCobertura = !q.in_coverage;
+          atualizarTotal();
+          return;
+        }
+
         isCalculandoFrete = true;
         atualizarTotal();
+        
+        // 1. Debounce forte: 1200ms
         timeoutQuote = setTimeout(async () => {
           try {
             const r = await fetch('/api/delivery/quote', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ address: endereco, neighborhood: bairro })
+              body: JSON.stringify({
+                rua: rua,
+                numero: num,
+                localidade: bairro,
+                neighborhood: bairro
+              })
             });
             if (!r.ok) throw new Error('quote http ' + r.status);
             const q = await r.json();
+            
+            // Se houver erro de geocoding vindo do back-end ou fora da cobertura
+            if (q.error || !q.in_coverage) {
+               q.label = q.label || "Não conseguimos calcular a entrega automaticamente. Confirme o endereço ou escolha retirar na loja.";
+               q.in_coverage = false;
+               q.fee = 0;
+            }
+
+            console.log('[Checkout] geocode result', q);
+
+            quoteCache[cacheKey] = q; // Salva no cache
             ultimoQuote = q;
             taxaEntrega = parseFloat(q.fee) || 0;
             foraDaCobertura = !q.in_coverage;
           } catch (e) {
             console.error('[checkout] quote falhou:', e);
-            ultimoQuote = null;
+            ultimoQuote = {
+              in_coverage: false,
+              fee: 0,
+              label: "Não conseguimos calcular a entrega automaticamente. Confirme o endereço ou escolha retirar na loja."
+            };
             taxaEntrega = 0;
             foraDaCobertura = true;
           } finally {
             isCalculandoFrete = false;
             atualizarTotal();
           }
-        }, 600);
+        }, 1200);
       }
 
       const taxaEntregaEl = document.getElementById('taxaEntregaValor');
@@ -587,7 +623,7 @@
           document.getElementById('paymentMethodsContainer').classList.add('pay-block-erro');
         }
 
-        // 5. Cobertura de delivery
+        // 5. Cobertura de delivery — valida apenas estado do quote (lat/lng só importam para modos baseados em coords)
         if (tipoEntregaSelecionado === 'delivery') {
           if (isCalculandoFrete) {
             erros.push('Aguardando cálculo da taxa de entrega...');
@@ -597,6 +633,15 @@
             erros.push('Não foi possível calcular a taxa de entrega para este endereço.');
           }
         }
+
+        console.log('[Checkout] validation data', {
+          tipo: tipoEntregaSelecionado,
+          ultimoQuote,
+          taxaEntrega,
+          foraDaCobertura,
+          isCalculandoFrete,
+          erros
+        });
 
         if (erros.length > 0) {
           mostrarErros(erros);
@@ -621,6 +666,11 @@
           })
           .filter(item => item.id && !isNaN(item.id));
 
+        const isDelivery = tipoEntregaSelecionado === 'delivery';
+        const ruaFinal    = isDelivery ? document.getElementById('end_rua').value.trim() : null;
+        const numeroFinal = isDelivery ? document.getElementById('end_num').value.trim() : null;
+        const bairroFinal = isDelivery ? document.getElementById('end_bairro').value.trim() : null;
+
         const payload = {
           cliente:         nome,
           telefone:        telefone,
@@ -633,12 +683,18 @@
           observacoes:     document.getElementById('observacoes') ? document.getElementById('observacoes').value.trim() : '',
           itens:           itensSaneados,
           // Hints para o servidor recalcular a taxa (taxa/total finais são autoritativos no backend)
-          delivery_neighborhood: tipoEntregaSelecionado === 'delivery' ? document.getElementById('end_bairro').value.trim() : null,
-          delivery_lat:    ultimoQuote?.geocoded?.lat || null,
-          delivery_lng:    ultimoQuote?.geocoded?.lng || null,
+          // Mesma fonte de dados usada em /api/delivery/quote — garante consistência cálculo↔envio.
+          delivery_rua:          ruaFinal,
+          delivery_numero:       numeroFinal,
+          delivery_localidade:   bairroFinal,
+          delivery_neighborhood: bairroFinal,
+          delivery_lat:    (ultimoQuote?.geocoded?.lat ?? null),
+          delivery_lng:    (ultimoQuote?.geocoded?.lng ?? null),
           is_scheduled:    isAgendado,
           scheduled_for:   isAgendado && scheduledFor ? scheduledFor : null
         };
+
+        console.log('[Checkout] final payload', payload);
 
         try {
           const res = await fetch('/api/pedidos', {

@@ -19,46 +19,183 @@ function haversine(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-async function geocodeGoogle(address) {
+function normalizeAddress(address) {
+  if (!address) return '';
+  let s = address.toString().trim();
+  s = s.replace(/\s+/g, ' ');
+  s = s.replace(/\s*,\s*/g, ', ');
+  s = s.replace(/(,\s*)+/g, ', ');
+  s = s.replace(/^,\s*|,\s*$/g, '');
+  if (!/portugal\s*$/i.test(s)) s = `${s}, Portugal`;
+  return s;
+}
+
+function extractCityAndNeighborhood(components) {
+  let cidade = null, bairro = null;
+  for (const c of components || []) {
+    const types = c.types || [];
+    if (!cidade && (types.includes('locality') || types.includes('postal_town') || types.includes('administrative_area_level_2'))) {
+      cidade = c.long_name;
+    }
+    if (!bairro && (types.includes('sublocality') || types.includes('sublocality_level_1') || types.includes('neighborhood'))) {
+      bairro = c.long_name;
+    }
+  }
+  return { cidade, bairro };
+}
+
+async function geocodeWithGoogle(address) {
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_KEY}`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error('google geocode http ' + res.status);
+  if (!res.ok) throw new Error('google http ' + res.status);
   const data = await res.json();
-  if (data.status !== 'OK' || !data.results?.length) {
-    throw new Error('google geocode: ' + data.status);
+  const status = data.status;
+  if (status === 'OK' && data.results?.length) {
+    const r = data.results[0];
+    const { cidade, bairro } = extractCityAndNeighborhood(r.address_components);
+    const lat = r.geometry?.location?.lat;
+    const lng = r.geometry?.location?.lng;
+    if (lat == null || lng == null) throw new Error('google: coordenadas ausentes na resposta');
+    return {
+      lat,
+      lng,
+      provider: 'google',
+      formatted_address: r.formatted_address,
+      formatted: r.formatted_address,
+      cidade,
+      bairro
+    };
   }
-  const r = data.results[0];
+  if (status === 'ZERO_RESULTS')     throw new Error('ZERO_RESULTS: endereço não encontrado');
+  if (status === 'REQUEST_DENIED')   throw new Error(`REQUEST_DENIED: API key inválida ou bloqueada${data.error_message ? ' — ' + data.error_message : ''}`);
+  if (status === 'OVER_QUERY_LIMIT') throw new Error('OVER_QUERY_LIMIT: cota Google excedida');
+  throw new Error('google status: ' + (status || 'desconhecido'));
+}
+
+function nominatimToResult(d, provider) {
+  const a = d.address || {};
+  const cidade = a.city || a.town || a.village || a.municipality || a.county || null;
+  const bairro = a.suburb || a.neighbourhood || a.hamlet || null;
   return {
-    lat: r.geometry.location.lat,
-    lng: r.geometry.location.lng,
-    formatted: r.formatted_address,
-    provider: 'google'
+    lat: parseFloat(d.lat),
+    lng: parseFloat(d.lon),
+    provider,
+    formatted_address: d.display_name,
+    formatted: d.display_name,
+    cidade,
+    bairro
   };
 }
 
 async function geocodeNominatim(address) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(address)}`;
   const res = await fetch(url, {
     headers: { 'User-Agent': 'PitomboLanches/1.0 (contact@pitombo.local)' }
   });
   if (!res.ok) throw new Error('nominatim http ' + res.status);
   const data = await res.json();
   if (!Array.isArray(data) || !data.length) throw new Error('nominatim: no result');
-  return {
-    lat: parseFloat(data[0].lat),
-    lng: parseFloat(data[0].lon),
-    formatted: data[0].display_name,
-    provider: 'nominatim'
-  };
+  return nominatimToResult(data[0], 'nominatim');
+}
+
+// Nominatim structured search — separate street/city/country for better results
+async function geocodeNominatimStructured({ street, city, country }) {
+  const params = new URLSearchParams({ format: 'json', addressdetails: '1', limit: '1' });
+  if (street) params.set('street', street);
+  if (city) params.set('city', city);
+  if (country) params.set('country', country);
+  const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'PitomboLanches/1.0 (contact@pitombo.local)' }
+  });
+  if (!res.ok) throw new Error('nominatim-structured http ' + res.status);
+  const data = await res.json();
+  if (!Array.isArray(data) || !data.length) throw new Error('nominatim-structured: no result');
+  return nominatimToResult(data[0], 'nominatim_structured');
+}
+
+function validateGeoResult(r) {
+  if (!r) throw new Error('resultado vazio');
+  if (r.lat == null || r.lng == null) throw new Error('coordenadas inválidas');
+  if (Number.isNaN(parseFloat(r.lat)) || Number.isNaN(parseFloat(r.lng))) throw new Error('coordenadas inválidas');
+  return r;
 }
 
 async function geocode(address) {
-  if (!address || !address.trim()) throw new Error('endereço vazio');
+  if (!address || !address.toString().trim()) throw new Error('endereço vazio');
+  const normalized = normalizeAddress(address);
+  console.log(`[Geo] endereço normalizado: "${normalized}" | google_key=${GOOGLE_KEY ? 'SIM' : 'NÃO'}`);
+
+  // 1) Google — fonte principal
   if (GOOGLE_KEY) {
-    try { return await geocodeGoogle(address); }
-    catch (e) { console.warn('[geocoding] google falhou, fallback Nominatim:', e.message); }
+    try {
+      const r = validateGeoResult(await geocodeWithGoogle(normalized));
+      console.log(`[Geo] google sucesso lat=${r.lat} lng=${r.lng}`);
+      return r;
+    } catch (e) {
+      console.warn(`[Geo] google falha ${e.message}`);
+    }
+  } else {
+    console.warn('[Geo] google falha API key ausente');
   }
-  return await geocodeNominatim(address);
+
+  console.log('[Geo] fallback ativado');
+
+  // 2) Nominatim — busca livre com endereço completo
+  try {
+    const r = await geocodeNominatim(normalized);
+    console.log(`[Geo] nominatim OK: lat=${r.lat} lng=${r.lng} formatted="${r.formatted}"`);
+    return r;
+  } catch (e) {
+    console.warn(`[Geo] nominatim free-text FALHOU: ${e.message}`);
+  }
+
+  // 3) Nominatim structured — extrair rua/cidade/país do endereço e tentar busca estruturada
+  //    Formato esperado: "Rua da Eira 148A, Albufeira, Portugal"
+  const parts = normalized.split(',').map(p => p.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    const country = parts[parts.length - 1];
+    const city = parts.length >= 3 ? parts[parts.length - 2] : parts[parts.length - 1];
+    const street = parts[0];
+
+    // 3a) Tentar com rua + cidade + país
+    try {
+      console.log(`[Geo] tentando nominatim structured: street="${street}" city="${city}" country="${country}"`);
+      const r = await geocodeNominatimStructured({ street, city, country });
+      console.log(`[Geo] nominatim structured OK: lat=${r.lat} lng=${r.lng} formatted="${r.formatted}"`);
+      return r;
+    } catch (e) {
+      console.warn(`[Geo] nominatim structured FALHOU: ${e.message}`);
+    }
+
+    // 3b) Tentar sem número na rua (remover token alfanumérico final da rua)
+    const streetNoNum = street.replace(/\s+\S+$/, '');
+    if (streetNoNum !== street) {
+      try {
+        console.log(`[Geo] tentando nominatim structured sem número: street="${streetNoNum}" city="${city}" country="${country}"`);
+        const r = await geocodeNominatimStructured({ street: streetNoNum, city, country });
+        console.log(`[Geo] nominatim structured (sem número) OK: lat=${r.lat} lng=${r.lng} formatted="${r.formatted}"`);
+        r.provider = 'nominatim_approx';
+        return r;
+      } catch (e) {
+        console.warn(`[Geo] nominatim structured (sem número) FALHOU: ${e.message}`);
+      }
+    }
+
+    // 3c) Tentar só cidade + país (fallback de último recurso — localização aproximada)
+    try {
+      const cityQuery = `${city}, ${country}`;
+      console.log(`[Geo] fallback: tentando geocodificar só cidade: "${cityQuery}"`);
+      const r = await geocodeNominatim(cityQuery);
+      console.log(`[Geo] fallback cidade OK: lat=${r.lat} lng=${r.lng} formatted="${r.formatted}"`);
+      r.provider = 'nominatim_city_fallback';
+      return r;
+    } catch (e) {
+      console.warn(`[Geo] fallback cidade FALHOU: ${e.message}`);
+    }
+  }
+
+  throw new Error(`Geocodificação falhou para "${normalized}" — nenhum provider retornou resultado`);
 }
 
 async function distanceMeters(lat1, lng1, lat2, lng2) {

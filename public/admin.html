@@ -1881,16 +1881,15 @@
               <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
                 <div>
                   <h3 style="margin:0 0 0.3rem;">📍 Faixas personalizadas</h3>
-                  <p style="color:#666; margin:0;">Calcula o preço com base na distância da sua empresa. Cada faixa vira um anel colorido no mapa.</p>
+                  <p style="color:#666; margin:0;">Calcula o preço com base na distância da sua empresa. Adicione as distâncias e valores.</p>
                 </div>
                 <button type="button" id="dlvFaixaAddBtn"
                   style="background:#1976d2; color:#fff; border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:700; cursor:pointer;">
                   + Adicionar faixa
                 </button>
               </div>
-              <div style="display:grid; grid-template-columns:1fr 380px; gap:1rem; margin-top:1rem; min-height:420px;">
-                <div id="dlvFaixasMap" class="dlv-map" style="min-height:420px;"></div>
-                <div id="dlvFaixasList" style="display:flex; flex-direction:column; gap:0.5rem; max-height:420px; overflow-y:auto;">
+              <div style="display:flex; flex-direction:column; gap:1rem; margin-top:1rem;">
+                <div id="dlvFaixasList" style="display:flex; flex-direction:column; gap:0.5rem; max-height:600px; overflow-y:auto; width:100%;">
                   <p style="color:#999; text-align:center; padding:1rem;">Carregando…</p>
                 </div>
               </div>

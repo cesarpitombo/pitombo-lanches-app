@@ -72,11 +72,12 @@ const MODES = ['sem_preco', 'fixo', 'bairro', 'km', 'areas', 'faixas'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 async function getStoreLatLng() {
-  const { rows } = await query(`SELECT store_lat, store_lng FROM store_settings WHERE id = 1`);
-  if (!rows.length) return { lat: null, lng: null };
+  const { rows } = await query(`SELECT store_lat, store_lng, store_address FROM store_settings WHERE id = 1`);
+  if (!rows.length) return { lat: null, lng: null, address: null };
   return {
     lat: rows[0].store_lat !== null ? parseFloat(rows[0].store_lat) : null,
     lng: rows[0].store_lng !== null ? parseFloat(rows[0].store_lng) : null,
+    address: rows[0].store_address || null,
   };
 }
 
@@ -377,12 +378,31 @@ router.delete('/areas/:id', requireAuth, requireRole(ADMIN_MANAGER), async (req,
 
 // ─── QUOTE: cálculo da taxa de entrega ──────────────────────────────────────
 // POST /api/delivery/quote
-// body: { address?, lat?, lng?, neighborhood? }
+// body: { address?, rua?, numero?, localidade?, lat?, lng?, neighborhood? }
 // Retorna: { mode, fee, distance_m, in_coverage, label, geocoded?, error? }
 //
 // Esta é a fonte autoritativa do preço. O checkout chama isso e o backend
 // re-valida no /api/pedidos antes de gravar.
-async function quoteDelivery({ address, lat, lng, neighborhood }) {
+
+// Cache de geocodificação
+const geoCacheMap = new Map();
+
+// Monta endereço completo a partir dos campos separados
+function montarEnderecoCliente({ rua, numero, localidade, address }) {
+  // Se vieram campos estruturados, monta o endereço completo
+  if (rua && localidade) {
+    const street = numero ? `${rua.trim()} ${numero.trim()}` : rua.trim();
+    // Formato: "Rua da Eira 148A, Albufeira, Portugal"
+    return `${street}, ${localidade.trim()}, Portugal`;
+  }
+  // Fallback: usa o address completo que veio do client
+  if (address && address.trim()) {
+    return address.trim();
+  }
+  return '';
+}
+
+async function quoteDelivery({ address, rua, numero, localidade, lat, lng, neighborhood }) {
   const cfg = await getDeliveryConfig();
   if (!cfg) throw new Error('delivery_config ausente');
 
@@ -437,26 +457,112 @@ async function quoteDelivery({ address, lat, lng, neighborhood }) {
 
   // 4 / 5 / 6 → precisa lat/lng do cliente
   if (lat == null || lng == null) {
-    if (!address) {
-      result.label = 'Endereço ou coordenadas obrigatórios para este modo.';
+    // Montar endereço completo a partir de campos separados
+    const enderecoFinal = montarEnderecoCliente({ rua, numero, localidade, address });
+    console.log(`[Geo] endereço normalizado: "${enderecoFinal}"`);
+
+    if (!enderecoFinal) {
+      result.label = 'Endereço obrigatório para este modo.';
+      console.log('[Geo] ERRO: endereço vazio — campos rua/localidade/address todos vazios');
       return result;
     }
-    try {
-      const g = await geocode(address);
+
+    const cacheKey = enderecoFinal.toLowerCase();
+    if (geoCacheMap.has(cacheKey)) {
+      console.log(`[Geo] cache hit`);
+      const g = geoCacheMap.get(cacheKey);
       lat = g.lat;
       lng = g.lng;
       result.geocoded = g;
-    } catch (e) {
-      result.label = 'Não foi possível geocodificar o endereço.';
-      result.error = e.message;
-      return result;
+    } else {
+      console.log(`[Geo] cache miss`);
+      try {
+        const g = await geocode(enderecoFinal);
+        if (!g.cidade) g.cidade = localidade || neighborhood || null;
+        lat = g.lat;
+        lng = g.lng;
+        result.geocoded = g;
+        console.log(`[Geo] sucesso lat=${g.lat} lng=${g.lng} provider=${g.provider} cidade="${g.cidade || ''}" formatted="${g.formatted_address || g.formatted || ''}"`);
+
+        geoCacheMap.set(cacheKey, g);
+        if (geoCacheMap.size > 1000) geoCacheMap.delete(geoCacheMap.keys().next().value);
+      } catch (e) {
+        console.warn(`[Geo] falha na API (${e.message}). Tentando fallback fixo para a cidade...`);
+
+        // 1. Fallback funcional REAL
+        const fallbackMap = {
+          'albufeira': { lat: 37.0891, lng: -8.2503 },
+          'guia': { lat: 37.1287, lng: -8.3006 },
+          'algoz': { lat: 37.1633, lng: -8.3061 },
+          'tunes': { lat: 37.1664, lng: -8.2586 }
+        };
+
+        const cidadeInput = localidade || neighborhood || '';
+        const cidadeLabel = cidadeInput || 'a localidade informada';
+        const cityKey = normalizeNeighborhood(cidadeInput);
+        const fallbackCoords = cityKey
+          ? (fallbackMap[cityKey] || Object.entries(fallbackMap).find(([k]) => cityKey.includes(k))?.[1])
+          : null;
+
+        if (fallbackCoords) {
+          console.log(`[Geo] Fallback aplicado para "${cidadeInput}": lat=${fallbackCoords.lat} lng=${fallbackCoords.lng}`);
+          lat = fallbackCoords.lat;
+          lng = fallbackCoords.lng;
+          result.geocoded = {
+            lat,
+            lng,
+            provider: 'fixed_fallback',
+            formatted_address: `Centro de ${cidadeInput} (Aproximado)`,
+            formatted: `Centro de ${cidadeInput} (Aproximado)`,
+            cidade: cidadeInput,
+            bairro: null
+          };
+        } else {
+          // 2. Se cidade não existir no mapa
+          console.error(`[Geo] Sem fallback para a cidade: ${cidadeLabel}`);
+          result.label = `Não localizamos '${cidadeLabel}' no mapa. Confirme o bairro/cidade ou escolha retirar na loja.`;
+          result.error = e.message;
+          result.in_coverage = false;
+          return result;
+        }
+      }
     }
+  } else {
+    console.log(`[Geo] cliente já com coordenadas lat=${lat} lng=${lng}`);
   }
 
   const store = await getStoreLatLng();
+
+  // Se a loja não tem lat/lng, tentar geocodificar o store_address
   if (store.lat == null || store.lng == null) {
-    result.label = 'Loja sem coordenadas configuradas (store_lat/store_lng).';
-    return result;
+    if (store.address) {
+      const enderecoLoja = store.address.includes('Portugal') ? store.address : `${store.address}, Portugal`;
+      console.log(`[Geo] endereco_loja_final="${enderecoLoja}" (geocodificando porque store_lat/lng está vazio)`);
+      try {
+        const gLoja = await geocode(enderecoLoja);
+        store.lat = gLoja.lat;
+        store.lng = gLoja.lng;
+        console.log(`[Geo] resultado_loja lat=${gLoja.lat} lng=${gLoja.lng} provider=${gLoja.provider} formatted="${gLoja.formatted || ''}"`);
+        // Salvar para próximas vezes
+        try {
+          await query(`UPDATE store_settings SET store_lat=$1, store_lng=$2 WHERE id=1`, [gLoja.lat, gLoja.lng]);
+          console.log('[Geo] store_lat/store_lng atualizados automaticamente no banco');
+        } catch (dbErr) {
+          console.warn('[Geo] não conseguiu persistir coords da loja:', dbErr.message);
+        }
+      } catch (e) {
+        console.error(`[Geo] FALHA geocodificar LOJA — endereço: "${enderecoLoja}" — erro: ${e.message}`);
+        result.label = `Não foi possível geocodificar o endereço da loja: "${enderecoLoja}"`;
+        result.error = e.message;
+        return result;
+      }
+    } else {
+      console.error('[Geo] ERRO: loja sem coordenadas (store_lat/store_lng) e sem store_address para geocodificar');
+      result.label = 'Loja sem coordenadas configuradas (store_lat/store_lng).';
+      return result;
+    }
+  } else {
+    console.log(`[Geo] endereco_loja_final="${store.address || '(coords diretas)'}" lat=${store.lat} lng=${store.lng}`);
   }
 
   const dist = await distanceMeters(store.lat, store.lng, parseFloat(lat), parseFloat(lng));
